@@ -5,13 +5,13 @@ export default function Dashboard() {
   return <AppShell><div className="content">
     <section className="welcome">
       <div><div className="eyebrow">Sunday, July 12</div><h1>Good afternoon, James.</h1><p>Let’s pick up where you left off. You’re making steady progress.</p></div>
-      <button className="button primary"><Plus size={17}/><span>Start another claim</span></button>
+      <a className="button primary" href="/claim-builder"><Plus size={17}/><span>Start another claim</span></a>
     </section>
 
     <section className="next-step" aria-labelledby="next-heading">
       <div className="next-icon"><Check size={22}/></div>
       <div className="next-copy"><span className="kicker">Your next best step</span><h2 id="next-heading">Add treatment details to your migraine claim</h2><p>This helps build a clearer picture of your current care and supporting records.</p></div>
-      <button className="button warm">Continue <ArrowRight size={17}/></button>
+      <a className="button warm" href="/claim-builder">Continue <ArrowRight size={17}/></a>
     </section>
 
     <div className="dashboard-grid">

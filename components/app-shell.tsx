@@ -4,12 +4,12 @@ import {
 } from "lucide-react";
 
 const links = [
-  ["Home", LayoutDashboard], ["Build a claim", ClipboardList],
-  ["Conditions", BookOpen], ["Evidence guide", FolderOpen],
-  ["Statement templates", FileText], ["VA forms", Files]
+  ["home", "Home", "/", LayoutDashboard], ["builder", "Build a claim", "/claim-builder", ClipboardList],
+  ["conditions", "Conditions", "#", BookOpen], ["evidence", "Evidence guide", "#", FolderOpen],
+  ["templates", "Statement templates", "#", FileText], ["forms", "VA forms", "#", Files]
 ] as const;
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, current = "home" }: { children: React.ReactNode; current?: string }) {
   return <div className="shell">
     <aside className="sidebar">
       <a className="brand" href="/" aria-label="Veteran Claims Companion home">
@@ -18,7 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </a>
       <p className="nav-label">Your workspace</p>
       <nav className="nav" aria-label="Primary navigation">
-        {links.map(([label, Icon], i) => <a className={i === 0 ? "active" : ""} href={i === 0 ? "/" : "#"} key={label}>
+        {links.map(([key, label, href, Icon]) => <a className={current === key ? "active" : ""} href={href} key={key}>
           <Icon size={18}/><span>{label}</span>
         </a>)}
       </nav>
