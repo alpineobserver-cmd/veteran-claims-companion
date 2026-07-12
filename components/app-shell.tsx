@@ -6,7 +6,7 @@ import {
 const links = [
   ["home", "Home", "/", LayoutDashboard], ["builder", "Build a claim", "/claim-builder", ClipboardList],
   ["conditions", "Conditions", "/conditions", BookOpen], ["evidence", "Evidence guide", "#", FolderOpen],
-  ["templates", "Statement templates", "#", FileText], ["forms", "VA forms", "#", Files]
+  ["templates", "Statement templates", "#", FileText], ["forms", "VA forms", "/forms", Files]
 ] as const;
 
 export function AppShell({ children, current = "home" }: { children: React.ReactNode; current?: string }) {

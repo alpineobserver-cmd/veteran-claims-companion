@@ -36,7 +36,7 @@ export default function Dashboard() {
         <Resource icon={Upload} title="Add evidence" text="Keep records and statements together."/>
         <Resource icon={FileText} title="Write a statement" text="Start with a guided template."/>
         <Resource icon={BookOpen} title="Understand a condition" text="Learn what documentation may help." href="/conditions"/>
-        <Resource icon={Files} title="Find a VA form" text="See when and how forms are used."/>
+        <Resource icon={Files} title="Find a VA form" text="See when and how forms are used." href="/forms"/>
       </div>
     </section>
 
