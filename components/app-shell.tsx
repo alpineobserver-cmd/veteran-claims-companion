@@ -5,7 +5,7 @@ import {
 
 const links = [
   ["home", "Home", "/", LayoutDashboard], ["builder", "Build a claim", "/claim-builder", ClipboardList],
-  ["conditions", "Conditions", "#", BookOpen], ["evidence", "Evidence guide", "#", FolderOpen],
+  ["conditions", "Conditions", "/conditions", BookOpen], ["evidence", "Evidence guide", "#", FolderOpen],
   ["templates", "Statement templates", "#", FileText], ["forms", "VA forms", "#", Files]
 ] as const;
 

@@ -35,7 +35,7 @@ export default function Dashboard() {
       <div className="resource-grid">
         <Resource icon={Upload} title="Add evidence" text="Keep records and statements together."/>
         <Resource icon={FileText} title="Write a statement" text="Start with a guided template."/>
-        <Resource icon={BookOpen} title="Understand a condition" text="Learn what documentation may help."/>
+        <Resource icon={BookOpen} title="Understand a condition" text="Learn what documentation may help." href="/conditions"/>
         <Resource icon={Files} title="Find a VA form" text="See when and how forms are used."/>
       </div>
     </section>
@@ -55,6 +55,6 @@ function Claim({ title, updated, progress, tasks, tone }: { title: string; updat
   </article>;
 }
 
-function Resource({ icon: Icon, title, text }: { icon: typeof Upload; title: string; text: string }) {
-  return <a className="resource" href="#"><span className="resource-icon"><Icon size={20}/></span><span><strong>{title}</strong><small>{text}</small></span><ArrowRight className="resource-arrow" size={17}/></a>;
+function Resource({ icon: Icon, title, text, href = "#" }: { icon: typeof Upload; title: string; text: string; href?: string }) {
+  return <a className="resource" href={href}><span className="resource-icon"><Icon size={20}/></span><span><strong>{title}</strong><small>{text}</small></span><ArrowRight className="resource-arrow" size={17}/></a>;
 }

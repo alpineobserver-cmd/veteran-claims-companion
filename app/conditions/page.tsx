@@ -1,0 +1,5 @@
+import { AppShell } from "@/components/app-shell";
+import { ConditionLibrary } from "@/components/condition-library";
+import { Info } from "lucide-react";
+import "./conditions.css";
+export default function ConditionsPage(){return <AppShell current="conditions"><div className="library-wrap"><header className="library-hero"><span className="kicker">Condition library</span><h1>Understand what may be useful to document</h1><p>Explore plain-language guides to common conditions. This is a starting point—not a complete list of conditions and not a prediction of eligibility or rating.</p></header><div className="library-caution"><Info size={18}/><p>VA decides service connection and severity using the complete record and current law. Always confirm rating language in the linked official source.</p></div><ConditionLibrary/><footer className="disclaimer">Veteran Claims Companion is an independent educational resource and is not affiliated with the U.S. Department of Veterans Affairs.</footer></div></AppShell>}
