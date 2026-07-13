@@ -14,3 +14,19 @@ f({slug:"dbqs",number:"DBQs",name:"Public Disability Benefits Questionnaires",ca
 ];
 export const formCategories=["All",...Array.from(new Set(vaForms.map(x=>x.category)))];
 export function getVAForm(slug:string){return vaForms.find(x=>x.slug===slug)}
+
+export type VAFormDownload={url:string;label:string;kind:"pdf"|"directory";verified:string};
+export const VA_FORM_DOWNLOADS_VERIFIED="July 13, 2026";
+export const vaFormDownloads:Record<string,VAFormDownload>={
+  "21-526ez":{url:"https://www.vba.va.gov/pubs/forms/VBA-21-526EZ-ARE.pdf",label:"Download PDF",kind:"pdf",verified:VA_FORM_DOWNLOADS_VERIFIED},
+  "20-0995":{url:"https://www.vba.va.gov/pubs/forms/VBA-20-0995-ARE.pdf",label:"Download PDF",kind:"pdf",verified:VA_FORM_DOWNLOADS_VERIFIED},
+  "20-0996":{url:"https://www.vba.va.gov/pubs/forms/VBA-20-0996-ARE.pdf",label:"Download PDF",kind:"pdf",verified:VA_FORM_DOWNLOADS_VERIFIED},
+  "10182":{url:"https://www.vba.va.gov/pubs/forms/VBA-10182-ARE.pdf",label:"Download PDF",kind:"pdf",verified:VA_FORM_DOWNLOADS_VERIFIED},
+  "21-4138":{url:"https://www.vba.va.gov/pubs/forms/VBA-21-4138-ARE.pdf",label:"Download PDF",kind:"pdf",verified:VA_FORM_DOWNLOADS_VERIFIED},
+  "21-4142":{url:"https://www.vba.va.gov/pubs/forms/VBA-21-4142-ARE.pdf",label:"Download PDF",kind:"pdf",verified:VA_FORM_DOWNLOADS_VERIFIED},
+  "21-4142a":{url:"https://www.vba.va.gov/pubs/forms/VBA-21-4142a-ARE.pdf",label:"Download PDF",kind:"pdf",verified:VA_FORM_DOWNLOADS_VERIFIED},
+  "21-8940":{url:"https://www.vba.va.gov/pubs/forms/VBA-21-8940-ARE.pdf",label:"Download PDF",kind:"pdf",verified:VA_FORM_DOWNLOADS_VERIFIED},
+  "21-4192":{url:"https://www.vba.va.gov/pubs/forms/VBA-21-4192-ARE.pdf",label:"Download PDF",kind:"pdf",verified:VA_FORM_DOWNLOADS_VERIFIED},
+  "dbqs":{url:"https://www.benefits.va.gov/compensation/dbq_publicdbqs.asp",label:"Browse DBQ downloads",kind:"directory",verified:VA_FORM_DOWNLOADS_VERIFIED}
+};
+export function getVAFormDownload(slug:string){return vaFormDownloads[slug]}

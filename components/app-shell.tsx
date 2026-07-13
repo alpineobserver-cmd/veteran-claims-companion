@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Bell, BookOpen, ClipboardList, FileText, Files, FolderOpen,
-  LayoutDashboard, LifeBuoy, Menu, Search, Settings, ShieldCheck, User, X
+  History, LayoutDashboard, LifeBuoy, Menu, Search, Settings, ShieldCheck, User, X
 } from "lucide-react";
 import { conditions } from "@/lib/conditions";
 import { vaForms } from "@/lib/va-forms";
@@ -15,7 +15,8 @@ const links = [
   ["conditions", "Conditions", "/conditions", BookOpen, true],
   ["evidence", "Evidence guide", "", FolderOpen, false],
   ["templates", "Statement templates", "", FileText, false],
-  ["forms", "VA forms", "/forms", Files, true]
+  ["forms", "VA forms", "/forms", Files, true],
+  ["changelog", "Change log", "/changelog", History, true]
 ] as const;
 
 const searchItems = [
