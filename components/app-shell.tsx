@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { conditions } from "@/lib/conditions";
 import { vaForms } from "@/lib/va-forms";
+import { diagnosticCodes } from "@/lib/diagnostic-codes";
 
 const links = [
   ["home", "Home", "/", LayoutDashboard, true],
@@ -19,6 +20,7 @@ const links = [
 
 const searchItems = [
   ...conditions.map(item => ({ label:item.name, detail:item.category, href:`/conditions/${item.slug}`, type:"Condition" })),
+  ...diagnosticCodes.map(item => ({ label:`DC ${item.code} — ${item.name}`, detail:item.section, href:item.conditionSlugs[0]?`/conditions/${item.conditionSlugs[0]}`:"/conditions", type:"Diagnostic code" })),
   ...vaForms.map(item => ({ label:`VA Form ${item.number}`, detail:item.name, href:`/forms/${item.slug}`, type:"Form" }))
 ];
 
