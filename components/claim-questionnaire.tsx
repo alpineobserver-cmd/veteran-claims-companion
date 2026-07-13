@@ -10,6 +10,8 @@ type Answers = {
   exposures: string; treatment: string; providers: string; evidence: string[];
 };
 
+type StoredDraft = { answers: Answers; step: number };
+
 const initial: Answers = { condition:"", otherCondition:"", claimType:"", diagnosis:"", symptoms:"", onset:"", branch:"", role:"", serviceEvent:"", exposures:"", treatment:"", providers:"", evidence:[] };
 const steps = ["Condition", "Claim path", "Health history", "Service history", "Treatment", "Evidence", "Review"];
 
@@ -17,7 +19,19 @@ export function ClaimQuestionnaire() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>(initial);
   const [saved, setSaved] = useState(false);
-  useEffect(() => { const stored=localStorage.getItem("vcc-claim-draft"); if(stored) try { setAnswers({...initial,...JSON.parse(stored)}); } catch {} }, []);
+  const [completed, setCompleted] = useState(false);
+  useEffect(() => {
+    const stored=localStorage.getItem("vcc-claim-draft");
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored) as StoredDraft | Partial<Answers>;
+      if ("answers" in parsed) {
+        setAnswers({...initial,...parsed.answers});
+        setStep(Math.min(Math.max(parsed.step || 0, 0), steps.length - 1));
+      } else setAnswers({...initial,...parsed});
+      setSaved(true);
+    } catch { localStorage.removeItem("vcc-claim-draft"); }
+  }, []);
   const condition = answers.condition === "Other / condition not listed" ? answers.otherCondition : answers.condition;
   const progress = Math.round(((step + 1) / steps.length) * 100);
   const missing = useMemo(() => [
@@ -27,11 +41,14 @@ export function ClaimQuestionnaire() {
     !answers.evidence.some(e => e.includes("medical records") || e.includes("treatment records")) && "Relevant medical records"
   ].filter(Boolean) as string[], [answers]);
 
-  function update<K extends keyof Answers>(key: K, value: Answers[K]) { setAnswers(a => ({...a,[key]:value})); setSaved(false); }
-  function saveDraft() { localStorage.setItem("vcc-claim-draft", JSON.stringify(answers)); setSaved(true); }
-  function next() { saveDraft(); setStep(s => Math.min(steps.length - 1, s + 1)); window.scrollTo({top:0,behavior:"smooth"}); }
-  function back() { setStep(s => Math.max(0, s - 1)); window.scrollTo({top:0,behavior:"smooth"}); }
-  const canContinue = step !== 0 || Boolean(condition.trim());
+  function update<K extends keyof Answers>(key: K, value: Answers[K]) { setAnswers(a => ({...a,[key]:value})); setSaved(false); setCompleted(false); }
+  function persist(draftStep=step) { localStorage.setItem("vcc-claim-draft", JSON.stringify({answers,step:draftStep} satisfies StoredDraft)); setSaved(true); }
+  function saveDraft() { persist(); }
+  function next() { const nextStep=Math.min(steps.length - 1, step + 1); persist(nextStep); setStep(nextStep); window.scrollTo({top:0,behavior:"smooth"}); }
+  function back() { const previous=Math.max(0, step - 1); persist(previous); setStep(previous); setCompleted(false); window.scrollTo({top:0,behavior:"smooth"}); }
+  function finish() { persist(steps.length - 1); setCompleted(true); }
+  function startNew() { localStorage.removeItem("vcc-claim-draft"); setAnswers(initial); setStep(0); setSaved(false); setCompleted(false); window.scrollTo({top:0,behavior:"smooth"}); }
+  const canContinue = step === 0 ? Boolean(condition.trim()) : step === 1 ? Boolean(answers.claimType) : true;
 
   return <div className="builder-wrap">
     <header className="builder-header"><div><span className="kicker">Claim preparation</span><h1>{condition || "Tell us what you’re preparing for"}</h1><p>Your answers create an organizing checklist. They do not determine whether a condition is service connected.</p></div><button className="save-button" onClick={saveDraft}><Save size={16}/>{saved ? "Saved on this device" : "Save for later"}</button></header>
@@ -46,7 +63,9 @@ export function ClaimQuestionnaire() {
         {step===4 && <TreatmentStep answers={answers} update={update}/>} 
         {step===5 && <EvidenceStep answers={answers} update={update}/>} 
         {step===6 && <Review answers={answers} condition={condition} missing={missing}/>} 
-        <div className="builder-actions">{step>0?<button className="button secondary" onClick={back}><ArrowLeft size={16}/>Back</button>:<a className="button secondary" href="/">Cancel</a>}<button className="button primary" disabled={!canContinue} onClick={step===steps.length-1?saveDraft:next}>{step===steps.length-1?"Save summary":"Continue"}{step<steps.length-1&&<ArrowRight size={16}/>}</button></div>
+        {completed && <div className="save-confirmation" role="status" aria-live="polite"><Check size={18}/><div><strong>Summary saved on this device</strong><p>You can return later to review or update these answers.</p></div></div>}
+        <div className="builder-actions">{step>0?<button className="button secondary" onClick={back}><ArrowLeft size={16}/>Back</button>:<a className="button secondary" href="/">Cancel</a>}<button className="button primary" disabled={!canContinue} onClick={step===steps.length-1?finish:next}>{step===steps.length-1?(completed?"Saved":"Save summary"):"Continue"}{step<steps.length-1&&<ArrowRight size={16}/>}</button></div>
+        {completed && <div className="summary-next-actions"><a className="text-action" href="/">Return to dashboard <ArrowRight size={14}/></a><button type="button" onClick={startNew}>Start a new summary</button></div>}
       </section>
     </div>
     <div className="builder-note"><Info size={17}/><p><strong>Use your own words.</strong> It’s okay if you don’t know every answer. This tool is for organizing information and does not submit anything to VA.</p></div>
