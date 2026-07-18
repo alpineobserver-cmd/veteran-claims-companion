@@ -3,4 +3,5 @@ node_modules
 .env
 uploads/*
 !uploads/.gitkeep
+.data/
 Initial Veteran Claims Companion MVP/

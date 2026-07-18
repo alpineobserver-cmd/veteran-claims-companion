@@ -18,9 +18,62 @@ model User {
   sessions Session[]
   claims Claim[]
   uploads Upload[]
+  documents Document[]
+  auditEvents AuditEvent[] @relation("AuditActor")
   statements Statement[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Document {
+  id String @id @default(cuid())
+  userId String
+  claimId String
+  originalName String
+  storageKey String @unique
+  mimeType String
+  size Int
+  sha256 String
+  provider String
+  status DocumentStatus @default(TEST_ONLY)
+  syntheticConfirmed Boolean @default(false)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  pages DocumentPage[]
+  auditEvents AuditEvent[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([claimId, createdAt])
+}
+
+model DocumentPage {
+  id String @id @default(cuid())
+  documentId String
+  pageNumber Int
+  ocrText String? @db.Text
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([documentId, pageNumber])
+}
+
+model AuditEvent {
+  id String @id @default(cuid())
+  actorUserId String
+  claimId String?
+  documentId String?
+  action AuditAction
+  metadata Json?
+  actor User @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+  claim Claim? @relation(fields: [claimId], references: [id], onDelete: SetNull)
+  document Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@index([actorUserId, createdAt])
+  @@index([claimId, createdAt])
 }
 
 model Account {
@@ -75,6 +128,8 @@ model Claim {
   answers Answer[]
   progressItems Progress[]
   statements Statement[]
+  documents Document[]
+  auditEvents AuditEvent[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -242,4 +297,18 @@ enum QuestionKind {
   BOOLEAN
   SELECT
   MULTISELECT
+}
+
+enum DocumentStatus {
+  TEST_ONLY
+  QUARANTINED
+  READY
+  REJECTED
+}
+
+enum AuditAction {
+  WORKSPACE_CREATED
+  DOCUMENT_UPLOADED
+  DOCUMENT_DOWNLOADED
+  DOCUMENT_DELETED
 }

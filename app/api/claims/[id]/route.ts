@@ -3,6 +3,7 @@ import { draftIsWithinLimit, updateClaimSchema } from "@/lib/claim-drafts";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { documentStorage } from "@/lib/storage";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -52,6 +53,16 @@ export async function DELETE(_: Request, context: Context) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Sign in to delete this claim." }, { status: 401 });
   const { id } = await context.params;
+  const documents = await prisma.document.findMany({ where: { claimId: id, userId: session.user.id }, select: { storageKey: true } });
+  if (documents.length) {
+    try {
+      const storage = documentStorage();
+      await Promise.all(documents.map(document => storage.delete(document.storageKey)));
+    } catch (reason) {
+      console.error("Workspace object cleanup failed", reason instanceof Error ? reason.name : "UnknownError");
+      return NextResponse.json({ error: "Stored documents could not be deleted. The workspace was kept so you can try again." }, { status: 503 });
+    }
+  }
   const result = await prisma.claim.deleteMany({ where: { id, userId: session.user.id } });
   if (!result.count) return NextResponse.json({ error: "Claim not found." }, { status: 404 });
   return new NextResponse(null, { status: 204 });

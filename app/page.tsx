@@ -16,13 +16,13 @@ export default async function Dashboard() {
   return <AppShell user={shellUser}><div className="content">
     <section className="welcome">
       <div><div className="eyebrow"><CurrentDate/></div><h1>{user?.name?`Welcome back, ${user.name.split(" ")[0]}.`:"Welcome to your companion."}</h1><p>{user?"Continue a saved claim or begin another workspace.":"Build a claim workspace on this device, or sign in to save it across devices."}</p></div>
-      <a className="button primary" href="/claim-builder"><Plus size={17}/><span>Start a claim</span></a>
+      <a className="button primary" href={user?"/intake":"/login?redirectTo=/intake"}><Plus size={17}/><span>Start a workspace</span></a>
     </section>
 
     <section className="next-step" aria-labelledby="next-heading">
       <div className="next-icon">{user?<Check size={22}/>:<Cloud size={22}/>}</div>
-      <div className="next-copy"><span className="kicker">Your next best step</span><h2 id="next-heading">{first?`Continue your ${first.title} workspace`:user?"Create your first saved claim":"Sign in for secure cloud saving"}</h2><p>{first?`Your answers are ${first.progress}% prepared and were last saved ${formatUpdated(first.updatedAt)}.`:user?"Your work will be connected to your account and available when you return.":"You can explore without an account; sign in when you want to keep a draft across devices."}</p></div>
-      <a className="button warm" href={first?`/claim-builder?claim=${first.id}`:user?"/claim-builder":"/login?redirectTo=/claim-builder"}>{first?"Continue":user?"Start":"Sign in"} <ArrowRight size={17}/></a>
+      <div className="next-copy"><span className="kicker">Your next best step</span><h2 id="next-heading">{first?`Continue your ${first.title} workspace`:user?"Create your first evidence workspace":"Sign in for secure cloud saving"}</h2><p>{first?`Your answers are ${first.progress}% prepared and were last saved ${formatUpdated(first.updatedAt)}.`:user?"Begin with the synthetic-document intake foundation. Real medical records are not enabled yet.":"You can explore without an account; sign in when you want to keep a draft across devices."}</p></div>
+      <a className="button warm" href={first?`/claim-builder?claim=${first.id}`:user?"/intake":"/login?redirectTo=/intake"}>{first?"Continue":user?"Open intake":"Sign in"} <ArrowRight size={17}/></a>
     </section>
 
     <div className="dashboard-grid">
@@ -43,7 +43,7 @@ export default async function Dashboard() {
     <section className="resources" aria-labelledby="resources-heading">
       <div className="section-title"><div><span className="kicker">Helpful tools</span><h2 id="resources-heading">What would you like to do?</h2></div></div>
       <div className="resource-grid">
-        <Resource icon={Upload} title="Identify evidence" text="Use the claim builder to organize what you have." href="/claim-builder"/>
+        <Resource icon={Upload} title="Test document intake" text="Upload fictional records to the private intake prototype." href="/intake"/>
         <Resource icon={FileText} title="Write a statement" text="Build and review a personal statement draft." href="/claim-builder"/>
         <Resource icon={BookOpen} title="Understand a condition" text="Learn what documentation may help." href="/conditions"/>
         <Resource icon={Files} title="Find a VA form" text="See when and how forms are used." href="/forms"/>

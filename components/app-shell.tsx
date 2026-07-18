@@ -11,9 +11,9 @@ import { diagnosticCodes } from "@/lib/diagnostic-codes";
 
 const links = [
   ["home", "Home", "/", LayoutDashboard, true],
+  ["intake", "Document intake", "/intake", FolderOpen, true],
   ["builder", "Build a claim", "/claim-builder", ClipboardList, true],
   ["conditions", "Conditions", "/conditions", BookOpen, true],
-  ["evidence", "Evidence guide", "", FolderOpen, false],
   ["templates", "Statement templates", "", FileText, false],
   ["forms", "VA forms", "/forms", Files, true],
   ["changelog", "Change log", "/changelog", History, true]
