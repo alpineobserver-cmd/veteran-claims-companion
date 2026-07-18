@@ -3,10 +3,15 @@ export type TimelineEvent={id:string;date:string;title:string;details:string;sou
 export type EvidenceMap=Record<string,string>;
 export type QualityFinding={id:string;level:"required"|"improve"|"check";title:string;detail:string};
 export type ConditionPrompt={key:"conditionDetail1"|"conditionDetail2"|"conditionDetail3"|"conditionDetail4";label:string;placeholder:string};
-export type StatementField="symptoms"|"onset"|"serviceEvent"|"specificExamples"|"worsening"|"worseningDate"|"primaryCondition"|"secondaryRelationship"|"workImpact"|"dailyImpact"|"continuity";
+export type StatementField="diagnosis"|"symptoms"|"onset"|"serviceEvent"|"exposures"|"treatment"|"specificExamples"|"additionalContext"|"worsening"|"worseningDate"|"primaryCondition"|"secondaryRelationship"|"clinicianDiscussion"|"workImpact"|"dailyImpact"|"continuity"|"flareUps"|"conditionDetail1"|"conditionDetail2"|"conditionDetail3"|"conditionDetail4";
 export type StatementGap={field:StatementField;question:string;reason:string;placeholder:string;multiline?:boolean};
 
 export const initialAnswers:Answers={condition:"",otherCondition:"",claimType:"",diagnosis:"",symptoms:"",onset:"",branch:"",role:"",serviceEvent:"",exposures:"",treatment:"",providers:"",evidence:[],statementName:"",continuity:"",specificExamples:"",additionalContext:"",previousDecision:"",previousEvaluation:"",worsening:"",worseningDate:"",primaryCondition:"",secondaryRelationship:"",clinicianDiscussion:"",symptomFrequency:"",symptomDuration:"",flareUps:"",workImpact:"",dailyImpact:"",conditionDetail1:"",conditionDetail2:"",conditionDetail3:"",conditionDetail4:""};
+
+const unsupportedMedicalConclusion=/\b(?:caused by|definitely due to|proves? that)\b/i;
+const narrativeFields:StatementField[]=["diagnosis","symptoms","onset","serviceEvent","exposures","treatment","specificExamples","additionalContext","worsening","worseningDate","primaryCondition","secondaryRelationship","clinicianDiscussion","workImpact","dailyImpact","continuity","flareUps","conditionDetail1","conditionDetail2","conditionDetail3","conditionDetail4"];
+const attributedMedicalConclusion=/\b(?:doctor|clinician|provider|physician|specialist|examiner|medical (?:record|opinion))\b.{0,100}\b(?:said|says|stated|states|documented|documents|wrote|concluded|concludes|opined|opines|found|finds|explained|explains)\b/i;
+const needsMedicalConclusionRewrite=(value:string)=>unsupportedMedicalConclusion.test(value)&&!attributedMedicalConclusion.test(value);
 
 export function statementGaps(a:Pick<Answers,StatementField|"claimType">):StatementGap[]{
   const gaps:StatementGap[]=[];
@@ -23,6 +28,9 @@ export function statementGaps(a:Pick<Answers,StatementField|"claimType">):Statem
     if(!a.secondaryRelationship.trim())add("secondaryRelationship","What have you personally observed about the relationship between the conditions?","The draft can report chronology and observations but must not invent a medical link.","Describe what happened first, changes you observed, or what a clinician documented.");
   }
   if(!a.specificExamples.trim()&&!a.workImpact.trim()&&!a.dailyImpact.trim())add("specificExamples","What is one concrete example of how this condition affects you?","A specific example makes the statement useful without exaggerating severity.","Describe one interrupted workday, missed activity, household task, safety issue, or observation.");
+  for(const field of narrativeFields){
+    if(needsMedicalConclusionRewrite(a[field]))add(field,"Can you restate this using only what you personally observed, or identify the clinician or record that reached the medical conclusion?","This answer appears to state a medical cause as fact. Debrief should not repeat that conclusion without clear attribution.","Describe the sequence, symptoms, changes, or clinician-documented opinion without stating an unsupported cause.");
+  }
   return gaps.slice(0,4);
 }
 
@@ -56,10 +64,11 @@ export function qualityFindings(a:Answers,condition:string,timeline:TimelineEven
   if(a.claimType==="Increased-rating claim"&&!a.worsening)add("worsening","required","Worsening is not described","Compare current functioning with the period covered by the prior decision.");
   if(a.claimType==="Secondary claim"&&(!a.primaryCondition||!a.secondaryRelationship))add("secondary","required","Secondary relationship is incomplete","Identify the primary condition and explain the observed history without making an unsupported medical conclusion.");
   if(!timeline.length)add("timeline","improve","Timeline has no events","A short chronology makes dates and continuity easier to review.");
-  if(Object.values(map).filter(Boolean).length<Math.min(3,factRows(a,condition).length))add("evidence","improve","Key facts are not linked to supporting information","Link each major fact to a record, statement, log, or mark it as not yet located.");
-  const all=[a.symptoms,a.serviceEvent,a.continuity,a.specificExamples,a.additionalContext].join(" ");
-  if(/\b(always|never|constantly|completely)\b/i.test(all))add("absolute","check","Review absolute wording","Confirm words such as always or never are accurate, or replace them with a measurable pattern.");
-  if(/\bcaused by|definitely due to|proves that\b/i.test(all))add("medical","check","Possible medical conclusion","Describe what happened and what you believe; attribute medical conclusions to a clinician or record.");
+  const relevantFacts=factRows(a,condition);
+  if(relevantFacts.filter(row=>Boolean(map[row.id])).length<Math.min(3,relevantFacts.length))add("evidence","improve","Key facts are not linked to supporting information","Link each major fact to a record, statement, log, or mark it as not yet located.");
+  const all=narrativeFields.map(field=>a[field]).join(" ");
+  if(/\b(?:always|constantly|completely)\b|\bnever\s+(?:have|had|can|could|do|did|is|was|will|experience|experienced)\b/i.test(all))add("absolute","check","Review absolute wording","Confirm words such as always or never are accurate, or replace them with a measurable pattern.");
+  if(unsupportedMedicalConclusion.test(all))add("medical","check","Possible medical conclusion","Describe what happened and what you believe; attribute medical conclusions to a clinician or record.");
   return findings;
 }
 

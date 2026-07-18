@@ -32,6 +32,10 @@ The API key must remain server-side. Statement requests use the OpenAI Responses
 
 The claim builder also works without AI. It branches by claim path, provides condition-aware prompts, builds a chronology, links facts to supporting information, and checks for common preparation gaps. Users confirm each statement section before downloading a PDF review package. The package is an independent preparation attachment, not a completed VA form and not evidence that anything was submitted to VA.
 
+### Fictional claim evaluation
+
+Run `npm run eval:claims` to exercise the claim workflow with 18 entirely fictional veteran scenarios. The suite covers original, increased-rating, secondary, incomplete, evidence-gap, and unsafe-medical-wording cases. It makes no network or paid-model calls; it evaluates the deterministic question routing, readiness checks, evidence mapping, and guided-template baseline. Use these same fixtures as regression cases when AI drafting is enabled.
+
 Signed-in users can save versioned questionnaire snapshots to PostgreSQL, reopen them from the dashboard, and continue on another device. Signed-out users retain a browser-only draft and are invited to move it to their account when they sign in and save. The API verifies claim ownership on every read, update, and delete operation and rejects stale updates from another browser tab. This increment does not accept medical-document uploads; those require a configured private object-storage provider, content validation, malware scanning, and retention controls.
 
 ## Synthetic document intake

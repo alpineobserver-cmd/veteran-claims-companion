@@ -16,7 +16,7 @@ function claimTitle(draft:StoredDraft){
   return selected?.trim()||"Untitled claim";
 }
 
-export function ClaimQuestionnaire({user,initialClaimId}:{user?:{id:string;name?:string|null};initialClaimId?:string}) {
+export function ClaimQuestionnaire({user,initialClaimId,fresh=false}:{user?:{id:string;name?:string|null};initialClaimId?:string;fresh?:boolean}) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>(initial);
   const [saved, setSaved] = useState(false);
@@ -46,7 +46,25 @@ export function ClaimQuestionnaire({user,initialClaimId}:{user?:{id:string;name?
       setSaved(true);
     }
     async function load(){
-      try{setArchives(JSON.parse(localStorage.getItem("vcc-claim-workspaces")||"[]") as StoredDraft[])}catch{localStorage.removeItem("vcc-claim-workspaces")}
+      let storedArchives:StoredDraft[]=[];
+      try{storedArchives=JSON.parse(localStorage.getItem("vcc-claim-workspaces")||"[]") as StoredDraft[]}catch{localStorage.removeItem("vcc-claim-workspaces")}
+      if(fresh){
+        const active=localStorage.getItem("vcc-claim-draft");
+        if(active){
+          try{
+            const parsed=JSON.parse(active) as StoredDraft|Partial<Answers>;
+            if("answers" in parsed){
+              const recoverable=parsed as StoredDraft;
+              if(claimTitle(recoverable)==="Untitled claim")throw new Error("Empty draft");
+              const snapshot=JSON.stringify(recoverable);
+              storedArchives=[...storedArchives.filter(item=>JSON.stringify(item)!==snapshot),recoverable].slice(-10);
+              localStorage.setItem("vcc-claim-workspaces",JSON.stringify(storedArchives));
+            }
+          }catch{/* A malformed active draft is safe to discard on an explicit fresh start. */}
+        }
+        localStorage.removeItem("vcc-claim-draft");
+      }
+      setArchives(storedArchives);
       if(user&&initialClaimId){
         setCloudState("loading");
         try{
@@ -61,14 +79,14 @@ export function ClaimQuestionnaire({user,initialClaimId}:{user?:{id:string;name?
           lastCloudSnapshot.current=serialized;currentSnapshot.current=serialized;
           setCloudState("saved");
         }catch(reason){if(!cancelled){setCloudState("error");setCloudError(reason instanceof Error?reason.message:"The saved claim could not be opened.")}}
-      }else{
+      }else if(!fresh){
         const stored=localStorage.getItem("vcc-claim-draft");
         if(stored){try{const parsed=JSON.parse(stored) as StoredDraft|Partial<Answers>;if("answers" in parsed)applyDraft(parsed);else setAnswers({...initial,...parsed})}catch{localStorage.removeItem("vcc-claim-draft")}}
       }
       if(!cancelled)setHydrated(true);
     }
     void load();return()=>{cancelled=true};
-  }, [initialClaimId,user]);
+  }, [fresh,initialClaimId,user]);
   const condition = answers.condition === "Other / condition not listed" ? answers.otherCondition : answers.condition;
   const progress = Math.round(((step + 1) / steps.length) * 100);
   const missing = useMemo(() => [
@@ -123,7 +141,7 @@ export function ClaimQuestionnaire({user,initialClaimId}:{user?:{id:string;name?
   function next() { const nextStep=Math.min(steps.length - 1, step + 1); persist(nextStep); setStep(nextStep); window.scrollTo({top:0,behavior:"smooth"}); }
   function back() { const previous=Math.max(0, step - 1); persist(previous); setStep(previous); setCompleted(false); window.scrollTo({top:0,behavior:"smooth"}); }
   async function finish() { await saveDraft(steps.length-1);setCompleted(true); }
-  function startNew() { if(user){window.location.href="/claim-builder";return}const saved=[...archives];if(condition)saved.push({answers,step,statement,statementMode,timeline,evidenceMap,confirmations});const next=saved.slice(-10);localStorage.setItem("vcc-claim-workspaces",JSON.stringify(next));setArchives(next);localStorage.removeItem("vcc-claim-draft");setAnswers(initial);setStatement("");setStatementMode("");setTimeline([]);setEvidenceMap({});setConfirmations({});setStep(0);setSaved(false);setCompleted(false);window.scrollTo({top:0,behavior:"smooth"}); }
+  function startNew() { if(user){window.location.href="/claim-builder?new=1";return}const saved=[...archives];if(condition)saved.push({answers,step,statement,statementMode,timeline,evidenceMap,confirmations});const next=saved.slice(-10);localStorage.setItem("vcc-claim-workspaces",JSON.stringify(next));setArchives(next);localStorage.removeItem("vcc-claim-draft");setAnswers(initial);setStatement("");setStatementMode("");setTimeline([]);setEvidenceMap({});setConfirmations({});setStep(0);setSaved(false);setCompleted(false);window.history.replaceState(null,"","/claim-builder?new=1");window.scrollTo({top:0,behavior:"smooth"}); }
   function openArchive(index:number){const selected=archives[index];if(!selected)return;const remaining=archives.filter((_,item)=>item!==index);if(condition)remaining.push({answers,step,statement,statementMode,timeline,evidenceMap,confirmations});localStorage.setItem("vcc-claim-workspaces",JSON.stringify(remaining.slice(-10)));setArchives(remaining.slice(-10));setAnswers({...initial,...selected.answers});setStep(Math.min(selected.step,steps.length-1));setStatement(selected.statement||"");setStatementMode(selected.statementMode||"");setTimeline(selected.timeline||[]);setEvidenceMap(selected.evidenceMap||{});setConfirmations(selected.confirmations||{});setCompleted(false);setSaved(true);window.scrollTo({top:0,behavior:"smooth"})}
   const canContinue = step === 0 ? Boolean(condition.trim()) : step === 1 ? Boolean(answers.claimType) : true;
 
@@ -196,15 +214,15 @@ function StatementStep({answers,condition,timeline,update,statement,setStatement
   }
   async function copy(){await navigator.clipboard.writeText(statement);setCopied(true);setTimeout(()=>setCopied(false),1800)}
   function download(){const blob=new Blob([statement],{type:"text/plain;charset=utf-8"});const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=`${condition.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"claim"}-personal-statement.txt`;link.click();URL.revokeObjectURL(url)}
-  const modeLabel=mode==="ai"?"AI-assisted draft":mode==="template"?"Guided template draft":mode==="stale"?"Answers changed — regenerate or review carefully":mode==="edited"?"Edited draft":"Draft";
+  const modeLabel=mode==="ai"?"AI-assisted draft":mode==="template"?"Guided narrative draft":mode==="stale"?"Answers changed — regenerate or review carefully":mode==="edited"?"Edited draft":"Draft";
   const followUps:Array<{field:StatementField;question:string;reason:string;placeholder?:string;multiline?:boolean;originalValue?:string}>=modelQuestions.length?modelQuestions:gaps;
   return <><span className="question-number">Personal statement</span><h2>Turn your answers into a cohesive first-person draft</h2><p className="question-help">Debrief checks for the smallest missing facts first. It will not fill gaps or invent details.</p>
-    <div className={`ai-disclosure ${aiConfigured===false?"template-mode":""}`}><Sparkles size={18}/><div><strong>{aiConfigured===false?"Guided template mode — OpenAI is not connected":"AI drafting assistance"}</strong><p>{aiConfigured===false?"This mode organizes answers with fixed wording. It does not use AI to rewrite them into a natural narrative. Connect an API key later to activate cohesive AI drafting.":"When connected, AI may organize and rephrase your facts, but it cannot verify events, diagnose a condition, determine service connection, or predict a rating."}</p></div></div>
+    <div className={`ai-disclosure ${aiConfigured===false?"template-mode":""}`}><Sparkles size={18}/><div><strong>{aiConfigured===false?"Guided narrative mode — OpenAI is not connected":"AI drafting assistance"}</strong><p>{aiConfigured===false?"This mode uses fixed rules to organize your answers into a chronological draft. It does not interpret records, verify facts, or add information. Connect an API key later for AI-assisted rewriting.":"When connected, AI may organize and rephrase your facts, but it cannot verify events, diagnose a condition, determine service connection, or predict a rating."}</p></div></div>
     <label className="field"><span>Name to display on the draft <small>Optional — do not enter an SSN or VA file number</small></span><input value={answers.statementName} onChange={event=>update("statementName",event.target.value)} placeholder="Your full name" maxLength={120}/></label>
     {followUps.length>0&&<div className="draft-followups"><div className="draft-followups-head"><Info size={16}/><div><strong>{modelQuestions.length?"The drafting assistant needs clarification":"Answer these before drafting"}</strong><p>Only questions needed for a grounded, useful statement are shown.</p></div></div>{followUps.map(item=><label className="field" key={item.field}><span>{item.question}<small>{item.reason}</small></span>{item.multiline===false?<input value={answers[item.field]} onChange={event=>update(item.field,event.target.value)} placeholder={item.placeholder||"Answer in your own words"}/>:<textarea value={answers[item.field]} onChange={event=>update(item.field,event.target.value)} placeholder={item.placeholder||"Answer in your own words"}/>}</label>)}</div>}
     <OptionalLayer title="Add optional context" summary="Continuity or clarification that has not been captured"><label className="field"><span>How has the condition changed or continued over time?</span><textarea value={answers.continuity} onChange={event=>update("continuity",event.target.value)} placeholder="Periods of improvement or worsening, ongoing symptoms, and important changes" maxLength={4000}/></label><label className="field"><span>Anything else the draft should include?</span><textarea value={answers.additionalContext} onChange={event=>update("additionalContext",event.target.value)} placeholder="Optional context or clarification, in your own words" maxLength={4000}/></label></OptionalLayer>
     {aiConfigured&&<label className="ai-consent"><input type="checkbox" checked={consent} onChange={event=>setConsent(event.target.checked)}/><span>I understand that generating an AI-assisted draft may send my questionnaire answers to OpenAI. My optional display name is excluded.</span></label>}
-    <button type="button" className="generate-statement" onClick={generate} disabled={!canGenerate||(aiConfigured===true&&!consent)||generating||aiConfigured===null}>{generating?<><RefreshCw size={16} className="spin"/>Drafting…</>:<><Sparkles size={16}/>{aiConfigured===false?(statement?"Rebuild guided template":"Build guided template"):(statement?"Regenerate cohesive draft":"Generate cohesive statement")}</>}</button>
+    <button type="button" className="generate-statement" onClick={generate} disabled={!canGenerate||(aiConfigured===true&&!consent)||generating||aiConfigured===null}>{generating?<><RefreshCw size={16} className="spin"/>Drafting…</>:<><Sparkles size={16}/>{aiConfigured===false?(statement?"Rebuild guided narrative":"Build guided narrative"):(statement?"Regenerate cohesive draft":"Generate cohesive statement")}</>}</button>
     {error&&<p className="statement-message error" role="alert">{error}</p>}{notice&&<p className="statement-message">{notice}</p>}
     {statement&&<div className="statement-editor"><div className="statement-editor-head"><div><span>{modeLabel}</span><small>Review and edit before downloading</small></div><div><button type="button" onClick={copy}><Clipboard size={14}/>{copied?"Copied":"Copy"}</button><button type="button" onClick={download}><Download size={14}/>Download .txt</button></div></div><textarea aria-label="Editable personal statement" value={statement} onChange={event=>{setStatement(event.target.value);setMode("edited")}}/><p><Info size={13}/>Using this draft means you have reviewed it and determined that it accurately reflects your own knowledge and experience.</p></div>}
   </>;

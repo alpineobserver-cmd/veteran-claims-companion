@@ -20,7 +20,7 @@ export async function POST(request:Request){
   const form=await request.formData().catch(()=>null);if(!form)return NextResponse.json({error:"The upload could not be read."},{status:400});
   const file=form.get("file");const claimId=form.get("claimId");const syntheticConfirmed=form.get("syntheticConfirmed");
   if(!(file instanceof File)||typeof claimId!=="string")return NextResponse.json({error:"Choose a workspace and file."},{status:400});
-  if(syntheticConfirmed!=="true")return NextResponse.json({error:"Confirm that this is a fictional or synthetic test document."},{status:400});
+  if(syntheticConfirmed!=="true")return NextResponse.json({error:"Confirm that this is an entirely fictional test document."},{status:400});
   const workspace=await prisma.claim.findFirst({where:{id:claimId,userId:session.user.id},select:{id:true}});if(!workspace)return NextResponse.json({error:"Workspace not found."},{status:404});
 
   let inspected:ReturnType<typeof inspectDocument>;let buffer:Buffer;

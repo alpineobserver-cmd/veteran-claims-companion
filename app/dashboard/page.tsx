@@ -21,14 +21,14 @@ export default async function Dashboard() {
 
     <section className="next-step" aria-labelledby="next-heading">
       <div className="next-icon">{user?<Check size={22}/>:<Cloud size={22}/>}</div>
-      <div className="next-copy"><span className="kicker">Priority action</span><h2 id="next-heading">{first?`Continue your ${first.title} workspace`:user?"Create your first evidence workspace":"Sign in for secure cloud saving"}</h2><p>{first?`Your answers are ${first.progress}% prepared and were last saved ${formatUpdated(first.updatedAt)}.`:user?"Begin with the synthetic-document intake foundation. Real medical records are not enabled yet.":"You can explore without an account; sign in when you want to keep a draft across devices."}</p></div>
+      <div className="next-copy"><span className="kicker">Priority action</span><h2 id="next-heading">{first?`Continue your ${first.title} workspace`:user?"Create your first evidence workspace":"Sign in for secure cloud saving"}</h2><p>{first?`Your answers are ${first.progress}% prepared and were last saved ${formatUpdated(first.updatedAt)}.`:user?"Begin with the test document intake workspace. Real medical records are not enabled yet.":"You can explore without an account; sign in when you want to keep a draft across devices."}</p></div>
       <a className="button warm" href={first?`/claim-builder?claim=${first.id}`:user?"/intake":"/login?redirectTo=/intake"}>{first?"Continue":user?"Open intake":"Sign in"} <ArrowRight size={17}/></a>
     </section>
 
     <div className="dashboard-grid">
       <section className="panel claims-panel">
-        <div className="section-title"><div><span className="kicker">Active casework</span><h2>Claims in progress</h2></div><a className="link" href="/claim-builder">New claim</a></div>
-        {claims.length?claims.map((claim,index)=><Claim key={claim.id} {...claim} tone={index%2?"clay":"olive"}/>):<div className="empty-claims"><Cloud size={23}/><strong>{user?"No saved claims yet":"Cloud saving is available after sign-in"}</strong><p>{user?"Start the guided questionnaire and it will appear here after your first save.":"A browser-only draft can still be created without an account."}</p><a href="/claim-builder">Open the claim builder <ArrowRight size={14}/></a></div>}
+        <div className="section-title"><div><span className="kicker">Active casework</span><h2>Claims in progress</h2></div><a className="link" href="/claim-builder?new=1">New claim</a></div>
+        {claims.length?claims.map((claim,index)=><Claim key={claim.id} {...claim} tone={index%2?"clay":"olive"}/>):<div className="empty-claims"><Cloud size={23}/><strong>{user?"No saved claims yet":"Cloud saving is available after sign-in"}</strong><p>{user?"Start the guided questionnaire and it will appear here after your first save.":"A browser-only draft can still be created without an account."}</p><a href="/claim-builder?new=1">Open a new claim <ArrowRight size={14}/></a></div>}
       </section>
 
       <aside className="panel overview-panel">
@@ -36,7 +36,7 @@ export default async function Dashboard() {
         <div className="record-row"><span>Saved claims</span><strong>{user?claims.length:"Sign in"}</strong></div>
         <div className="record-row"><span>Average preparation</span><strong>{user?`${average}%`:"—"}</strong></div>
         <div className="record-row"><span>Storage</span><strong>{user?"Account cloud":"This device"}</strong></div>
-        <a className="text-action" href={user?"/claim-builder":"/login?redirectTo=/claim-builder"}>{user?"Create another claim":"Activate cloud saving"} <ArrowRight size={15}/></a>
+        <a className="text-action" href={user?"/claim-builder?new=1":"/login?redirectTo=%2Fclaim-builder%3Fnew%3D1"}>{user?"Create another claim":"Activate cloud saving"} <ArrowRight size={15}/></a>
       </aside>
     </div>
 
@@ -44,7 +44,7 @@ export default async function Dashboard() {
       <div className="section-title"><div><span className="kicker">Reference desk</span><h2 id="resources-heading">What would you like to do?</h2></div></div>
       <div className="resource-grid">
         <Resource icon={Upload} title="Test document intake" text="Upload fictional records to the private intake prototype." href="/intake"/>
-        <Resource icon={FileText} title="Write a statement" text="Build and review a personal statement draft." href="/claim-builder"/>
+        <Resource icon={FileText} title="Start a new statement" text="Open a fresh claim questionnaire and prepare a draft." href="/claim-builder?new=1"/>
         <Resource icon={BookOpen} title="Understand a condition" text="Learn what documentation may help." href="/conditions"/>
         <Resource icon={Files} title="Find a VA form" text="See when and how forms are used." href="/forms"/>
       </div>

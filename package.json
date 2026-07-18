@@ -10,7 +10,8 @@
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "eval:claims": "node --import tsx evals/run-claim-evals.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.3.0",

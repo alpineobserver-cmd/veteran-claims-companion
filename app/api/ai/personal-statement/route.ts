@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { statementGaps } from "@/lib/claim-builder-intelligence";
+import { guidedDraft, statementHeading } from "@/lib/personal-statement-template";
 
 export const runtime = "nodejs";
 
@@ -31,7 +32,7 @@ const requestSchema = z.object({
 
 type StatementInput=z.infer<typeof requestSchema>;
 type OpenAIResponse={output_text?:string;output?:Array<{content?:Array<{type?:string;text?:string}>}>;error?:{message?:string}};
-const statementFields=["symptoms","onset","serviceEvent","specificExamples","worsening","worseningDate","primaryCondition","secondaryRelationship","workImpact","dailyImpact","continuity"] as const;
+const statementFields=["diagnosis","symptoms","onset","serviceEvent","exposures","treatment","specificExamples","additionalContext","worsening","worseningDate","primaryCondition","secondaryRelationship","clinicianDiscussion","workImpact","dailyImpact","continuity","flareUps","conditionDetail1","conditionDetail2","conditionDetail3","conditionDetail4"] as const;
 const aiResultSchema=z.object({status:z.enum(["ready","needs_information"]),statement:z.string(),questions:z.array(z.object({field:z.enum(statementFields),question:z.string(),reason:z.string()})).max(3)});
 
 const limits=new Map<string,{count:number;reset:number}>();
@@ -42,35 +43,6 @@ function isRateLimited(request:NextRequest){
   if(!current||current.reset<now){limits.set(key,{count:1,reset:now+10*60*1000});return false}
   current.count+=1;
   return current.count>8;
-}
-
-function heading(input:StatementInput){
-  return ["PERSONAL STATEMENT IN SUPPORT OF CLAIM",input.statementName&&`Name: ${input.statementName}`,`Condition: ${input.condition}`].filter(Boolean).join("\n");
-}
-
-function guidedDraft(input:StatementInput){
-  const paragraphs:string[]=[];
-  paragraphs.push(`I am submitting this statement in support of my claim concerning ${input.condition}.${input.claimType?` I am preparing this as a ${input.claimType.toLowerCase()}.`:""}`);
-  if(input.branch||input.role)paragraphs.push(`I served${input.branch?` in the ${input.branch}`:""}${input.role?` and my duties included ${input.role}`:""}.`);
-  if(input.onset)paragraphs.push(`My symptoms began around ${input.onset}.`);
-  if(input.timeline.length)paragraphs.push(`The chronology I have organized is: ${input.timeline.map(event=>`${event.date||"Date not recorded"}${event.approximate?" (approximate)":""}: ${event.title}${event.details?` — ${event.details}`:""}`).join("; ")}`);
-  if(input.serviceEvent)paragraphs.push(`The event, injury, illness, or circumstances I believe are relevant are: ${input.serviceEvent}`);
-  if(input.exposures)paragraphs.push(`My relevant exposure history includes: ${input.exposures}`);
-  if(input.continuity)paragraphs.push(`Since the symptoms began, the course of the condition has been: ${input.continuity}`);
-  if(input.diagnosis)paragraphs.push(`My current diagnosis or medical evaluation is: ${input.diagnosis}`);
-  if(input.symptoms)paragraphs.push(`My current symptoms and functional limitations are: ${input.symptoms}`);
-  if(input.symptomFrequency||input.symptomDuration)paragraphs.push(`The usual symptom pattern is ${input.symptomFrequency||"frequency not estimated"}${input.symptomDuration?`, and symptoms usually last ${input.symptomDuration}`:""}.`);
-  if(input.flareUps)paragraphs.push(`My flare-ups or repeated-use effects are: ${input.flareUps}`);
-  if(input.workImpact)paragraphs.push(`The effects on my work or school are: ${input.workImpact}`);
-  if(input.dailyImpact)paragraphs.push(`The effects on ordinary daily activity are: ${input.dailyImpact}`);
-  if(input.worsening)paragraphs.push(`Since the prior decision, I have observed these changes: ${input.worsening}`);
-  if(input.primaryCondition||input.secondaryRelationship)paragraphs.push(`The condition I believe is relevant to this secondary claim is ${input.primaryCondition||"not identified"}. What I have observed is: ${input.secondaryRelationship}`);
-  for(const detail of [input.conditionDetail1,input.conditionDetail2,input.conditionDetail3,input.conditionDetail4])if(detail)paragraphs.push(detail);
-  if(input.specificExamples)paragraphs.push(`Specific examples of how this affects my life include: ${input.specificExamples}`);
-  if(input.treatment)paragraphs.push(`My current and past treatment includes: ${input.treatment}`);
-  if(input.providers)paragraphs.push(`I have received care from: ${input.providers}`);
-  if(input.additionalContext)paragraphs.push(input.additionalContext);
-  return `${heading(input)}\n\n${paragraphs.join("\n\n")}`;
 }
 
 function responseText(data:OpenAIResponse){
@@ -114,7 +86,7 @@ export async function POST(request:NextRequest){
   if(gaps.length)return NextResponse.json({status:"needs_information",questions:gaps.map(({field,question,reason})=>({field,question,reason})),notice:"Answer these focused questions before drafting. Debrief will not invent the missing facts."});
 
   if(!process.env.OPENAI_API_KEY){
-    return NextResponse.json({status:"ready",statement:guidedDraft(input),mode:"template",notice:"OpenAI is not connected. This is a guided template assembled from your answers, not an AI-written narrative."});
+    return NextResponse.json({status:"ready",statement:guidedDraft(input),mode:"template",notice:"OpenAI is not connected. This draft uses fixed rules to organize your answers into a narrative; it has not been interpreted or verified by AI."});
   }
 
   const modelInput=Object.fromEntries(Object.entries(input).filter(([key])=>key!=="statementName"));
@@ -133,7 +105,7 @@ export async function POST(request:NextRequest){
     if(!result.success)throw new Error("The model returned an invalid drafting result.");
     if(result.data.status==="needs_information")return NextResponse.json({status:"needs_information",questions:result.data.questions,notice:"The drafting assistant needs a few factual details before it can continue without guessing."});
     if(!result.data.statement.trim())throw new Error("The model returned an empty statement.");
-    return NextResponse.json({status:"ready",statement:`${heading(input)}\n\n${result.data.statement.trim()}`,mode:"ai"});
+    return NextResponse.json({status:"ready",statement:`${statementHeading(input)}\n\n${result.data.statement.trim()}`,mode:"ai"});
   }catch(error){
     console.error("Personal statement generation failed",error instanceof Error?error.message:error);
     return NextResponse.json({error:"The AI draft could not be generated right now. Your answers are still saved on this device."},{status:502});

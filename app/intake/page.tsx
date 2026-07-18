@@ -12,5 +12,5 @@ export default async function IntakePage(){
     prisma.document.findMany({where:{userId:session.user.id},orderBy:{createdAt:"desc"},select:{id:true,claimId:true,originalName:true,mimeType:true,size:true,status:true,provider:true,createdAt:true}})
   ]);
   const user={id:session.user.id,name:session.user.name,email:session.user.email,image:session.user.image};
-  return <AppShell current="intake" user={user}><DocumentIntake initialWorkspaces={workspaces.map(item=>({...item,updatedAt:item.updatedAt.toISOString()}))} initialDocuments={documents.map(item=>({...item,createdAt:item.createdAt.toISOString()}))}/><footer className="disclaimer">Synthetic-document development environment. Do not upload real medical records, SSNs, VA file numbers, or another person’s information.</footer></AppShell>;
+  return <AppShell current="intake" user={user}><DocumentIntake initialWorkspaces={workspaces.map(item=>({...item,updatedAt:item.updatedAt.toISOString()}))} initialDocuments={documents.map(item=>({...item,createdAt:item.createdAt.toISOString()}))}/><footer className="disclaimer">Test-only document environment. Do not upload real medical records, SSNs, VA file numbers, or another person’s information.</footer></AppShell>;
 }
