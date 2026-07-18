@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { statementGaps } from "@/lib/claim-builder-intelligence";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,8 @@ const requestSchema = z.object({
 
 type StatementInput=z.infer<typeof requestSchema>;
 type OpenAIResponse={output_text?:string;output?:Array<{content?:Array<{type?:string;text?:string}>}>;error?:{message?:string}};
+const statementFields=["symptoms","onset","serviceEvent","specificExamples","worsening","worseningDate","primaryCondition","secondaryRelationship","workImpact","dailyImpact","continuity"] as const;
+const aiResultSchema=z.object({status:z.enum(["ready","needs_information"]),statement:z.string(),questions:z.array(z.object({field:z.enum(statementFields),question:z.string(),reason:z.string()})).max(3)});
 
 const limits=new Map<string,{count:number;reset:number}>();
 function isRateLimited(request:NextRequest){
@@ -75,7 +78,12 @@ function responseText(data:OpenAIResponse){
   return data.output?.flatMap(item=>item.content||[]).filter(item=>item.type==="output_text"&&item.text).map(item=>item.text).join("\n").trim()||"";
 }
 
-const instructions=`You draft a veteran's personal statement from structured source material.
+const instructions=`Role: Draft a veteran's cohesive first-person personal statement for review and possible entry into a standard VA supporting-statement form.
+
+Success criteria:
+- If the supplied facts are sufficient, return status "ready" and a natural narrative that connects related facts rather than listing or labeling each questionnaire response.
+- If a material factual gap or ambiguity prevents a truthful, useful narrative, return status "needs_information", an empty statement, and the smallest set of follow-up questions (maximum three).
+- Follow-up questions must request facts from the veteran, not medical or legal conclusions. Use the closest available field name from the schema.
 
 Rules:
 - Use only facts explicitly present in the source material. Never invent, infer, embellish, or fill gaps.
@@ -85,11 +93,15 @@ Rules:
 - Do not upgrade severity, frequency, duration, work impact, or functional loss to resemble rating-schedule language.
 - Do not state that service caused a condition as a medical fact. The veteran may explain what they experienced and what they believe is related.
 - Do not diagnose, predict a rating, give legal advice, cite regulations, or recommend evidence.
-- Organize the narrative chronologically when possible: purpose, service context or onset, course over time, current symptoms and functional effects, concrete examples, and treatment.
+- Organize the narrative chronologically when possible: purpose, relevant service context or onset, course over time, current symptoms and functional effects, concrete examples, and treatment.
+- Synthesize overlapping answers. Do not repeat the same fact, preserve questionnaire labels, or mechanically introduce every field.
 - Omit sections that lack information. Do not use placeholders.
-- Return narrative paragraphs only: no title, name, condition header, bullets, markdown, signature block, or commentary about the drafting process.
+- The statement value must contain narrative paragraphs only: no title, name, condition header, bullets, markdown, signature block, or commentary about drafting.
 - Aim for 350–700 words when the facts support it; use a shorter statement rather than repeating limited information.
-- Do not add a certification or claim that the veteran has already reviewed, signed, or sworn to the draft.`;
+- Do not add a certification or claim that the veteran has already reviewed, signed, or sworn to the draft.
+- Do not ask for optional facts merely to make the statement longer.`;
+
+export function GET(){return NextResponse.json({configured:Boolean(process.env.OPENAI_API_KEY),mode:process.env.OPENAI_API_KEY?"ai":"template"},{headers:{"Cache-Control":"no-store"}})}
 
 export async function POST(request:NextRequest){
   if(isRateLimited(request))return NextResponse.json({error:"Too many drafting requests. Please wait a few minutes and try again."},{status:429});
@@ -98,9 +110,11 @@ export async function POST(request:NextRequest){
   const parsed=requestSchema.safeParse(body);
   if(!parsed.success)return NextResponse.json({error:"Please review the statement information and try again."},{status:400});
   const input=parsed.data;
+  const gaps=statementGaps(input);
+  if(gaps.length)return NextResponse.json({status:"needs_information",questions:gaps.map(({field,question,reason})=>({field,question,reason})),notice:"Answer these focused questions before drafting. Debrief will not invent the missing facts."});
 
   if(!process.env.OPENAI_API_KEY){
-    return NextResponse.json({statement:guidedDraft(input),mode:"template",notice:"AI drafting is not configured, so this version was assembled directly from your answers."});
+    return NextResponse.json({status:"ready",statement:guidedDraft(input),mode:"template",notice:"OpenAI is not connected. This is a guided template assembled from your answers, not an AI-written narrative."});
   }
 
   const modelInput=Object.fromEntries(Object.entries(input).filter(([key])=>key!=="statementName"));
@@ -110,14 +124,16 @@ export async function POST(request:NextRequest){
     const response=await fetch("https://api.openai.com/v1/responses",{
       method:"POST",
       headers:{"Authorization":`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},
-      body:JSON.stringify({model:process.env.OPENAI_MODEL||"gpt-5.4-mini",instructions,input:JSON.stringify(modelInput),max_output_tokens:1800,store:false}),
+      body:JSON.stringify({model:process.env.OPENAI_MODEL||"gpt-5.4-mini",instructions,input:JSON.stringify(modelInput),max_output_tokens:2000,store:false,text:{format:{type:"json_schema",name:"personal_statement_result",strict:true,schema:{type:"object",additionalProperties:false,properties:{status:{type:"string",enum:["ready","needs_information"]},statement:{type:"string"},questions:{type:"array",maxItems:3,items:{type:"object",additionalProperties:false,properties:{field:{type:"string",enum:statementFields},question:{type:"string"},reason:{type:"string"}},required:["field","question","reason"]}}},required:["status","statement","questions"]}}}}),
       signal:controller.signal
     });
     const data=await response.json() as OpenAIResponse;
     if(!response.ok)throw new Error(data.error?.message||`OpenAI request failed with status ${response.status}`);
-    const narrative=responseText(data);
-    if(!narrative)throw new Error("The model returned an empty statement.");
-    return NextResponse.json({statement:`${heading(input)}\n\n${narrative}`,mode:"ai"});
+    const result=aiResultSchema.safeParse(JSON.parse(responseText(data)));
+    if(!result.success)throw new Error("The model returned an invalid drafting result.");
+    if(result.data.status==="needs_information")return NextResponse.json({status:"needs_information",questions:result.data.questions,notice:"The drafting assistant needs a few factual details before it can continue without guessing."});
+    if(!result.data.statement.trim())throw new Error("The model returned an empty statement.");
+    return NextResponse.json({status:"ready",statement:`${heading(input)}\n\n${result.data.statement.trim()}`,mode:"ai"});
   }catch(error){
     console.error("Personal statement generation failed",error instanceof Error?error.message:error);
     return NextResponse.json({error:"The AI draft could not be generated right now. Your answers are still saved on this device."},{status:502});

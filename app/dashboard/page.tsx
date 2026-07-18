@@ -13,7 +13,7 @@ export default async function Dashboard() {
   const average=claims.length?Math.round(claims.reduce((sum,claim)=>sum+claim.progress,0)/claims.length):0;
   const shellUser=user?{id:user.id,name:user.name,email:user.email,image:user.image}:undefined;
 
-  return <AppShell user={shellUser}><div className="content">
+  return <AppShell user={shellUser}><div className="content dashboard-content">
     <section className="welcome">
       <div><div className="eyebrow"><CurrentDate/></div><h1>{user?.name?`Welcome back, ${user.name.split(" ")[0]}.`:"Your claim workspace."}</h1><p>{user?"Continue a saved claim or begin another workspace.":"Build a claim workspace on this device, or sign in to save it across devices."}</p></div>
       <a className="button primary" href={user?"/intake":"/login?redirectTo=/intake"}><Plus size={17}/><span>Start a workspace</span></a>

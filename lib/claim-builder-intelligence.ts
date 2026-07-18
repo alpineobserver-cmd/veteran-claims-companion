@@ -3,8 +3,28 @@ export type TimelineEvent={id:string;date:string;title:string;details:string;sou
 export type EvidenceMap=Record<string,string>;
 export type QualityFinding={id:string;level:"required"|"improve"|"check";title:string;detail:string};
 export type ConditionPrompt={key:"conditionDetail1"|"conditionDetail2"|"conditionDetail3"|"conditionDetail4";label:string;placeholder:string};
+export type StatementField="symptoms"|"onset"|"serviceEvent"|"specificExamples"|"worsening"|"worseningDate"|"primaryCondition"|"secondaryRelationship"|"workImpact"|"dailyImpact"|"continuity";
+export type StatementGap={field:StatementField;question:string;reason:string;placeholder:string;multiline?:boolean};
 
 export const initialAnswers:Answers={condition:"",otherCondition:"",claimType:"",diagnosis:"",symptoms:"",onset:"",branch:"",role:"",serviceEvent:"",exposures:"",treatment:"",providers:"",evidence:[],statementName:"",continuity:"",specificExamples:"",additionalContext:"",previousDecision:"",previousEvaluation:"",worsening:"",worseningDate:"",primaryCondition:"",secondaryRelationship:"",clinicianDiscussion:"",symptomFrequency:"",symptomDuration:"",flareUps:"",workImpact:"",dailyImpact:"",conditionDetail1:"",conditionDetail2:"",conditionDetail3:"",conditionDetail4:""};
+
+export function statementGaps(a:Pick<Answers,StatementField|"claimType">):StatementGap[]{
+  const gaps:StatementGap[]=[];
+  const add=(field:StatementField,question:string,reason:string,placeholder:string,multiline=true)=>gaps.push({field,question,reason,placeholder,multiline});
+  if(!a.symptoms.trim())add("symptoms","What symptoms or limitations are you experiencing now?","A statement needs a clear description of the condition as you experience it.","Describe the main symptoms and what they prevent or interrupt.");
+  if(a.claimType==="Original or new claim"){
+    if(!a.serviceEvent.trim())add("serviceEvent","What happened during service that you believe is relevant?","The draft should describe the service event or circumstances in your words without claiming a medical conclusion.","Include the approximate time, place, duty, injury, illness, or exposure.");
+    if(!a.onset.trim())add("onset","When did you first notice the symptoms?","An approximate onset helps establish a truthful chronology.","An approximate month, year, or period of service is enough.",false);
+  }else if(a.claimType==="Increased-rating claim"){
+    if(!a.worsening.trim())add("worsening","What has changed or worsened since the prior decision?","An increased-rating statement should compare the earlier and current level of functioning.","Describe changes in symptoms, treatment, work, or daily activities.");
+    if(!a.worseningDate.trim())add("worseningDate","About when did you notice the worsening?","An approximate date keeps the change in chronological context.","Approximate month and year.",false);
+  }else if(a.claimType==="Secondary claim"){
+    if(!a.primaryCondition.trim())add("primaryCondition","Which existing service-connected condition do you believe is related?","The draft needs to identify the condition that provides context for the secondary claim.","Enter the existing service-connected condition.",false);
+    if(!a.secondaryRelationship.trim())add("secondaryRelationship","What have you personally observed about the relationship between the conditions?","The draft can report chronology and observations but must not invent a medical link.","Describe what happened first, changes you observed, or what a clinician documented.");
+  }
+  if(!a.specificExamples.trim()&&!a.workImpact.trim()&&!a.dailyImpact.trim())add("specificExamples","What is one concrete example of how this condition affects you?","A specific example makes the statement useful without exaggerating severity.","Describe one interrupted workday, missed activity, household task, safety issue, or observation.");
+  return gaps.slice(0,4);
+}
 
 const p=(key:ConditionPrompt["key"],label:string,placeholder:string):ConditionPrompt=>({key,label,placeholder});
 export function conditionPrompts(condition:string):ConditionPrompt[]{
