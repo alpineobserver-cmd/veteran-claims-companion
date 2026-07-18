@@ -10,7 +10,7 @@ import { vaForms } from "@/lib/va-forms";
 import { diagnosticCodes } from "@/lib/diagnostic-codes";
 
 const links = [
-  ["home", "Home", "/", LayoutDashboard, true],
+  ["home", "Dashboard", "/dashboard", LayoutDashboard, true],
   ["intake", "Document intake", "/intake", FolderOpen, true],
   ["builder", "Build a claim", "/claim-builder", ClipboardList, true],
   ["conditions", "Conditions", "/conditions", BookOpen, true],
@@ -59,9 +59,9 @@ export function AppShell({ children, current = "home", user }: { children: React
     {menuOpen && <button className="sidebar-scrim" aria-label="Close menu" onClick={()=>setMenuOpen(false)}/>}
     <aside className="sidebar" aria-label="Companion navigation">
       <div className="mobile-sidebar-head"><span>Menu</span><button className="iconbtn" aria-label="Close menu" onClick={()=>setMenuOpen(false)}><X size={18}/></button></div>
-      <a className="brand" href="/" aria-label="Veteran Claims Companion home" onClick={()=>setMenuOpen(false)}>
+      <a className="brand" href="/dashboard" aria-label="Debrief dashboard" onClick={()=>setMenuOpen(false)}>
         <span className="brandmark"><ShieldCheck size={22}/></span>
-        <span className="brandcopy"><strong>Veteran Claims</strong><small>Companion</small></span>
+        <span className="brandcopy"><strong>Debrief</strong><small>Claim preparation</small></span>
       </a>
       <p className="nav-label">Your workspace</p>
       <nav className="nav" aria-label="Primary navigation">
@@ -71,7 +71,7 @@ export function AppShell({ children, current = "home", user }: { children: React
       </nav>
       <div className="sidebar-rule"/>
       <nav className="nav utility-nav" aria-label="Account navigation">
-        {account?<a href="/"><User size={18}/><span>My claims</span></a>:<a href="/login"><User size={18}/><span>Sign in</span></a>}
+        {account?<a href="/dashboard"><User size={18}/><span>My claims</span></a>:<a href="/login?redirectTo=/dashboard"><User size={18}/><span>Sign in</span></a>}
         <span className="nav-disabled" aria-disabled="true"><Settings size={18}/><span>Settings</span><small>After sign-in</small></span>
       </nav>
       <a className="side-help" href="/conditions" onClick={()=>setMenuOpen(false)}><LifeBuoy size={19}/><span><strong>Need a hand?</strong><small>Browse the condition guide</small></span></a>
@@ -89,7 +89,7 @@ export function AppShell({ children, current = "home", user }: { children: React
           <div className="notifications-wrap"><button className="iconbtn" aria-label="Notifications" aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(open=>!open)}><Bell size={18}/></button>
             {notificationsOpen && <div className="notifications-panel" role="status"><strong>You’re all caught up</strong><p>Claim reminders will appear here after accounts and hosted storage are connected.</p></div>}
           </div>
-          <a className={`avatar ${account?"":"signed-out"}`} href={account?"/":"/login"} aria-label={account?`Account for ${account.name||account.email||"signed-in user"}`:"Sign in"}>{initials}</a>
+          <a className={`avatar ${account?"":"signed-out"}`} href={account?"/dashboard":"/login?redirectTo=/dashboard"} aria-label={account?`Account for ${account.name||account.email||"signed-in user"}`:"Sign in"}>{initials}</a>
         </div>
       </header>
       {children}

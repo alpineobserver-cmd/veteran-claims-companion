@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./shell.css";
-export const metadata: Metadata = { title: "Veteran Claims Companion", description: "Organize evidence and understand the VA disability claims process." };
+import "./theme.css";
+export const metadata: Metadata = { title: { default:"Debrief", template:"%s | Debrief" }, description: "Organize evidence, understand potential conditions, and prepare your VA disability claim." };
 export default function RootLayout({children}:{children:React.ReactNode}) { return <html lang="en"><body>{children}</body></html>; }

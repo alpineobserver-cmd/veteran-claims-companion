@@ -1,71 +1,57 @@
 import { auth } from "@/auth";
-import { AppShell } from "@/components/app-shell";
-import { CurrentDate } from "@/components/current-date";
-import { DeleteClaimButton } from "@/components/delete-claim-button";
-import { prisma } from "@/lib/prisma";
-import { ArrowRight, BookOpen, Check, Cloud, FileText, Files, Info, Plus, Upload } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, FileSearch, Fingerprint, FolderLock, ShieldCheck } from "lucide-react";
+import "./landing.css";
 
-export default async function Dashboard() {
+export default async function LandingPage() {
   const session=await auth();
-  const user=session?.user;
-  const claims=user?await prisma.claim.findMany({where:{userId:user.id,status:{not:"ARCHIVED"}},orderBy:{updatedAt:"desc"},select:{id:true,title:true,status:true,progress:true,updatedAt:true}}):[];
-  const first=claims[0];
-  const average=claims.length?Math.round(claims.reduce((sum,claim)=>sum+claim.progress,0)/claims.length):0;
-  const shellUser=user?{id:user.id,name:user.name,email:user.email,image:user.image}:undefined;
+  const signedIn=Boolean(session?.user);
 
-  return <AppShell user={shellUser}><div className="content">
-    <section className="welcome">
-      <div><div className="eyebrow"><CurrentDate/></div><h1>{user?.name?`Welcome back, ${user.name.split(" ")[0]}.`:"Welcome to your companion."}</h1><p>{user?"Continue a saved claim or begin another workspace.":"Build a claim workspace on this device, or sign in to save it across devices."}</p></div>
-      <a className="button primary" href={user?"/intake":"/login?redirectTo=/intake"}><Plus size={17}/><span>Start a workspace</span></a>
-    </section>
-
-    <section className="next-step" aria-labelledby="next-heading">
-      <div className="next-icon">{user?<Check size={22}/>:<Cloud size={22}/>}</div>
-      <div className="next-copy"><span className="kicker">Your next best step</span><h2 id="next-heading">{first?`Continue your ${first.title} workspace`:user?"Create your first evidence workspace":"Sign in for secure cloud saving"}</h2><p>{first?`Your answers are ${first.progress}% prepared and were last saved ${formatUpdated(first.updatedAt)}.`:user?"Begin with the synthetic-document intake foundation. Real medical records are not enabled yet.":"You can explore without an account; sign in when you want to keep a draft across devices."}</p></div>
-      <a className="button warm" href={first?`/claim-builder?claim=${first.id}`:user?"/intake":"/login?redirectTo=/intake"}>{first?"Continue":user?"Open intake":"Sign in"} <ArrowRight size={17}/></a>
-    </section>
-
-    <div className="dashboard-grid">
-      <section className="panel claims-panel">
-        <div className="section-title"><div><span className="kicker">Your preparation</span><h2>Claims in progress</h2></div><a className="link" href="/claim-builder">New claim</a></div>
-        {claims.length?claims.map((claim,index)=><Claim key={claim.id} {...claim} tone={index%2?"clay":"olive"}/>):<div className="empty-claims"><Cloud size={23}/><strong>{user?"No saved claims yet":"Cloud saving is available after sign-in"}</strong><p>{user?"Start the guided questionnaire and it will appear here after your first save.":"A browser-only draft can still be created without an account."}</p><a href="/claim-builder">Open the claim builder <ArrowRight size={14}/></a></div>}
-      </section>
-
-      <aside className="panel overview-panel">
-        <div className="section-title"><div><span className="kicker">At a glance</span><h2>Your workspace</h2></div></div>
-        <div className="record-row"><span>Saved claims</span><strong>{user?claims.length:"Sign in"}</strong></div>
-        <div className="record-row"><span>Average preparation</span><strong>{user?`${average}%`:"—"}</strong></div>
-        <div className="record-row"><span>Storage</span><strong>{user?"Account cloud":"This device"}</strong></div>
-        <a className="text-action" href={user?"/claim-builder":"/login?redirectTo=/claim-builder"}>{user?"Create another claim":"Activate cloud saving"} <ArrowRight size={15}/></a>
-      </aside>
-    </div>
-
-    <section className="resources" aria-labelledby="resources-heading">
-      <div className="section-title"><div><span className="kicker">Helpful tools</span><h2 id="resources-heading">What would you like to do?</h2></div></div>
-      <div className="resource-grid">
-        <Resource icon={Upload} title="Test document intake" text="Upload fictional records to the private intake prototype." href="/intake"/>
-        <Resource icon={FileText} title="Write a statement" text="Build and review a personal statement draft." href="/claim-builder"/>
-        <Resource icon={BookOpen} title="Understand a condition" text="Learn what documentation may help." href="/conditions"/>
-        <Resource icon={Files} title="Find a VA form" text="See when and how forms are used." href="/forms"/>
+  return <main className="landing">
+    <div className="landing-grid" aria-hidden="true"/>
+    <header className="landing-nav">
+      <a className="landing-brand" href="/" aria-label="Debrief home">
+        <span className="landing-brandmark"><Fingerprint size={21}/></span>
+        <span><strong>DEBRIEF</strong><small>Veteran claim preparation</small></span>
+      </a>
+      <div className="landing-nav-actions">
+        <span className="system-status"><i/> MVP SYSTEM ONLINE</span>
+        {signedIn
+          ? <a className="landing-login" href="/dashboard">Open dashboard <ArrowRight size={15}/></a>
+          : <a className="landing-login" href="/login?redirectTo=/dashboard">Log in <ArrowRight size={15}/></a>}
       </div>
+    </header>
+
+    <section className="landing-hero">
+      <div className="landing-copy">
+        <div className="classification">UNCLASSIFIED // FOR PERSONAL USE</div>
+        <p className="landing-kicker">Your service record. Your next mission.</p>
+        <h1>Turn a military career into a clear VA claim plan.</h1>
+        <p className="landing-lede">Debrief helps veterans organize evidence, understand possible conditions, and prepare stronger personal statements—one claim at a time.</p>
+        <div className="landing-actions">
+          <a className="landing-primary" href={signedIn?"/dashboard":"/login?redirectTo=/dashboard"}>{signedIn?"Enter your workspace":"Begin your debrief"} <ArrowRight size={17}/></a>
+          <a className="landing-secondary" href="/dashboard">Explore the dashboard</a>
+        </div>
+        <p className="landing-trust"><FolderLock size={15}/> Your saved workspaces require sign-in. Never enter an SSN or VA file number in this MVP.</p>
+      </div>
+
+      <aside className="briefing-card" aria-label="Debrief process overview">
+        <div className="briefing-head"><span>MISSION BRIEF</span><span>DB-001</span></div>
+        <div className="briefing-body">
+          <span className="briefing-label">Objective</span>
+          <h2>Build a complete, reviewable claim package.</h2>
+          <ol>
+            <li><span>01</span><div><strong>Secure the record</strong><small>Organize supporting documents in one workspace.</small></div><FileSearch size={18}/></li>
+            <li><span>02</span><div><strong>Identify the claim</strong><small>Research conditions and rating criteria in plain language.</small></div><BookOpen size={18}/></li>
+            <li><span>03</span><div><strong>Prepare the case</strong><small>Draft statements and track what is still missing.</small></div><CheckCircle2 size={18}/></li>
+          </ol>
+          <div className="briefing-foot"><ShieldCheck size={16}/><span>Independent educational tool<br/><small>Not affiliated with the Department of Veterans Affairs</small></span></div>
+        </div>
+      </aside>
     </section>
 
-    <div className="notice"><Info size={19}/><div><strong>A quick reminder</strong><p>This companion helps you organize and understand information. It does not submit claims, determine eligibility, or replace an accredited representative.</p></div></div>
-    <footer className="disclaimer">Veteran Claims Companion is an independent educational resource and is not affiliated with the U.S. Department of Veterans Affairs.</footer>
-  </div></AppShell>;
+    <footer className="landing-footer">
+      <span>DEBRIEF // MVP REVIEW BUILD</span>
+      <span>Organize · Understand · Prepare</span>
+    </footer>
+  </main>;
 }
-
-function formatUpdated(date:Date){return new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",year:"numeric"}).format(date)}
-
-function Claim({id,title,updatedAt,progress,status,tone}:{id:string;title:string;updatedAt:Date;progress:number;status:string;tone:string}) {
-  const stepsLeft=Math.max(0,11-Math.ceil(progress/100*11));
-  return <article className="claim">
-    <div className={`claim-monogram ${tone}`}>{title.charAt(0).toUpperCase()}</div>
-    <div className="claim-body"><div className="claimtop"><div><h3>{title}</h3><p>Saved {formatUpdated(updatedAt)}</p></div><span className="badge">{status==="READY"?"Ready to review":"In progress"}</span></div>
-      <div className="progress" aria-label={`${progress}% complete`}><span style={{width:`${progress}%`}}/></div>
-      <div className="progressmeta"><span>{stepsLeft?`${stepsLeft} ${stepsLeft===1?"step":"steps"} left`:"Questionnaire complete"}</span><strong>{progress}% prepared</strong></div>
-    </div><div className="claim-controls"><DeleteClaimButton id={id} title={title}/><a href={`/claim-builder?claim=${id}`} className="claim-arrow" aria-label={`Continue ${title} claim`}><ArrowRight size={19}/></a></div>
-  </article>;
-}
-
-function Resource({icon:Icon,title,text,href}:{icon:typeof Upload;title:string;text:string;href:string}){return <a className="resource" href={href}><span className="resource-icon"><Icon size={20}/></span><span><strong>{title}</strong><small>{text}</small></span><ArrowRight className="resource-arrow" size={17}/></a>}

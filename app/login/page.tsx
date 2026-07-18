@@ -1,2 +1,22 @@
 import { signIn } from "@/auth";
-export default async function Login({searchParams}:{searchParams:Promise<{redirectTo?:string}>}){const requested=(await searchParams).redirectTo;const redirectTo=requested?.startsWith("/")&&!requested.startsWith("//")?requested:"/";return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",padding:20}}><section className="card" style={{width:"min(440px,100%)",padding:32}}><div className="eyebrow">Secure access</div><h1>Sign in to your companion</h1><p style={{color:"var(--muted)"}}>Continue securely with Google to save claim workspaces and resume them on another device.</p><form action={async()=>{"use server";await signIn("google",{redirectTo})}}><button className="button primary" style={{width:"100%",justifyContent:"center"}}>Continue with Google</button></form><p style={{fontSize:11,lineHeight:1.5,color:"var(--muted)",marginTop:18}}>Do not enter a Social Security number or VA file number in this MVP. Uploaded medical documents are not enabled yet.</p><p className="disclaimer">Veteran Claims Companion is an independent educational resource and is not affiliated with the U.S. Department of Veterans Affairs.</p></section></main>}
+import { ArrowLeft, Fingerprint, LockKeyhole } from "lucide-react";
+
+export default async function Login({searchParams}:{searchParams:Promise<{redirectTo?:string}>}){
+  const requested=(await searchParams).redirectTo;
+  const redirectTo=requested?.startsWith("/")&&!requested.startsWith("//")?requested:"/dashboard";
+
+  return <main className="login-screen">
+    <div className="login-grid" aria-hidden="true"/>
+    <a className="login-back" href="/"><ArrowLeft size={15}/> Return to briefing</a>
+    <section className="login-card">
+      <div className="login-emblem"><Fingerprint size={25}/></div>
+      <div className="classification">SECURE ACCESS // AUTHENTICATION REQUIRED</div>
+      <span className="login-kicker">Debrief workspace</span>
+      <h1>Resume your casework.</h1>
+      <p>Continue securely with Google to save claim workspaces and resume them on another device.</p>
+      <form action={async()=>{"use server";await signIn("google",{redirectTo})}}><button className="login-submit"><LockKeyhole size={16}/> Continue with Google</button></form>
+      <div className="login-caution"><strong>MVP data handling</strong><span>Use fictional documents for testing. Do not enter a Social Security number or VA file number.</span></div>
+      <p className="login-disclaimer">Debrief is an independent educational resource and is not affiliated with the U.S. Department of Veterans Affairs.</p>
+    </section>
+  </main>
+}
