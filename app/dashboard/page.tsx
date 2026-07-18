@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { CurrentDate } from "@/components/current-date";
 import { DeleteClaimButton } from "@/components/delete-claim-button";
 import { prisma } from "@/lib/prisma";
-import { ArrowRight, BookOpen, Check, Cloud, FileText, Files, Info, Plus, Upload } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Cloud, FileText, Files, Info, PackageCheck, Plus, Upload } from "lucide-react";
 
 export default async function Dashboard() {
   const session=await auth();
@@ -36,7 +36,7 @@ export default async function Dashboard() {
         <div className="record-row"><span>Saved claims</span><strong>{user?claims.length:"Sign in"}</strong></div>
         <div className="record-row"><span>Average preparation</span><strong>{user?`${average}%`:"—"}</strong></div>
         <div className="record-row"><span>Storage</span><strong>{user?"Account cloud":"This device"}</strong></div>
-        <a className="text-action" href={user?"/claim-builder?new=1":"/login?redirectTo=%2Fclaim-builder%3Fnew%3D1"}>{user?"Create another claim":"Activate cloud saving"} <ArrowRight size={15}/></a>
+        <a className="text-action" href={user?"/claim-package":"/login?redirectTo=/claim-package"}>{user?"Review claim package":"Activate cloud saving"} <ArrowRight size={15}/></a>
       </aside>
     </div>
 
@@ -45,6 +45,7 @@ export default async function Dashboard() {
       <div className="resource-grid">
         <Resource icon={Upload} title="Test document intake" text="Upload fictional records to the private intake prototype." href="/intake"/>
         <Resource icon={FileText} title="Start a new statement" text="Open a fresh claim questionnaire and prepare a draft." href="/claim-builder?new=1"/>
+        <Resource icon={PackageCheck} title="Review claim package" text="See statements, documents, pending records, and next actions together." href={user?"/claim-package":"/login?redirectTo=/claim-package"}/>
         <Resource icon={BookOpen} title="Understand a condition" text="Learn what documentation may help." href="/conditions"/>
         <Resource icon={Files} title="Find a VA form" text="See when and how forms are used." href="/forms"/>
       </div>

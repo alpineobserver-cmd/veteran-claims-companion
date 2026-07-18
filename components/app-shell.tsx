@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Bell, BookOpen, ClipboardList, FileText, Files, FolderOpen,
+  Bell, BookOpen, ClipboardList, FileText, Files, FolderOpen, PackageCheck,
   History, LayoutDashboard, LifeBuoy, Menu, Search, Settings, ShieldCheck, User, X
 } from "lucide-react";
 import { conditions } from "@/lib/conditions";
@@ -13,6 +13,7 @@ const links = [
   ["home", "Dashboard", "/dashboard", LayoutDashboard, true],
   ["intake", "Document intake", "/intake", FolderOpen, true],
   ["builder", "Build a claim", "/claim-builder", ClipboardList, true],
+  ["package", "Claim package", "/claim-package", PackageCheck, true],
   ["conditions", "Conditions", "/conditions", BookOpen, true],
   ["templates", "Statement templates", "", FileText, false],
   ["forms", "VA forms", "/forms", Files, true],

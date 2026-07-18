@@ -3,6 +3,7 @@ import { z } from "zod";
 export const claimDraftSchema = z.object({
   answers: z.record(z.unknown()),
   step: z.number().int().min(0).max(30),
+  furthestStep: z.number().int().min(0).max(30).optional(),
   statement: z.string().max(50_000).optional(),
   statementMode: z.enum(["", "ai", "template", "edited", "stale"]).optional(),
   timeline: z.array(z.unknown()).max(200).optional(),
