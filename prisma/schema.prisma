@@ -67,6 +67,8 @@ model Claim {
   exposures String?
   treatment String?
   progress Int @default(0)
+  draftData Json?
+  draftVersion Int @default(1)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   conditions ClaimCondition[]
   evidence Evidence[]

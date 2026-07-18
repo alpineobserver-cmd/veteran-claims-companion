@@ -25,10 +25,13 @@ const searchItems = [
   ...vaForms.map(item => ({ label:`VA Form ${item.number}`, detail:item.name, href:`/forms/${item.slug}`, type:"Form" }))
 ];
 
-export function AppShell({ children, current = "home" }: { children: React.ReactNode; current?: string }) {
+type ShellUser={id:string;name?:string|null;email?:string|null;image?:string|null};
+
+export function AppShell({ children, current = "home", user }: { children: React.ReactNode; current?: string; user?:ShellUser }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [account,setAccount]=useState<ShellUser|undefined>(user);
   const results = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return [];
@@ -42,6 +45,15 @@ export function AppShell({ children, current = "home" }: { children: React.React
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  useEffect(()=>{
+    if(user){setAccount(user);return}
+    let cancelled=false;
+    fetch("/api/auth/session").then(response=>response.json()).then((session:{user?:ShellUser})=>{if(!cancelled&&session.user)setAccount(session.user)}).catch(()=>{});
+    return()=>{cancelled=true};
+  },[user]);
+
+  const initials=account?.name?.split(/\s+/).map(part=>part[0]).join("").slice(0,2).toUpperCase()||account?.email?.slice(0,2).toUpperCase()||"SIGN IN";
 
   return <div className={`shell ${menuOpen ? "menu-open" : ""}`}>
     {menuOpen && <button className="sidebar-scrim" aria-label="Close menu" onClick={()=>setMenuOpen(false)}/>}
@@ -59,7 +71,7 @@ export function AppShell({ children, current = "home" }: { children: React.React
       </nav>
       <div className="sidebar-rule"/>
       <nav className="nav utility-nav" aria-label="Account navigation">
-        <span className="nav-disabled" aria-disabled="true"><User size={18}/><span>Profile</span><small>After sign-in</small></span>
+        {account?<a href="/"><User size={18}/><span>My claims</span></a>:<a href="/login"><User size={18}/><span>Sign in</span></a>}
         <span className="nav-disabled" aria-disabled="true"><Settings size={18}/><span>Settings</span><small>After sign-in</small></span>
       </nav>
       <a className="side-help" href="/conditions" onClick={()=>setMenuOpen(false)}><LifeBuoy size={19}/><span><strong>Need a hand?</strong><small>Browse the condition guide</small></span></a>
@@ -77,7 +89,7 @@ export function AppShell({ children, current = "home" }: { children: React.React
           <div className="notifications-wrap"><button className="iconbtn" aria-label="Notifications" aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(open=>!open)}><Bell size={18}/></button>
             {notificationsOpen && <div className="notifications-panel" role="status"><strong>You’re all caught up</strong><p>Claim reminders will appear here after accounts and hosted storage are connected.</p></div>}
           </div>
-          <div className="avatar" aria-label="Demo profile">DEMO</div>
+          <a className={`avatar ${account?"":"signed-out"}`} href={account?"/":"/login"} aria-label={account?`Account for ${account.name||account.email||"signed-in user"}`:"Sign in"}>{initials}</a>
         </div>
       </header>
       {children}

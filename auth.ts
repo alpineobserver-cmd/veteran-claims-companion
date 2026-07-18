@@ -11,5 +11,11 @@ export const {handlers,auth,signIn,signOut}=NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [Google, ...emailProvider],
   pages: { signIn: "/login" },
-  session: { strategy: "database" }
+  session: { strategy: "database" },
+  callbacks: {
+    session({ session, user }) {
+      session.user.id = user.id;
+      return session;
+    }
+  }
 });

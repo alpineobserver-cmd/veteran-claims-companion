@@ -1,15 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, Clipboard, Download, FileDown, Info, Link2, Plus, RefreshCw, Save, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Clipboard, Cloud, CloudOff, Download, FileDown, Info, Link2, LoaderCircle, Plus, RefreshCw, Save, Sparkles, Trash2 } from "lucide-react";
 import { conditionGroups, evidenceOptions } from "@/lib/claim-options";
 import { conditionPrompts, factRows, initialAnswers as initial, qualityFindings, suggestedTimeline, type Answers, type EvidenceMap, type TimelineEvent } from "@/lib/claim-builder-intelligence";
 
 type StatementMode = ""|"ai"|"template"|"edited"|"stale";
 type StoredDraft = { answers: Answers; step: number; statement?:string; statementMode?:StatementMode; timeline?:TimelineEvent[]; evidenceMap?:EvidenceMap; confirmations?:Record<string,boolean> };
+type CloudState = "idle"|"loading"|"saving"|"saved"|"error";
+type CloudClaim = { id:string; title:string; progress:number; draftVersion:number; draftData:StoredDraft|null; updatedAt:string };
 const steps = ["Condition","Claim path","Claim details","Health history","Service history","Timeline","Treatment","Evidence","Review","Personal statement","Verify & export"];
 
-export function ClaimQuestionnaire() {
+function claimTitle(draft:StoredDraft){
+  const selected=draft.answers.condition==="Other / condition not listed"?draft.answers.otherCondition:draft.answers.condition;
+  return selected?.trim()||"Untitled claim";
+}
+
+export function ClaimQuestionnaire({user,initialClaimId}:{user?:{id:string;name?:string|null};initialClaimId?:string}) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>(initial);
   const [saved, setSaved] = useState(false);
@@ -20,24 +27,48 @@ export function ClaimQuestionnaire() {
   const [evidenceMap,setEvidenceMap]=useState<EvidenceMap>({});
   const [confirmations,setConfirmations]=useState<Record<string,boolean>>({});
   const [archives,setArchives]=useState<StoredDraft[]>([]);
+  const [currentClaimId,setCurrentClaimId]=useState(initialClaimId||"");
+  const [cloudState,setCloudState]=useState<CloudState>(initialClaimId?"loading":"idle");
+  const [cloudError,setCloudError]=useState("");
+  const [hydrated,setHydrated]=useState(false);
+  const cloudVersion=useRef(1);
+  const lastCloudSnapshot=useRef("");
+  const currentSnapshot=useRef("");
+  const saveChain=useRef<Promise<void>>(Promise.resolve());
+
   useEffect(() => {
-    try{setArchives(JSON.parse(localStorage.getItem("vcc-claim-workspaces")||"[]") as StoredDraft[])}catch{localStorage.removeItem("vcc-claim-workspaces")}
-    const stored=localStorage.getItem("vcc-claim-draft");
-    if (!stored) return;
-    try {
-      const parsed = JSON.parse(stored) as StoredDraft | Partial<Answers>;
-      if ("answers" in parsed) {
-        setAnswers({...initial,...parsed.answers});
-        setStep(Math.min(Math.max(parsed.step || 0, 0), steps.length - 1));
-        setStatement(parsed.statement||"");
-        setStatementMode(parsed.statementMode||"");
-        setTimeline(parsed.timeline||[]);
-        setEvidenceMap(parsed.evidenceMap||{});
-        setConfirmations(parsed.confirmations||{});
-      } else setAnswers({...initial,...parsed});
+    let cancelled=false;
+    function applyDraft(draft:StoredDraft){
+      setAnswers({...initial,...draft.answers});
+      setStep(Math.min(Math.max(draft.step||0,0),steps.length-1));
+      setStatement(draft.statement||"");setStatementMode(draft.statementMode||"");
+      setTimeline(draft.timeline||[]);setEvidenceMap(draft.evidenceMap||{});setConfirmations(draft.confirmations||{});
       setSaved(true);
-    } catch { localStorage.removeItem("vcc-claim-draft"); }
-  }, []);
+    }
+    async function load(){
+      try{setArchives(JSON.parse(localStorage.getItem("vcc-claim-workspaces")||"[]") as StoredDraft[])}catch{localStorage.removeItem("vcc-claim-workspaces")}
+      if(user&&initialClaimId){
+        setCloudState("loading");
+        try{
+          const response=await fetch(`/api/claims/${encodeURIComponent(initialClaimId)}`,{cache:"no-store"});
+          const data=await response.json() as {claim?:CloudClaim;error?:string};
+          if(!response.ok||!data.claim)throw new Error(data.error||"The saved claim could not be opened.");
+          if(cancelled)return;
+          const loadedDraft=data.claim.draftData||{answers:initial,step:0};
+          applyDraft(loadedDraft);
+          cloudVersion.current=data.claim.draftVersion;
+          const serialized=JSON.stringify(loadedDraft);
+          lastCloudSnapshot.current=serialized;currentSnapshot.current=serialized;
+          setCloudState("saved");
+        }catch(reason){if(!cancelled){setCloudState("error");setCloudError(reason instanceof Error?reason.message:"The saved claim could not be opened.")}}
+      }else{
+        const stored=localStorage.getItem("vcc-claim-draft");
+        if(stored){try{const parsed=JSON.parse(stored) as StoredDraft|Partial<Answers>;if("answers" in parsed)applyDraft(parsed);else setAnswers({...initial,...parsed})}catch{localStorage.removeItem("vcc-claim-draft")}}
+      }
+      if(!cancelled)setHydrated(true);
+    }
+    void load();return()=>{cancelled=true};
+  }, [initialClaimId,user]);
   const condition = answers.condition === "Other / condition not listed" ? answers.otherCondition : answers.condition;
   const progress = Math.round(((step + 1) / steps.length) * 100);
   const missing = useMemo(() => [
@@ -48,18 +79,60 @@ export function ClaimQuestionnaire() {
   ].filter(Boolean) as string[], [answers]);
 
   const findings=useMemo(()=>qualityFindings(answers,condition,timeline,evidenceMap),[answers,condition,timeline,evidenceMap]);
+  const draft=useMemo<StoredDraft>(()=>({answers,step,statement,statementMode,timeline,evidenceMap,confirmations}),[answers,step,statement,statementMode,timeline,evidenceMap,confirmations]);
+  const serializedDraft=useMemo(()=>JSON.stringify(draft),[draft]);
+  currentSnapshot.current=serializedDraft;
+
+  function queueCloudSave(claimId:string,payload:StoredDraft,draftProgress:number){
+    const serialized=JSON.stringify(payload);
+    setCloudState("saving");setCloudError("");
+    saveChain.current=saveChain.current.then(async()=>{
+      const response=await fetch(`/api/claims/${encodeURIComponent(claimId)}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:claimTitle(payload),progress:draftProgress,draft:payload,version:cloudVersion.current})});
+      const data=await response.json() as {claim?:{draftVersion:number};error?:string};
+      if(!response.ok||!data.claim)throw new Error(data.error||"Your changes could not be saved.");
+      cloudVersion.current=data.claim.draftVersion;lastCloudSnapshot.current=serialized;
+      setCloudState(currentSnapshot.current===serialized?"saved":"saving");setSaved(true);
+    }).catch(reason=>{setCloudState("error");setCloudError(reason instanceof Error?reason.message:"Your changes could not be saved.")});
+    return saveChain.current;
+  }
+
+  useEffect(()=>{
+    if(!hydrated||!user||!currentClaimId||serializedDraft===lastCloudSnapshot.current)return;
+    const timer=window.setTimeout(()=>{void queueCloudSave(currentClaimId,draft,progress)},1500);
+    return()=>window.clearTimeout(timer);
+    // The complete draft snapshot intentionally controls autosave scheduling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[serializedDraft,hydrated,user,currentClaimId]);
+
   function update<K extends keyof Answers>(key: K, value: Answers[K]) { setAnswers(a => ({...a,[key]:value})); setSaved(false); setCompleted(false); setConfirmations({}); setStatementMode(mode=>statement&&mode?"stale":mode); }
-  function persist(draftStep=step) { localStorage.setItem("vcc-claim-draft", JSON.stringify({answers,step:draftStep,statement,statementMode,timeline,evidenceMap,confirmations} satisfies StoredDraft)); setSaved(true); }
-  function saveDraft() { persist(); }
+  function persist(draftStep=step) { const value={answers,step:draftStep,statement,statementMode,timeline,evidenceMap,confirmations} satisfies StoredDraft;if(!user||!currentClaimId)localStorage.setItem("vcc-claim-draft",JSON.stringify(value));setSaved(true);return value; }
+  async function saveDraft(draftStep=step) {
+    const value=persist(draftStep);
+    if(!user)return;
+    if(currentClaimId){await queueCloudSave(currentClaimId,value,Math.round(((draftStep+1)/steps.length)*100));return}
+    setCloudState("saving");setCloudError("");
+    try{
+      const response=await fetch("/api/claims",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:claimTitle(value),progress:Math.round(((draftStep+1)/steps.length)*100),draft:value})});
+      const data=await response.json() as {claim?:{id:string;draftVersion:number};error?:string};
+      if(!response.ok||!data.claim)throw new Error(data.error||"This claim could not be saved.");
+      setCurrentClaimId(data.claim.id);cloudVersion.current=data.claim.draftVersion;lastCloudSnapshot.current=JSON.stringify(value);setCloudState("saved");
+      window.history.replaceState(null,"",`/claim-builder?claim=${encodeURIComponent(data.claim.id)}`);
+      localStorage.removeItem("vcc-claim-draft");
+    }catch(reason){setCloudState("error");setCloudError(reason instanceof Error?reason.message:"This claim could not be saved.")}
+  }
   function next() { const nextStep=Math.min(steps.length - 1, step + 1); persist(nextStep); setStep(nextStep); window.scrollTo({top:0,behavior:"smooth"}); }
   function back() { const previous=Math.max(0, step - 1); persist(previous); setStep(previous); setCompleted(false); window.scrollTo({top:0,behavior:"smooth"}); }
-  function finish() { persist(steps.length - 1); setCompleted(true); }
-  function startNew() { const saved=[...archives];if(condition)saved.push({answers,step,statement,statementMode,timeline,evidenceMap,confirmations});const next=saved.slice(-10);localStorage.setItem("vcc-claim-workspaces",JSON.stringify(next));setArchives(next);localStorage.removeItem("vcc-claim-draft");setAnswers(initial);setStatement("");setStatementMode("");setTimeline([]);setEvidenceMap({});setConfirmations({});setStep(0);setSaved(false);setCompleted(false);window.scrollTo({top:0,behavior:"smooth"}); }
+  async function finish() { await saveDraft(steps.length-1);setCompleted(true); }
+  function startNew() { if(user){window.location.href="/claim-builder";return}const saved=[...archives];if(condition)saved.push({answers,step,statement,statementMode,timeline,evidenceMap,confirmations});const next=saved.slice(-10);localStorage.setItem("vcc-claim-workspaces",JSON.stringify(next));setArchives(next);localStorage.removeItem("vcc-claim-draft");setAnswers(initial);setStatement("");setStatementMode("");setTimeline([]);setEvidenceMap({});setConfirmations({});setStep(0);setSaved(false);setCompleted(false);window.scrollTo({top:0,behavior:"smooth"}); }
   function openArchive(index:number){const selected=archives[index];if(!selected)return;const remaining=archives.filter((_,item)=>item!==index);if(condition)remaining.push({answers,step,statement,statementMode,timeline,evidenceMap,confirmations});localStorage.setItem("vcc-claim-workspaces",JSON.stringify(remaining.slice(-10)));setArchives(remaining.slice(-10));setAnswers({...initial,...selected.answers});setStep(Math.min(selected.step,steps.length-1));setStatement(selected.statement||"");setStatementMode(selected.statementMode||"");setTimeline(selected.timeline||[]);setEvidenceMap(selected.evidenceMap||{});setConfirmations(selected.confirmations||{});setCompleted(false);setSaved(true);window.scrollTo({top:0,behavior:"smooth"})}
   const canContinue = step === 0 ? Boolean(condition.trim()) : step === 1 ? Boolean(answers.claimType) : true;
 
+  if(cloudState==="loading")return <div className="builder-wrap"><div className="cloud-loading"><LoaderCircle className="spin" size={22}/><strong>Opening your saved claim…</strong></div></div>;
+  const saveLabel=user?(cloudState==="saving"?"Saving…":cloudState==="saved"?"Saved to account":cloudState==="error"?"Try saving again":currentClaimId?"Save changes":"Save to account"):(saved?"Saved on this device":"Save for later");
   return <div className="builder-wrap">
-    <header className="builder-header"><div><span className="kicker">Claim preparation</span><h1>{condition || "Tell us what you’re preparing for"}</h1><p>Your answers create an organizing checklist. They do not determine whether a condition is service connected.</p>{archives.length>0&&<label className="workspace-switcher"><span>Other condition workspaces</span><select defaultValue="" onChange={event=>{if(event.target.value)openArchive(Number(event.target.value))}}><option value="">Open a saved condition…</option>{archives.map((draft,index)=><option value={index} key={`${draft.answers.condition}-${index}`}>{draft.answers.condition==="Other / condition not listed"?draft.answers.otherCondition:draft.answers.condition||`Draft ${index+1}`}</option>)}</select></label>}</div><button className="save-button" onClick={saveDraft}><Save size={16}/>{saved ? "Saved on this device" : "Save for later"}</button></header>
+    <header className="builder-header"><div><span className="kicker">Claim preparation</span><h1>{condition || "Tell us what you’re preparing for"}</h1><p>Your answers create an organizing checklist. They do not determine whether a condition is service connected.</p>{!user&&archives.length>0&&<label className="workspace-switcher"><span>Other condition workspaces</span><select defaultValue="" onChange={event=>{if(event.target.value)openArchive(Number(event.target.value))}}><option value="">Open a saved condition…</option>{archives.map((draft,index)=><option value={index} key={`${draft.answers.condition}-${index}`}>{draft.answers.condition==="Other / condition not listed"?draft.answers.otherCondition:draft.answers.condition||`Draft ${index+1}`}</option>)}</select></label>}</div><button className="save-button" onClick={()=>void saveDraft()} disabled={cloudState==="saving"}>{user?<Cloud size={16}/>:<Save size={16}/>} {saveLabel}</button></header>
+    {!user&&<div className="cloud-save-prompt"><CloudOff size={18}/><div><strong>This draft is only on this device</strong><p>Sign in to save it securely to your account and continue on another device.</p></div><a className="button secondary" href="/login?redirectTo=/claim-builder">Sign in to save</a></div>}
+    {cloudError&&<div className="cloud-save-error" role="alert"><AlertTriangle size={16}/><span>{cloudError}</span></div>}
     <div className="builder-progress"><div><span>Step {step + 1} of {steps.length}</span><strong>{steps[step]}</strong></div><span>{progress}%</span><div className="builder-progress-track"><span style={{width:`${progress}%`}}/></div></div>
     <div className="builder-layout">
       <aside className="step-list" aria-label="Questionnaire progress">{steps.map((label,i)=><div className={`${i===step?"current":""} ${i<step?"done":""}`} key={label}><span>{i<step?<Check size={13}/>:i+1}</span><small>{label}</small></div>)}</aside>
@@ -75,7 +148,7 @@ export function ClaimQuestionnaire() {
         {step===8 && <Review answers={answers} condition={condition} missing={missing} timeline={timeline} evidenceMap={evidenceMap} findings={findings}/>}
         {step===9 && <StatementStep answers={answers} condition={condition} timeline={timeline} update={update} statement={statement} setStatement={value=>{setStatement(value);setConfirmations({});setSaved(false);setCompleted(false)}} mode={statementMode} setMode={setStatementMode}/>}
         {step===10 && <VerifyExport statement={statement} condition={condition} answers={answers} timeline={timeline} evidenceMap={evidenceMap} findings={findings} confirmations={confirmations} setConfirmations={setConfirmations}/>}
-        {completed && <div className="save-confirmation" role="status" aria-live="polite"><Check size={18}/><div><strong>Summary saved on this device</strong><p>You can return later to review or update these answers.</p></div></div>}
+        {completed && <div className="save-confirmation" role="status" aria-live="polite"><Check size={18}/><div><strong>{user?"Claim saved to your account":"Summary saved on this device"}</strong><p>You can return later to review or update these answers.</p></div></div>}
         <div className="builder-actions">{step>0?<button className="button secondary" onClick={back}><ArrowLeft size={16}/>Back</button>:<a className="button secondary" href="/">Cancel</a>}<button className="button primary" disabled={!canContinue} onClick={step===steps.length-1?finish:next}>{step===steps.length-1?(completed?"Saved on this device":statement?"Save statement":"Save draft"):"Continue"}{step<steps.length-1&&<ArrowRight size={16}/>}</button></div>
         {completed && <div className="summary-next-actions"><a className="text-action" href="/">Return to dashboard <ArrowRight size={14}/></a><button type="button" onClick={startNew}>Add another condition</button></div>}
       </section>
