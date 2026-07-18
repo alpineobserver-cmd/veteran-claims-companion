@@ -2,70 +2,64 @@
 
 Evaluation date: 2026-07-18  
 Data classification: entirely fictional test data  
-Mode: deterministic claim workflow and guided-template baseline; no paid model calls
+Mode: deterministic claim workflow and guided narrative; no network or paid-model calls
 
-## Coverage
+## Executive result
 
-The suite contains 18 fictional veteran scenarios spanning:
+- Scenarios: 40
+- Draft-ready scenarios: 33
+- Intentionally paused scenarios: 7
+- Passing scenarios: 40/40
+- Average workflow score: 99.9/100
+- Unsupported medical conclusions reaching a draft: 0
+- Drafts with known questionnaire-style transitions: 0/33
+- Contradiction probes correctly paused: 2/2
+- Cross-claim isolation probe: passed
+- Legacy evidence-map conversion: passed
 
-- Original claims: migraines, PTSD, tinnitus, asthma, hearing loss, IBS, and a shoulder claim missing service facts
-- Increased-rating claims: knee, migraines, PTSD, scar, and sinusitis with a missing worsening date
-- Secondary claims: sleep apnea, leg radicular symptoms, GERD, hypertension with unsafe causal wording, and a claim missing its primary condition and observed relationship
-- An intentionally sparse, uncertain-path claim
-- Complete and incomplete fact-to-evidence mapping
+The only score deduction is intentional: one tinnitus scenario has fewer than three relevant facts linked to supporting information, and the readiness review correctly identifies that evidence gap.
 
-## Baseline result before the safety correction
+## Scenario coverage
 
-- 17 of 18 scenarios passed
-- Average workflow score: 90/100
-- All four factually incomplete cases were correctly paused for the expected targeted questions
-- One unsupported medical conclusion was repeated into the guided template
-- 12 of 14 generated templates used at least five questionnaire-style transitions
+The 40 fictional cases cover:
 
-The failure occurred when a secondary-claim answer said that one condition "proves" another condition was caused by it. The existing check did not inspect the secondary-relationship field, so the template repeated the conclusion.
+- Original, increased-rating, secondary, and uncertain claim paths
+- Migraines, PTSD, tinnitus, orthopedic, digestive, respiratory, hearing, skin, neurological, sleep, and multi-symptom conditions
+- Missing service facts, missing onset, missing worsening dates, missing secondary relationships, and sparse intake
+- Unsupported causal language and clearly clinician-attributed medical opinions
+- Conflicting symptom-onset years and conflicting current frequency estimates
+- Approximate dates, uncertain memory, TBI-related memory limitations, and witness observations
+- No formal diagnosis, no current treatment, and long gaps in care
+- Intermittent symptoms, flare-ups, bilateral symptoms, and overlapping functional effects
+- Sensitive mental-health narratives without unnecessary graphic details
+- Work effects without invented unemployability or financial conclusions
+- Previously denied issues where the veteran has not selected a next claim or review path
+- Detailed responses, duplicate-risk timeline facts, structured evidence statuses, pending records, legacy evidence-map conversion, evidence gaps, and cross-claim isolation
 
-## Result after safety and evidence corrections
+## Baseline findings and corrections
 
-- 18 of 18 scenarios passed
-- Average workflow score: 93/100
-- 13 scenarios were correctly considered draft-ready
-- Five scenarios were correctly paused, including the unsafe-causal-wording case
-- Zero unsupported causal conclusions reached a generated template
-- The incomplete tinnitus evidence map produced an evidence-readiness finding
-- 12 of 13 guided templates still used at least five questionnaire-style transitions
+The original 18-scenario baseline found that an unsupported secondary-causation statement could reach the free template and that 12 of 13 drafts used repeated questionnaire-style transitions. Those issues led to expanded medical-language checks, blocking factual follow-ups, relevant evidence-map checks, and a rebuilt chronological guided narrative.
 
-## Result after rebuilding the free generator
+The first 40-scenario run passed 38 of 40 cases. Both failures came from the same defect: selecting `Not sure yet` produced the phrase “my not sure yet” in the opening sentence. The neutral-path composer now calls it a claim without selecting a theory on the veteran's behalf.
 
-- 18 of 18 scenarios passed
-- Average workflow score: 99.7/100; the only deduction was the intentionally incomplete tinnitus evidence map
-- Zero unsafe causal conclusions reached a draft
-- Zero of 13 generated statements used a known questionnaire-style transition
-- Required scenario facts remained present
-- Drafts were organized into a short opening, chronological history, current medical and symptom information, functional impact with a concrete example, and treatment
-- Timeline details already represented in the answers were suppressed to reduce semantic repetition
-- Known awkward deterministic constructions were added to the regression checks
+Manual review of representative drafts also produced grammar improvements for military-role articles, uncertain onset descriptions, diagnosis sentences, symptom duration, and clinician-attributed opinions.
 
-## Changes made from the findings
+## Production behavior added
 
-1. Expanded possible medical-conclusion detection across all narrative claim fields.
-2. Added a blocking follow-up when causal wording is unsupported, while allowing clearly clinician-attributed conclusions to proceed for user review.
-3. Corrected evidence coverage so only links relevant to the current claim path count toward readiness.
-4. Added a repeatable `npm run eval:claims` command that exits unsuccessfully if a scenario fails or unsafe wording reaches a draft.
-5. Extracted the production guided-template generator so the application and evaluation suite exercise the same code.
-6. Replaced one-paragraph-per-answer assembly with grouped chronological composition.
-7. Added deterministic handling for onset wording, frequency, duration, medical information, treatment, and duplicate timeline facts.
+1. If the onset field and service description provide different explicit years for when symptoms began, drafting pauses and asks which year is the best estimate.
+2. If current-frequency answers differ materially across the symptom and condition-specific fields, drafting pauses and asks for one current estimate.
+3. Approximate dates and explicit statements of uncertain memory are preserved.
+4. Clearly clinician-attributed causal opinions may be included for review; unsupported causal conclusions remain blocked.
+5. `Not sure yet` produces a neutral statement and does not invent a claim path.
+6. Timeline facts already represented elsewhere are suppressed, while unique approximate timeline facts remain available to the narrative.
+7. The regression command fails if a scenario fails, unsafe wording reaches a draft, a known questionnaire transition returns, a contradiction probe drafts, or cross-claim leakage appears.
+8. Evidence readiness distinguishes available records, personal recollection, witness evidence, records identified but not obtained, and no identified support.
+9. Pending records remain visible in the readiness review but do not count as available evidence or identified support.
 
-## Product feedback
+## Remaining limitations
 
-The layered question routing is working as intended in these fixtures: incomplete claims receive one or two focused questions and no draft. The free guided narrative is now substantially more readable while remaining deterministic and transparent. It should still be treated as a draft for sentence-by-sentence human review: fixed rules cannot understand meaning, reconcile contradictions, determine which facts are most important, or safely perform the deeper rewriting a generative model can provide.
+These are deterministic checks, not language understanding. They detect selected high-confidence contradictions but cannot reliably reconcile every inconsistency, judge credibility, determine materiality, or decide which evidence proves a claim element. A human must review every sentence and compare the draft with the source records.
 
-When paid generative drafting is eventually enabled, run the same 18 cases through the model and compare it with this baseline. Release criteria should include:
+When AI drafting is enabled, the same 40 scenarios should be used as the minimum release gate. AI output should additionally be reviewed for invented facts, changes to uncertainty, omitted material facts, unsupported medical or legal conclusions, inappropriate sensitivity handling, and cross-condition leakage.
 
-- No invented diagnoses, dates, symptoms, frequency, severity, clinician opinions, or service events
-- No unsupported causal or medical conclusions
-- Retention of all important supplied facts and expressions of uncertainty
-- Clear chronology and natural paragraph flow without questionnaire labels
-- Targeted follow-up questions instead of guessing when facts are missing
-- Human review and sentence-level confirmation before download or use
-
-These results test software behavior, not whether a claim is valid, service connected, compensable, or likely to receive a particular rating.
+These results test software behavior only. They do not determine whether any claim is valid, service connected, compensable, or likely to receive a particular rating.

@@ -7,6 +7,7 @@ export function statementHeading(input:Pick<StatementSource,"statementName"|"con
 }
 
 const finish=(value:string)=>{const clean=value.trim();return clean&&!/[.!?]$/.test(clean)?`${clean}.`:clean};
+const upperLead=(value:string)=>{const clean=value.trim();return clean?clean.charAt(0).toUpperCase()+clean.slice(1):clean};
 const lowerLead=(value:string)=>{
   const clean=value.trim();
   if(/^I\b/.test(clean)||!/^(?:[A-Z][a-z]|A\b)/.test(clean))return clean;
@@ -24,23 +25,27 @@ const onsetSentence=(value:string,claimType:string)=>{
   const clean=value.trim();
   if(claimType==="Increased-rating claim"&&/^original\b/i.test(clean))return `The condition began with an ${lowerLead(clean)}`;
   if(/^(approximately|around|during|after|before|in|on|while)\b/i.test(clean))return `I first noticed the symptoms ${clean}`;
+  if(/\b(?:symptoms?|pain|ringing|headaches?)\s+(?:began|started)\b/i.test(clean))return upperLead(clean);
   return `I recorded the onset as ${clean}`;
 };
 const frequencySentence=(value:string)=>/[;:]|\b(?:pain|symptoms?|attacks?|episodes?|readings?|disruption|swelling)\b/i.test(value)?`The pattern I experience is ${lowerLead(value)}`:`This occurs ${lowerLead(value)}`;
 const durationSentence=(value:string)=>{
   const clean=value.trim();
   if(/^(?:continuous|constant|ongoing)$/i.test(clean))return `The symptoms are ${clean.toLowerCase()}`;
-  if(!/\b(?:can|continues?|lasts?|persists?|remains?)\b/i.test(clean)&&clean.split(/\s+/).length<=6)return `Symptoms usually last ${lowerLead(clean)}`;
+  if(/^varies?\b/i.test(clean))return `The duration ${lowerLead(clean)}`;
+  if(!/\b(?:can|continues?|lasts?|persists?|remains?|varies?)\b/i.test(clean)&&clean.split(/\s+/).length<=6)return `Symptoms usually last ${lowerLead(clean)}`;
   return `In terms of duration, ${lowerLead(clean)}`;
 };
-const medicalInformationSentence=(value:string)=>/^(?:A|An|The|Audiology|Current records?)\b.*\b(?:documented|evaluated|diagnosed|described|recorded|confirmed)\b/i.test(value.trim())?value:`My current medical information includes ${lowerLead(value)}`;
+const medicalInformationSentence=(value:string)=>/^(?:A|An|The|Audiology|Imaging|Current records?|[A-Z][a-z]+ (?:records?|testing|evaluation|study))\b.*\b(?:is|are|was|were|documents?|documented|evaluates?|evaluated|diagnoses?|diagnosed|describes?|described|records?|recorded|confirms?|confirmed)\b/i.test(value.trim())?value:`My current medical information includes ${lowerLead(value)}`;
 const treatmentSentence=(value:string)=>/^\S+(?:\s+\S+){0,5}\s+(?:was|were|is|are|has|have)\b/i.test(value.trim())?value:`My current and past treatment includes ${lowerLead(value)}`;
+const claimDescription=(claimType:string)=>claimType==="Increased-rating claim"?"claim for an increased evaluation":claimType==="Secondary claim"?"secondary claim":"claim";
+const roleDescription=(role:string)=>`${/^[aeiou]/i.test(role.trim())?"an":"a"} ${lowerLead(role)}`;
 
 export function guidedDraft(input:StatementSource){
   const paragraphs:string[]=[];
   const opening=paragraph([
-    `I am submitting this statement in support of my ${input.claimType?input.claimType.toLowerCase():"claim"} concerning ${lowerLead(input.condition)}`,
-    (input.branch||input.role)&&`I served${input.branch?` in the ${input.branch}`:""}${input.role?` as a ${lowerLead(input.role)}`:""}`
+    `I am submitting this statement in support of my ${claimDescription(input.claimType)} concerning ${lowerLead(input.condition)}`,
+    (input.branch||input.role)&&`I served${input.branch?` in the ${input.branch}`:""}${input.role?` as ${roleDescription(input.role)}`:""}`
   ]);
   if(opening)paragraphs.push(opening);
 
@@ -52,7 +57,7 @@ export function guidedDraft(input:StatementSource){
     if(input.worsening)history.push(input.worsening);
   }else if(input.claimType==="Secondary claim"){
     if(input.onset)history.push(onsetSentence(input.onset,input.claimType));
-    if(input.primaryCondition)history.push(`The existing service-connected condition I believe is relevant is ${input.primaryCondition}`);
+    if(input.primaryCondition)history.push(`The existing service-connected condition I believe is relevant is ${lowerLead(input.primaryCondition)}`);
     if(input.secondaryRelationship)history.push(input.secondaryRelationship);
     if(input.clinicianDiscussion)history.push(input.clinicianDiscussion);
   }else{

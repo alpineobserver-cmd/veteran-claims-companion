@@ -6,7 +6,7 @@ export const claimDraftSchema = z.object({
   statement: z.string().max(50_000).optional(),
   statementMode: z.enum(["", "ai", "template", "edited", "stale"]).optional(),
   timeline: z.array(z.unknown()).max(200).optional(),
-  evidenceMap: z.record(z.string().max(500)).optional(),
+  evidenceMap: z.record(z.union([z.string().max(500),z.object({status:z.enum(["record_available","personal_recollection","witness_statement","record_not_obtained","none_identified"]),source:z.string().max(500)}).strict()])).optional(),
   confirmations: z.record(z.boolean()).optional()
 }).strict();
 

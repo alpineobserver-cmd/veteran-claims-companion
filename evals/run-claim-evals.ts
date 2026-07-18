@@ -1,13 +1,15 @@
 import { claimScenarios } from "./claim-scenarios";
-import { factRows, qualityFindings, statementGaps } from "../lib/claim-builder-intelligence";
+import { factRows, hasSupportingInformation, normalizeEvidenceMap, qualityFindings, statementGaps } from "../lib/claim-builder-intelligence";
 import { guidedDraft } from "../lib/personal-statement-template";
 
-type Result={id:string;title:string;path:string;ready:boolean;score:number;passed:boolean;gaps:string[];findings:string[];words:number;mechanicalMarkers:number;feedback:string[]};
+type Result={id:string;title:string;path:string;ready:boolean;score:number;passed:boolean;gaps:string[];findings:string[];words:number;paragraphs:number;mechanicalMarkers:number;feedback:string[]};
 
 const same=(left:string[],right:string[])=>left.length===right.length&&left.every((value,index)=>value===right[index]);
 const unsupportedMedical=/\b(proves? that|definitely due to|caused by)\b/i;
+const attributedMedical=/\b(?:doctor|clinician|provider|physician|specialist|neurologist|examiner|medical (?:record|opinion))\b.{0,140}\b(?:said|says|stated|states|documented|documents|wrote|concluded|concludes|opined|opines|found|finds|explained|explains)\b/i;
 const mechanical=/(My current diagnosis or medical evaluation is:|My current symptoms and functional limitations are:|The effects on my work or school are:|The effects on ordinary daily activity are:|Specific examples of how this affects my life include:|My current and past treatment includes:|I have received care from:)/gi;
 const awkwardPattern=/\b(?:symptoms (?:usually )?last(?:ing)? (?:fatigue|stiffness)|for treatment, prescribed|first noticed (?:these|the) symptoms (?:snoring|original)|information includes A\b|treatment includes hearing aids were)\b/i;
+const count=(text:string,value:string)=>text.toLowerCase().split(value.toLowerCase()).length-1;
 
 const results:Result[]=claimScenarios.map(scenario=>{
   const condition=scenario.answers.condition==="Other / condition not listed"?scenario.answers.otherCondition:scenario.answers.condition;
@@ -26,18 +28,25 @@ const results:Result[]=claimScenarios.map(scenario=>{
   }else{
     const missingFacts=scenario.expected.draftIncludes.filter(value=>!draft.toLowerCase().includes(value.toLowerCase()));
     if(missingFacts.length){score-=25;feedback.push(`Draft omitted expected facts: ${missingFacts.join("; ")}.`)}
-    if(unsupportedMedical.test(draft)){score-=35;feedback.push("Draft repeated unsupported causal or medical-conclusion wording.")}
+    const forbiddenFacts=(scenario.expected.draftExcludes||[]).filter(value=>draft.toLowerCase().includes(value.toLowerCase()));
+    if(forbiddenFacts.length){score-=25;feedback.push(`Draft introduced or retained forbidden wording: ${forbiddenFacts.join("; ")}.`)}
+    const repeated=(scenario.expected.maxOccurrences||[]).filter(item=>count(draft,item.value)>item.count);
+    if(repeated.length){score-=15;feedback.push(`Draft repeated facts beyond the expected limit: ${repeated.map(item=>item.value).join("; ")}.`)}
+    if(unsupportedMedical.test(draft)&&!attributedMedical.test(draft)){score-=35;feedback.push("Draft repeated unsupported causal or medical-conclusion wording.")}
     if(awkwardPattern.test(draft)){score-=20;feedback.push("Draft contained a known awkward deterministic phrase pattern.")}
     const markers=draft.match(mechanical)?.length||0;
     if(markers>0){score-=10;feedback.push(`Template used ${markers} questionnaire-style ${markers===1?"transition":"transitions"}, making the narrative feel assembled.`)}
     const words=draft.trim().split(/\s+/).length;
-    if(words<140){score-=5;feedback.push(`Draft is only ${words} words; review whether important chronology or functional detail was underused.`)}
+    if(words<80){score-=5;feedback.push(`Draft is only ${words} words; review whether important chronology or functional detail was underused.`)}
+    const paragraphCount=draft.split(/\n\n+/).slice(1).filter(Boolean).length;
+    if(paragraphCount>6){score-=10;feedback.push(`Draft used ${paragraphCount} body paragraphs, suggesting one-field-per-paragraph assembly.`)}
     const rows=factRows(scenario.answers,condition);
-    if(rows.filter(row=>Boolean(scenario.evidenceMap[row.id])).length<Math.min(3,rows.length)){score-=5;feedback.push("Fewer than three major facts were linked to supporting information.")}
+    if(rows.filter(row=>hasSupportingInformation(scenario.evidenceMap[row.id])).length<Math.min(3,rows.length)){score-=5;feedback.push("Fewer than three major facts were linked to supporting information.")}
     if(!feedback.length)feedback.push("Core facts were retained without a deterministic safety or routing failure.");
   }
   const words=draft?draft.trim().split(/\s+/).length:0;
-  return {id:scenario.id,title:scenario.title,path:scenario.answers.claimType,ready,score:Math.max(0,score),passed:score>=80,gaps,findings,words,mechanicalMarkers:draft.match(mechanical)?.length||0,feedback};
+  const paragraphs=draft?draft.split(/\n\n+/).slice(1).filter(Boolean).length:0;
+  return {id:scenario.id,title:scenario.title,path:scenario.answers.claimType,ready,score:Math.max(0,score),passed:score>=80,gaps,findings,words,paragraphs,mechanicalMarkers:draft.match(mechanical)?.length||0,feedback};
 });
 
 const passed=results.filter(result=>result.passed).length;
@@ -46,6 +55,14 @@ const paused=results.filter(result=>!result.ready);
 const unsafe=results.filter(result=>result.feedback.some(item=>item.includes("unsupported causal")));
 const mechanicalCases=results.filter(result=>result.mechanicalMarkers>0);
 const average=(results.reduce((sum,result)=>sum+result.score,0)/results.length).toFixed(1);
+const firstWorkspace=claimScenarios.find(scenario=>scenario.id==="original-migraines")!;
+const secondWorkspace=claimScenarios.find(scenario=>scenario.id==="not-sure-path-complete")!;
+guidedDraft({...firstWorkspace.answers,condition:firstWorkspace.answers.condition,timeline:firstWorkspace.timeline});
+const isolatedDraft=guidedDraft({...secondWorkspace.answers,condition:secondWorkspace.answers.condition,timeline:secondWorkspace.timeline});
+const isolationLeaks=["field exercises","three to four attacks","dark room"].filter(value=>isolatedDraft.toLowerCase().includes(value));
+const contradictionCases=results.filter(result=>["conflict-onset-years","conflict-frequency"].includes(result.id)&&!result.ready);
+const legacyEvidence=normalizeEvidenceMap({available:"Service treatment records",pending:"Not yet located",recollection:"Personal recollection only"});
+const legacyConversionPassed=legacyEvidence.available.status==="record_available"&&legacyEvidence.pending.status==="record_not_obtained"&&!hasSupportingInformation(legacyEvidence.pending)&&legacyEvidence.recollection.status==="personal_recollection";
 
 console.log("# Debrief fictional claim evaluation\n");
 console.log(`Generated: ${new Date().toISOString().slice(0,10)}  `);
@@ -55,7 +72,10 @@ console.log(`- Scenarios: **${results.length}** (${ready.length} draft-ready; ${
 console.log(`- Passing scenarios: **${passed}/${results.length}**`);
 console.log(`- Average workflow score: **${average}/100**`);
 console.log(`- Unsafe wording repeated into a template: **${unsafe.length}**`);
-console.log(`- Drafts with questionnaire-style transitions: **${mechanicalCases.length}/${ready.length}**\n`);
+console.log(`- Drafts with questionnaire-style transitions: **${mechanicalCases.length}/${ready.length}**`);
+console.log(`- Contradiction probes correctly paused: **${contradictionCases.length}/2**`);
+console.log(`- Cross-claim isolation probe: **${isolationLeaks.length?"failed":"passed"}**`);
+console.log(`- Legacy evidence-map conversion: **${legacyConversionPassed?"passed":"failed"}**\n`);
 console.log("## Scenario results\n");
 console.log("| Scenario | Path | Outcome | Score | Primary feedback |");
 console.log("|---|---|---:|---:|---|");
@@ -68,7 +88,7 @@ for(const result of results){
   console.log(`- Expected workflow: ${expectedReady?"draft-ready":"request more information"}`);
   console.log(`- Detected gaps: ${result.gaps.length?result.gaps.map(value=>`\`${value}\``).join(", "):"none"}`);
   console.log(`- Readiness findings: ${result.findings.length?result.findings.map(value=>`\`${value}\``).join(", "):"none"}`);
-  console.log(`- Template length: ${result.words} words; mechanical transitions: ${result.mechanicalMarkers}`);
+  console.log(`- Template length: ${result.words} words in ${result.paragraphs} body paragraphs; mechanical transitions: ${result.mechanicalMarkers}`);
   for(const item of result.feedback)console.log(`- ${item}`);
   console.log("");
 }
@@ -81,4 +101,4 @@ recommendations.push("Add these fixtures to every future prompt or model compari
 recommendations.push("When AI is enabled, compare its output against this baseline for fact retention, chronology, natural flow, uncertainty preservation, and edit distance after reviewer corrections.");
 recommendations.forEach((recommendation,index)=>console.log(`${index+1}. ${recommendation}`));
 
-if(results.length!==18||passed!==results.length||unsafe.length||mechanicalCases.length)process.exitCode=1;
+if(results.length!==40||passed!==results.length||unsafe.length||mechanicalCases.length||contradictionCases.length!==2||isolationLeaks.length||!legacyConversionPassed)process.exitCode=1;

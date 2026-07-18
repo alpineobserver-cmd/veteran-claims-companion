@@ -1,4 +1,6 @@
-type PackageInput={condition:string;claimType:string;name:string;statement:string;timeline:{date:string;title:string;details:string;source:string;approximate:boolean}[];evidenceMap:Record<string,string>;selectedEvidence:string[];qualityFindings:{level:string;title:string;detail:string}[]};
+import { evidenceStatusLabel, type EvidenceMap } from "./claim-builder-intelligence";
+type PackageInput={condition:string;claimType:string;name:string;statement:string;timeline:{date:string;title:string;details:string;source:string;approximate:boolean}[];evidenceMap:EvidenceMap;selectedEvidence:string[];qualityFindings:{level:string;title:string;detail:string}[]};
+const factLabels:Record<string,string>={current:"Current condition",onset:"Onset or worsening",service:"In-service event or circumstances",function:"Symptoms and functional effects",treatment:"Treatment history",worsening:"Change since prior decision",secondary:"Secondary relationship"};
 const clean=(value:string)=>value.normalize("NFKD").replace(/[^\x20-\x7E\n]/g,"-").replace(/\s+/g," ").trim();
 const escapePdf=(value:string)=>value.replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");
 const wrap=(value:string,max=88)=>{const words=clean(value).split(" ");const lines:string[]=[];let line="";for(const word of words){if(!word)continue;if(`${line} ${word}`.trim().length>max){if(line)lines.push(line);line=word}else line=`${line} ${word}`.trim()}if(line)lines.push(line);return lines.length?lines:[""]};
@@ -25,7 +27,7 @@ export function createClaimPackagePdf(input:PackageInput){
   heading("Evidence identified");
   if(input.selectedEvidence.length)input.selectedEvidence.forEach(bullet);else paragraph("No evidence types were selected.");
   y-=5;line("Fact-to-evidence links",{size:11,bold:true,leading:18});
-  const links=Object.entries(input.evidenceMap).filter(([,value])=>value);if(links.length)links.forEach(([fact,value])=>bullet(`${fact}: ${value}`));else paragraph("No facts were linked to supporting information.");
+  const links=Object.entries(input.evidenceMap);if(links.length)links.forEach(([fact,link])=>bullet(`${factLabels[fact]||fact}: ${evidenceStatusLabel(link.status)}${link.source?` - ${link.source}`:""}`));else paragraph("No support statuses were entered for the major facts.");
   ensure(90);heading("Readiness checks");
   if(input.qualityFindings.length)input.qualityFindings.forEach(item=>{ensure(50);line(`[${item.level.toUpperCase()}] ${item.title}`,{bold:true});paragraph(item.detail,{indent:10})});else paragraph("No automated issues were identified. This does not replace review by the person making the statement or an accredited representative.");
   ensure(105);heading("Final review");

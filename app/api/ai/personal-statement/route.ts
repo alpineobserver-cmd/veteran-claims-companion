@@ -32,7 +32,7 @@ const requestSchema = z.object({
 
 type StatementInput=z.infer<typeof requestSchema>;
 type OpenAIResponse={output_text?:string;output?:Array<{content?:Array<{type?:string;text?:string}>}>;error?:{message?:string}};
-const statementFields=["diagnosis","symptoms","onset","serviceEvent","exposures","treatment","specificExamples","additionalContext","worsening","worseningDate","primaryCondition","secondaryRelationship","clinicianDiscussion","workImpact","dailyImpact","continuity","flareUps","conditionDetail1","conditionDetail2","conditionDetail3","conditionDetail4"] as const;
+const statementFields=["diagnosis","symptoms","symptomFrequency","symptomDuration","onset","serviceEvent","exposures","treatment","specificExamples","additionalContext","worsening","worseningDate","primaryCondition","secondaryRelationship","clinicianDiscussion","workImpact","dailyImpact","continuity","flareUps","conditionDetail1","conditionDetail2","conditionDetail3","conditionDetail4"] as const;
 const aiResultSchema=z.object({status:z.enum(["ready","needs_information"]),statement:z.string(),questions:z.array(z.object({field:z.enum(statementFields),question:z.string(),reason:z.string()})).max(3)});
 
 const limits=new Map<string,{count:number;reset:number}>();

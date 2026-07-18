@@ -1,17 +1,65 @@
 export type Answers={condition:string;otherCondition:string;claimType:string;diagnosis:string;symptoms:string;onset:string;branch:string;role:string;serviceEvent:string;exposures:string;treatment:string;providers:string;evidence:string[];statementName:string;continuity:string;specificExamples:string;additionalContext:string;previousDecision:string;previousEvaluation:string;worsening:string;worseningDate:string;primaryCondition:string;secondaryRelationship:string;clinicianDiscussion:string;symptomFrequency:string;symptomDuration:string;flareUps:string;workImpact:string;dailyImpact:string;conditionDetail1:string;conditionDetail2:string;conditionDetail3:string;conditionDetail4:string};
 export type TimelineEvent={id:string;date:string;title:string;details:string;source:string;approximate:boolean};
-export type EvidenceMap=Record<string,string>;
+export type EvidenceStatus="record_available"|"personal_recollection"|"witness_statement"|"record_not_obtained"|"none_identified";
+export type EvidenceLink={status:EvidenceStatus;source:string};
+export type EvidenceMap=Record<string,EvidenceLink>;
 export type QualityFinding={id:string;level:"required"|"improve"|"check";title:string;detail:string};
 export type ConditionPrompt={key:"conditionDetail1"|"conditionDetail2"|"conditionDetail3"|"conditionDetail4";label:string;placeholder:string};
-export type StatementField="diagnosis"|"symptoms"|"onset"|"serviceEvent"|"exposures"|"treatment"|"specificExamples"|"additionalContext"|"worsening"|"worseningDate"|"primaryCondition"|"secondaryRelationship"|"clinicianDiscussion"|"workImpact"|"dailyImpact"|"continuity"|"flareUps"|"conditionDetail1"|"conditionDetail2"|"conditionDetail3"|"conditionDetail4";
+export type StatementField="diagnosis"|"symptoms"|"symptomFrequency"|"symptomDuration"|"onset"|"serviceEvent"|"exposures"|"treatment"|"specificExamples"|"additionalContext"|"worsening"|"worseningDate"|"primaryCondition"|"secondaryRelationship"|"clinicianDiscussion"|"workImpact"|"dailyImpact"|"continuity"|"flareUps"|"conditionDetail1"|"conditionDetail2"|"conditionDetail3"|"conditionDetail4";
 export type StatementGap={field:StatementField;question:string;reason:string;placeholder:string;multiline?:boolean};
 
 export const initialAnswers:Answers={condition:"",otherCondition:"",claimType:"",diagnosis:"",symptoms:"",onset:"",branch:"",role:"",serviceEvent:"",exposures:"",treatment:"",providers:"",evidence:[],statementName:"",continuity:"",specificExamples:"",additionalContext:"",previousDecision:"",previousEvaluation:"",worsening:"",worseningDate:"",primaryCondition:"",secondaryRelationship:"",clinicianDiscussion:"",symptomFrequency:"",symptomDuration:"",flareUps:"",workImpact:"",dailyImpact:"",conditionDetail1:"",conditionDetail2:"",conditionDetail3:"",conditionDetail4:""};
 
+export const evidenceStatuses:Array<{value:EvidenceStatus;label:string;description:string}>=[
+  {value:"record_available",label:"Supporting record available",description:"A record, log, photo, or medical opinion is available now."},
+  {value:"personal_recollection",label:"Personal recollection",description:"This fact is based on the veteran's own observation or memory."},
+  {value:"witness_statement",label:"Witness or buddy evidence",description:"Another person observed or can describe this fact."},
+  {value:"record_not_obtained",label:"Record identified but not obtained",description:"A possible record is known but is not available yet."},
+  {value:"none_identified",label:"No supporting information identified",description:"No supporting source has been identified for this fact yet."}
+];
+export const emptyEvidenceLink:EvidenceLink={status:"none_identified",source:""};
+export function normalizeEvidenceLink(value:unknown):EvidenceLink{
+  if(value&&typeof value==="object"&&"status" in value){
+    const candidate=value as {status?:unknown;source?:unknown};
+    if(evidenceStatuses.some(item=>item.value===candidate.status))return {status:candidate.status as EvidenceStatus,source:typeof candidate.source==="string"?candidate.source.slice(0,500):""};
+  }
+  if(typeof value==="string"&&value.trim()){
+    if(value==="Not yet located")return {status:"record_not_obtained",source:""};
+    if(value==="Personal recollection only"||value==="Personal statement")return {status:"personal_recollection",source:value==="Personal statement"?value:""};
+    if(value==="Buddy or witness statement")return {status:"witness_statement",source:value};
+    return {status:"record_available",source:value.slice(0,500)};
+  }
+  return {...emptyEvidenceLink};
+}
+export function normalizeEvidenceMap(value:unknown):EvidenceMap{
+  if(!value||typeof value!=="object"||Array.isArray(value))return {};
+  return Object.fromEntries(Object.entries(value).map(([key,link])=>[key,normalizeEvidenceLink(link)]));
+}
+export const evidenceStatusLabel=(status:EvidenceStatus)=>evidenceStatuses.find(item=>item.value===status)?.label||"Unknown status";
+export const hasSupportingInformation=(link:EvidenceLink|undefined)=>Boolean(link&&(link.status==="personal_recollection"||link.status==="witness_statement"||(link.status==="record_available"&&link.source.trim())));
+export const hasAvailableRecord=(link:EvidenceLink|undefined)=>Boolean(link?.status==="record_available"&&link.source.trim());
+
 const unsupportedMedicalConclusion=/\b(?:caused by|definitely due to|proves? that)\b/i;
-const narrativeFields:StatementField[]=["diagnosis","symptoms","onset","serviceEvent","exposures","treatment","specificExamples","additionalContext","worsening","worseningDate","primaryCondition","secondaryRelationship","clinicianDiscussion","workImpact","dailyImpact","continuity","flareUps","conditionDetail1","conditionDetail2","conditionDetail3","conditionDetail4"];
-const attributedMedicalConclusion=/\b(?:doctor|clinician|provider|physician|specialist|examiner|medical (?:record|opinion))\b.{0,100}\b(?:said|says|stated|states|documented|documents|wrote|concluded|concludes|opined|opines|found|finds|explained|explains)\b/i;
+const narrativeFields:StatementField[]=["diagnosis","symptoms","symptomFrequency","symptomDuration","onset","serviceEvent","exposures","treatment","specificExamples","additionalContext","worsening","worseningDate","primaryCondition","secondaryRelationship","clinicianDiscussion","workImpact","dailyImpact","continuity","flareUps","conditionDetail1","conditionDetail2","conditionDetail3","conditionDetail4"];
+const attributedMedicalConclusion=/\b(?:doctor|clinician|provider|physician|specialist|neurologist|therapist|examiner|medical (?:record|opinion))\b.{0,100}\b(?:said|says|stated|states|documented|documents|wrote|concluded|concludes|opined|opines|found|finds|explained|explains)\b/i;
 const needsMedicalConclusionRewrite=(value:string)=>unsupportedMedicalConclusion.test(value)&&!attributedMedicalConclusion.test(value);
+const numberWords:Record<string,number>={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
+const frequencyRate=(value:string)=>{
+  const match=value.toLowerCase().match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b[^.;]{0,35}\b(?:per|each|a)\s+(day|week|month|year)\b/);
+  if(!match)return null;
+  const amount=numberWords[match[1]]||Number(match[1]);
+  const factor:Record<string,number>={day:30,week:4.33,month:1,year:1/12};
+  return amount*factor[match[2]];
+};
+const conflictingFrequency=(a:Pick<Answers,"symptomFrequency"|"conditionDetail1"|"conditionDetail2"|"conditionDetail3"|"conditionDetail4">)=>{
+  const rates=[a.symptomFrequency,a.conditionDetail1,a.conditionDetail2,a.conditionDetail3,a.conditionDetail4].map(frequencyRate).filter((value):value is number=>value!==null&&value>0);
+  return rates.length>1&&Math.max(...rates)/Math.min(...rates)>=2;
+};
+const conflictingOnsetYear=(a:Pick<Answers,"onset"|"serviceEvent">)=>{
+  const onset=a.onset.match(/\b(?:19|20)\d{2}\b/)?.[0];
+  const described=a.serviceEvent.match(/\b(?:began|started|first noticed)\b[^.]{0,120}\b((?:19|20)\d{2})\b/i)?.[1];
+  return Boolean(onset&&described&&onset!==described);
+};
 
 export function statementGaps(a:Pick<Answers,StatementField|"claimType">):StatementGap[]{
   const gaps:StatementGap[]=[];
@@ -31,6 +79,8 @@ export function statementGaps(a:Pick<Answers,StatementField|"claimType">):Statem
   for(const field of narrativeFields){
     if(needsMedicalConclusionRewrite(a[field]))add(field,"Can you restate this using only what you personally observed, or identify the clinician or record that reached the medical conclusion?","This answer appears to state a medical cause as fact. Debrief should not repeat that conclusion without clear attribution.","Describe the sequence, symptoms, changes, or clinician-documented opinion without stating an unsupported cause.");
   }
+  if(conflictingOnsetYear(a))add("onset","Which year best reflects when you first noticed the symptoms?","The onset answer and service-event description appear to give different years for when symptoms began.","Enter the best approximate year and explain any uncertainty.",false);
+  if(conflictingFrequency(a))add("symptomFrequency","Which frequency best describes the current pattern?","Two answers appear to describe materially different symptom frequencies.","Give one current estimate per day, week, month, or year.",false);
   return gaps.slice(0,4);
 }
 
@@ -65,10 +115,12 @@ export function qualityFindings(a:Answers,condition:string,timeline:TimelineEven
   if(a.claimType==="Secondary claim"&&(!a.primaryCondition||!a.secondaryRelationship))add("secondary","required","Secondary relationship is incomplete","Identify the primary condition and explain the observed history without making an unsupported medical conclusion.");
   if(!timeline.length)add("timeline","improve","Timeline has no events","A short chronology makes dates and continuity easier to review.");
   const relevantFacts=factRows(a,condition);
-  if(relevantFacts.filter(row=>Boolean(map[row.id])).length<Math.min(3,relevantFacts.length))add("evidence","improve","Key facts are not linked to supporting information","Link each major fact to a record, statement, log, or mark it as not yet located.");
+  if(relevantFacts.filter(row=>hasSupportingInformation(map[row.id])).length<Math.min(3,relevantFacts.length))add("evidence","improve","Key facts are not linked to supporting information","Identify whether each major fact is supported by an available record, personal recollection, or witness evidence.");
+  if(relevantFacts.some(row=>map[row.id]?.status==="record_not_obtained"))add("evidence-pending","improve","Identified records are not yet available","Keep track of the records you identified but have not obtained. They are not counted as available supporting evidence.");
   const all=narrativeFields.map(field=>a[field]).join(" ");
   if(/\b(?:always|constantly|completely)\b|\bnever\s+(?:have|had|can|could|do|did|is|was|will|experience|experienced)\b/i.test(all))add("absolute","check","Review absolute wording","Confirm words such as always or never are accurate, or replace them with a measurable pattern.");
   if(unsupportedMedicalConclusion.test(all))add("medical","check","Possible medical conclusion","Describe what happened and what you believe; attribute medical conclusions to a clinician or record.");
+  if(conflictingOnsetYear(a)||conflictingFrequency(a))add("contradiction","check","Answers may conflict","Review the highlighted timing or frequency answers before generating a statement.");
   return findings;
 }
 
