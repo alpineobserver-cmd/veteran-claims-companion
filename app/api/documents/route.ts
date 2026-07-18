@@ -3,6 +3,7 @@ import { inspectDocument, safeDisplayName, syntheticStorageKey } from "@/lib/doc
 import { prisma } from "@/lib/prisma";
 import { documentStorage, StorageConfigurationError } from "@/lib/storage";
 import { NextResponse } from "next/server";
+import { hasAcceptableContentLength, MAX_DOCUMENT_REQUEST_BYTES, MAX_DOCUMENTS_PER_USER, MAX_DOCUMENTS_PER_WORKSPACE, rejectCrossOriginMutation } from "@/lib/request-security";
 
 export const runtime="nodejs";
 
@@ -16,12 +17,18 @@ export async function GET(request:Request){
 }
 
 export async function POST(request:Request){
+  const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
+  if(!hasAcceptableContentLength(request,MAX_DOCUMENT_REQUEST_BYTES))return NextResponse.json({error:"The upload request is larger than the 4 MB alpha limit."},{status:413});
   const session=await auth();if(!session?.user?.id)return NextResponse.json({error:"Sign in to upload a test document."},{status:401});
   const form=await request.formData().catch(()=>null);if(!form)return NextResponse.json({error:"The upload could not be read."},{status:400});
   const file=form.get("file");const claimId=form.get("claimId");const syntheticConfirmed=form.get("syntheticConfirmed");
   if(!(file instanceof File)||typeof claimId!=="string")return NextResponse.json({error:"Choose a workspace and file."},{status:400});
+  if(file.size>MAX_DOCUMENT_REQUEST_BYTES)return NextResponse.json({error:"Test files must be 4 MB or smaller."},{status:413});
   if(syntheticConfirmed!=="true")return NextResponse.json({error:"Confirm that this is an entirely fictional test document."},{status:400});
   const workspace=await prisma.claim.findFirst({where:{id:claimId,userId:session.user.id},select:{id:true}});if(!workspace)return NextResponse.json({error:"Workspace not found."},{status:404});
+  const [workspaceDocuments,userDocuments]=await Promise.all([prisma.document.count({where:{claimId,userId:session.user.id}}),prisma.document.count({where:{userId:session.user.id}})]);
+  if(workspaceDocuments>=MAX_DOCUMENTS_PER_WORKSPACE)return NextResponse.json({error:`Alpha workspaces are limited to ${MAX_DOCUMENTS_PER_WORKSPACE} test documents.`},{status:409});
+  if(userDocuments>=MAX_DOCUMENTS_PER_USER)return NextResponse.json({error:`Alpha accounts are limited to ${MAX_DOCUMENTS_PER_USER} test documents.`},{status:409});
 
   let inspected:ReturnType<typeof inspectDocument>;let buffer:Buffer;
   try{buffer=Buffer.from(await file.arrayBuffer());inspected=inspectDocument(buffer)}catch(reason){return NextResponse.json({error:reason instanceof Error?reason.message:"The file is not accepted."},{status:400})}

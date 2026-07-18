@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { statementGaps } from "@/lib/claim-builder-intelligence";
 import { guidedDraft, statementHeading } from "@/lib/personal-statement-template";
+import { auth } from "@/auth";
+import { hasAcceptableContentLength, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
 
 export const runtime = "nodejs";
 
@@ -76,6 +78,8 @@ Rules:
 export function GET(){return NextResponse.json({configured:Boolean(process.env.OPENAI_API_KEY),mode:process.env.OPENAI_API_KEY?"ai":"template"},{headers:{"Cache-Control":"no-store"}})}
 
 export async function POST(request:NextRequest){
+  const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
+  if(!hasAcceptableContentLength(request,MAX_JSON_REQUEST_BYTES))return NextResponse.json({error:"The drafting request is too large."},{status:413});
   if(isRateLimited(request))return NextResponse.json({error:"Too many drafting requests. Please wait a few minutes and try again."},{status:429});
   let body:unknown;
   try{body=await request.json()}catch{return NextResponse.json({error:"The request could not be read."},{status:400})}
@@ -88,6 +92,8 @@ export async function POST(request:NextRequest){
   if(!process.env.OPENAI_API_KEY){
     return NextResponse.json({status:"ready",statement:guidedDraft(input),mode:"template",notice:"OpenAI is not connected. This draft uses fixed rules to organize your answers into a narrative; it has not been interpreted or verified by AI."});
   }
+  const session=await auth();
+  if(!session?.user?.id)return NextResponse.json({error:"Sign in before sending questionnaire answers to the AI drafting service."},{status:401});
 
   const modelInput=Object.fromEntries(Object.entries(input).filter(([key])=>key!=="statementName"));
   const controller=new AbortController();
@@ -107,7 +113,7 @@ export async function POST(request:NextRequest){
     if(!result.data.statement.trim())throw new Error("The model returned an empty statement.");
     return NextResponse.json({status:"ready",statement:`${statementHeading(input)}\n\n${result.data.statement.trim()}`,mode:"ai"});
   }catch(error){
-    console.error("Personal statement generation failed",error instanceof Error?error.message:error);
+    console.error("Personal statement generation failed",error instanceof Error?error.name:"UnknownError");
     return NextResponse.json({error:"The AI draft could not be generated right now. Your answers are still saved on this device."},{status:502});
   }finally{clearTimeout(timeout)}
 }

@@ -2,10 +2,12 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { documentStorage } from "@/lib/storage";
 import { NextResponse } from "next/server";
+import { rejectCrossOriginMutation } from "@/lib/request-security";
 
 type Context={params:Promise<{id:string}>};
 
-export async function DELETE(_:Request,context:Context){
+export async function DELETE(request:Request,context:Context){
+  const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
   const session=await auth();if(!session?.user?.id)return NextResponse.json({error:"Sign in to delete this document."},{status:401});
   const {id}=await context.params;const document=await prisma.document.findFirst({where:{id,userId:session.user.id},select:{id:true,claimId:true,storageKey:true,mimeType:true,size:true,provider:true}});
   if(!document)return NextResponse.json({error:"Document not found."},{status:404});

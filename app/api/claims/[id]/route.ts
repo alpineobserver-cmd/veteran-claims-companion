@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { documentStorage } from "@/lib/storage";
+import { hasAcceptableContentLength, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -20,6 +21,8 @@ export async function GET(_: Request, context: Context) {
 }
 
 export async function PATCH(request: Request, context: Context) {
+  const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
+  if(!hasAcceptableContentLength(request,MAX_JSON_REQUEST_BYTES))return NextResponse.json({error:"This claim draft is too large to process."},{status:413});
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Sign in to save this claim." }, { status: 401 });
   const { id } = await context.params;
@@ -49,7 +52,8 @@ export async function PATCH(request: Request, context: Context) {
   return NextResponse.json({ claim });
 }
 
-export async function DELETE(_: Request, context: Context) {
+export async function DELETE(request: Request, context: Context) {
+  const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Sign in to delete this claim." }, { status: 401 });
   const { id } = await context.params;
