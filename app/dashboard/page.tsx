@@ -21,7 +21,7 @@ export default async function Dashboard() {
 
     <section className="next-step" aria-labelledby="next-heading">
       <div className="next-icon">{user?<Check size={22}/>:<Cloud size={22}/>}</div>
-      <div className="next-copy"><span className="kicker">Priority action</span><h2 id="next-heading">{first?`Continue your ${first.title} workspace`:user?"Create your first evidence workspace":"Sign in for secure cloud saving"}</h2><p>{first?`Your answers are ${first.progress}% prepared and were last saved ${formatUpdated(first.updatedAt)}.`:user?"Begin with the test document intake workspace. Real medical records are not enabled yet.":"You can explore without an account; sign in when you want to keep a draft across devices."}</p></div>
+      <div className="next-copy"><span className="kicker">Priority action</span><h2 id="next-heading">{first?`Continue your ${first.title} workspace`:user?"Create your first evidence workspace":"Sign in for account-based saving"}</h2><p>{first?`Your answers are ${first.progress}% prepared and were last saved ${formatUpdated(first.updatedAt)}.`:user?"Begin with the fictional document intake workspace. Real medical records are prohibited in this alpha.":"You can explore without an account; sign in when you want to keep a fictional draft across devices."}</p></div>
       <a className="button warm" href={first?`/claim-builder?claim=${first.id}`:user?"/intake":"/login?redirectTo=/intake"}>{first?"Continue":user?"Open intake":"Sign in"} <ArrowRight size={17}/></a>
     </section>
 

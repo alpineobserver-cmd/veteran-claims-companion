@@ -38,8 +38,8 @@ export default async function LandingPage() {
     </section>
 
     <footer className="landing-footer">
-      <span>Debrief is an independent educational tool.</span>
-      <span>It does not submit claims and is not affiliated with VA.</span>
+      <span>Debrief is an independent educational tool. It does not submit claims and is not affiliated with VA.</span>
+      <span className="landing-legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a></span>
     </footer>
   </main>;
 }

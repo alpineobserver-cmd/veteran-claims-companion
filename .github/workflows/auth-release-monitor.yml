@@ -1,0 +1,21 @@
+name: Auth dependency monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 1 * *"
+
+permissions:
+  contents: read
+
+jobs:
+  check-auth-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Compare Auth.js release channels
+        run: node scripts/check-auth-release.mjs

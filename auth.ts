@@ -1,17 +1,23 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import Nodemailer from "next-auth/providers/nodemailer";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
-const emailProvider = process.env.EMAIL_SERVER && process.env.EMAIL_FROM
-  ? [Nodemailer({ server: process.env.EMAIL_SERVER, from: process.env.EMAIL_FROM })]
-  : [];
+import { authAuditLogger, logAuthEvent } from "@/lib/auth-audit";
 
 export const {handlers,auth,signIn,signOut}=NextAuth({
   adapter: PrismaAdapter(prisma),
-  providers: [Google, ...emailProvider],
-  pages: { signIn: "/login" },
+  providers: [Google],
+  pages: { signIn: "/login", error: "/auth/error" },
   session: { strategy: "database" },
+  logger: authAuditLogger,
+  events: {
+    signIn({account,isNewUser}) {
+      logAuthEvent("sign_in_succeeded",{provider:account?.provider??"unknown",isNewUser:Boolean(isNewUser)});
+    },
+    signOut() {
+      logAuthEvent("sign_out_succeeded");
+    }
+  },
   callbacks: {
     session({ session, user }) {
       session.user.id = user.id;

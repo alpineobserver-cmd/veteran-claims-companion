@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Bell, BookOpen, ClipboardList, Files, FolderOpen, PackageCheck,
-  History, LayoutDashboard, LifeBuoy, Menu, Search, Settings, ShieldCheck, User, X
+  History, LayoutDashboard, LifeBuoy, Menu, Search, ShieldCheck, User, X
 } from "lucide-react";
 import { conditions } from "@/lib/conditions";
 import { vaForms } from "@/lib/va-forms";
@@ -71,10 +71,10 @@ export function AppShell({ children, current = "home", user }: { children: React
       </nav>
       <div className="sidebar-rule"/>
       <nav className="nav utility-nav" aria-label="Account navigation">
-        {account?<a href="/dashboard"><User size={18}/><span>My claims</span></a>:<a href="/login?redirectTo=/dashboard"><User size={18}/><span>Sign in</span></a>}
-        <span className="nav-disabled" aria-disabled="true"><Settings size={18}/><span>Settings</span><small>After sign-in</small></span>
+        {account?<a className={current==="account"?"active":""} href="/account"><User size={18}/><span>Account &amp; data</span></a>:<a href="/login?redirectTo=/dashboard"><User size={18}/><span>Sign in</span></a>}
       </nav>
-      <a className="side-help" href="/conditions" onClick={()=>setMenuOpen(false)}><LifeBuoy size={19}/><span><strong>Need a hand?</strong><small>Browse the condition guide</small></span></a>
+      <div className="sidebar-legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div>
+      <a className="side-help" href="https://www.va.gov/get-help-from-accredited-representative/" target="_blank" rel="noreferrer" onClick={()=>setMenuOpen(false)}><LifeBuoy size={19}/><span><strong>Need claim help?</strong><small>Find a VA-accredited representative</small></span></a>
     </aside>
     <main className="main">
       <header className="topbar">
@@ -87,7 +87,7 @@ export function AppShell({ children, current = "home", user }: { children: React
         </div>
         <div className="top-actions">
           <div className="notifications-wrap"><button className="iconbtn" aria-label="Notifications" aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(open=>!open)}><Bell size={18}/></button>
-            {notificationsOpen && <div className="notifications-panel" role="status"><strong>You’re all caught up</strong><p>Claim reminders will appear here after accounts and hosted storage are connected.</p></div>}
+            {notificationsOpen && <div className="notifications-panel" role="status"><strong>You’re all caught up</strong><p>Future claim-package reminders will appear here. Notifications are not enabled in this alpha.</p></div>}
           </div>
           <a className={`avatar ${account?"":"signed-out"}`} href={account?"/dashboard":"/login?redirectTo=/dashboard"} aria-label={account?`Account for ${account.name||account.email||"signed-in user"}`:"Sign in"}>{initials}</a>
         </div>

@@ -171,7 +171,7 @@ export function ClaimQuestionnaire({user,initialClaimId,fresh=false}:{user?:{id:
         {completed && <div className="summary-next-actions"><a className="text-action" href="/dashboard">Return to dashboard <ArrowRight size={14}/></a><button type="button" onClick={startNew}>Add another condition</button></div>}
       </section>
     </div>
-    <div className="builder-note"><Info size={17}/><p><strong>Use your own words.</strong> It’s okay if you don’t know every answer. This tool is for organizing information and does not submit anything to VA.</p></div>
+    <div className="builder-note"><Info size={17}/><p><strong>Fictional alpha scenarios only.</strong> Do not enter real health or identifying information. This self-directed tool organizes what you provide; it does not represent you, determine eligibility, or submit anything to VA.</p></div>
   </div>;
 }
 
