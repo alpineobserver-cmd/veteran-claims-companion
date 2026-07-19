@@ -2,6 +2,10 @@
 
 An independent educational and organizational MVP for veterans preparing VA disability claim materials. It does not submit claims, give legal advice, or represent the Department of Veterans Affairs.
 
+## Project management
+
+Use the [product backlog](docs/product-backlog.md) as the working source of truth for priorities, release gates, Alpha follow-up, and future milestones. Record and triage tester reports in the single [Alpha feedback register](docs/alpha-feedback-register.md).
+
 ## Included in this increment
 
 - Responsive Next.js 15 dashboard and application shell
