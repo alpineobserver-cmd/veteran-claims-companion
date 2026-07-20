@@ -1,0 +1,40 @@
+/* Cross-route WCAG support: visible focus, readable small text, and motion preferences. */
+:root{
+  --sage:#637970;
+  --olive:#536947;
+  --muted:#52605b;
+  --gold:#8b6425;
+}
+
+:where(a,button,summary,input,select,textarea):focus-visible{
+  outline:3px solid var(--gold);
+  outline-offset:3px;
+}
+
+.brandcopy small{color:#91a39c}
+.nav-label{color:#8da098}
+.nav a{color:#a4b2ac}
+.nav a svg{color:#91a39b}
+.nav-disabled{color:#7e9088}
+.nav-disabled svg{color:#778a82}
+.side-help small{color:#9bada5}
+.sidebar-legal a{display:inline-flex;align-items:center;min-height:24px;color:#9aaca4}
+.sidebar-legal a:hover{color:#c2d0ca}
+.search input::placeholder{color:#91a39b}
+.search svg{color:#91a39b}
+.iconbtn{border-color:#52656b;color:#b1c0ba}
+.avatar.signed-out{background:#30464a;color:#e1e9e5}
+.search-results small,.notifications-panel p{color:#a2b2ab}
+.eyebrow,.kicker{color:#4f685e}
+.builder-note{color:#52605b}
+.step-list button{color:#707873}
+.cloud-save-prompt p{color:#655d4f}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    scroll-behavior:auto!important;
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+  }
+}

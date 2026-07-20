@@ -29,6 +29,7 @@ AUTH_E2E_BASE_URL=https://veteran-claims-companion.vercel.app npm run test:auth
 ```
 
 The automated suite checks the login page, provider and callback URLs, unauthenticated session response, cache controls, and branded error recovery.
+If `AUTH_E2E_BASE_URL` is omitted, the tests that need a running website are reported as skipped; source-level canonical-host tests still run. This keeps the general release gate truthful when no local server is active.
 
 ## Human callback verification
 

@@ -1,6 +1,6 @@
 # Debrief product backlog
 
-Last reviewed: July 19, 2026  
+Last reviewed: July 20, 2026
 Current release: closed Alpha  
 Current data boundary: fictional information and fictional documents only
 
@@ -48,29 +48,33 @@ This file is the working source of truth for product tasks. Update the checkbox 
   - [x] Document severity definitions, Monday/Thursday cadence, urgent screening, duplicate handling, ownership, verification, and closure rules.
   - [x] Triage and resolve the known protected-deployment-link report as `AF-0001`.
   - [ ] Run the checklist whenever feedback arrives and at each scheduled review; keep open Blocker/Critical work ahead of unrelated major features.
-- [ ] **ALPHA-003 · P1** — Establish Alpha success measures and a baseline.
+- [ ] **ALPHA-003 · P1 · [Partially completed]** — Establish Alpha success measures and a baseline. Definitions, targets, privacy controls, and aggregation tooling are implemented in `docs/alpha-success-measures.md`; the human baseline requires actual tester sessions.
   - Measure claim-workflow completion rate, abandonment stage, time to usable statement, save/resume success, export success, and user confidence.
   - Collect the minimum information needed and avoid health content or sensitive questionnaire responses in analytics.
-- [ ] **ALPHA-004 · P1 · [Added]** — Create a short post-test survey and moderated-test script so results are comparable across testers.
-- [ ] **ALPHA-005 · P1 · [Added]** — Publish a tester invitation template containing only the canonical Alpha URL, fictional-data rules, supported browsers, feedback instructions, and private security-reporting instructions.
+  - [x] Define each measure, workflow stage, numerator, denominator, collection point, and initial Alpha target.
+  - [x] Add a structured session-results schema and privacy-enforcing summary command.
+  - [x] Record the 40-scenario deterministic workflow result as the technical baseline.
+  - [ ] Record at least five Alpha sessions and publish the first human usability baseline.
+- [x] **ALPHA-004 · P1 · [Added]** — Create a short post-test survey and moderated-test script so results are comparable across testers. See `docs/alpha-post-test-survey.md` and `docs/alpha-moderated-test-script.md`.
+- [x] **ALPHA-005 · P1 · [Added]** — Publish a tester invitation template containing only the canonical Alpha URL, fictional-data rules, supported browsers, feedback instructions, and private security-reporting instructions. See `docs/alpha-tester-invitation.md`.
 - [ ] **ALPHA-006 · P1 · [Added]** — Maintain a tester onboarding/offboarding checklist.
   - Add and remove Google OAuth Test users intentionally.
   - Record consent to Alpha terms and confirm account/data deletion at the end of testing when requested.
 
 ### Regression and experience testing
 
-- [ ] **TEST-001 · P0** — Reproduce and resolve every blocking Alpha defect with a regression test where practical.
-- [ ] **TEST-002 · P1** — Run a fresh fictional-veteran test set after the first Alpha corrections.
+- [ ] **TEST-001 · P0 · [Partially completed / operating]** — Reproduce and resolve every blocking Alpha defect with a regression test where practical. No open Blocker/Critical defect was found on July 20; `npm run test:release` is the combined regression gate. Repeat whenever qualifying feedback arrives.
+- [x] **TEST-002 · P1** — Run a fresh fictional-veteran test set after the first Alpha corrections. On July 20, all 40 scenarios passed with a 99.9/100 average; see `docs/alpha-test-report-2026-07-20.md`.
   - Preserve the existing 40-scenario suite as a minimum regression gate.
   - Add scenarios derived from Alpha defects without including tester information.
-- [ ] **TEST-003 · P1** — Test the complete experience on representative mobile, tablet, and desktop sizes.
+- [ ] **TEST-003 · P1 · [Partially completed]** — Test the complete experience on representative mobile, tablet, and desktop sizes. Public routes and the full signed-out claim flow passed; signed-in storage/package/account paths need the dedicated test account.
   - Cover splash page, login, workspace creation, upload, claim builder, review, save/resume, package workspace, export, deletion, and logout.
-- [ ] **TEST-004 · P1** — Complete a manual WCAG 2.2 AA accessibility review.
+- [ ] **TEST-004 · P1 · [Partially completed]** — Complete a manual WCAG 2.2 AA accessibility review. Initial rendered review and source remediation are complete; a post-deploy human screen-reader and 200% zoom pass remains.
   - Include keyboard-only operation, visible focus, screen-reader labels and announcements, headings, error recovery, contrast, 200% zoom, reflow, touch targets, and reduced motion.
-- [ ] **TEST-005 · P1 · [Added]** — Run a real end-to-end Google login check with a dedicated fictional Alpha account before each Alpha release.
+- [ ] **TEST-005 · P1 · [Added] · [Partially completed]** — Run a real end-to-end Google login check with a dedicated fictional Alpha account before each Alpha release. All seven live non-credential boundary checks passed; the human Google callback and account lifecycle remain.
   - Confirm login, callback, session creation, logout, expired-check recovery, and account deletion.
   - Never store the account password or MFA secret in source control or application logs.
-- [ ] **TEST-006 · P1 · [Added]** — Add an automated link check that confirms public invitations, OAuth settings, Privacy, and Terms use the canonical production address rather than protected Vercel deployment aliases.
+- [x] **TEST-006 · P1 · [Added]** — Add an automated link check that confirms public invitations, OAuth settings, Privacy, and Terms use the canonical production address rather than protected Vercel deployment aliases. Repository and live canonical checks passed July 20.
 
 ## Phase 2 — Complete the claim-package workflow
 

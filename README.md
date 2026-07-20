@@ -6,6 +6,8 @@ An independent educational and organizational MVP for veterans preparing VA disa
 
 Use the [product backlog](docs/product-backlog.md) as the working source of truth for priorities, release gates, Alpha follow-up, and future milestones. Record and triage tester reports in the single [Alpha feedback register](docs/alpha-feedback-register.md).
 
+The Alpha evaluation kit includes [success measures](docs/alpha-success-measures.md), a [post-test survey](docs/alpha-post-test-survey.md), a [moderated-test script](docs/alpha-moderated-test-script.md), and the canonical [tester invitation](docs/alpha-tester-invitation.md). Aggregate privacy-safe session scorecards with `npm run eval:alpha`.
+
 ## Included in this increment
 
 - Responsive Next.js 15 dashboard and application shell

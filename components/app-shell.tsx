@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell, BookOpen, ClipboardList, Files, FolderOpen, PackageCheck,
   History, LayoutDashboard, LifeBuoy, Menu, Search, ShieldCheck, User, X
@@ -32,19 +32,33 @@ export function AppShell({ children, current = "home", user }: { children: React
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [account,setAccount]=useState<ShellUser|undefined>(user);
+  const [mobileLayout,setMobileLayout]=useState(false);
+  const openMenuRef=useRef<HTMLButtonElement>(null);
+  const closeMenuRef=useRef<HTMLButtonElement>(null);
   const results = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return [];
     return searchItems.filter(item => `${item.label} ${item.detail} ${item.type}`.toLowerCase().includes(normalized)).slice(0, 7);
   }, [query]);
 
+  useEffect(()=>{
+    const media=window.matchMedia("(max-width: 620px)");
+    const update=()=>{setMobileLayout(media.matches);if(!media.matches)setMenuOpen(false)};
+    update();media.addEventListener("change",update);return()=>media.removeEventListener("change",update);
+  },[]);
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") { setMenuOpen(false); setNotificationsOpen(false); setQuery(""); }
+      if (event.key === "Escape") {
+        if(menuOpen){setMenuOpen(false);window.requestAnimationFrame(()=>openMenuRef.current?.focus())}
+        setNotificationsOpen(false);setQuery("");
+      }
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [menuOpen]);
+
+  useEffect(()=>{if(menuOpen)closeMenuRef.current?.focus()},[menuOpen]);
 
   useEffect(()=>{
     if(user){setAccount(user);return}
@@ -56,9 +70,9 @@ export function AppShell({ children, current = "home", user }: { children: React
   const initials=account?.name?.split(/\s+/).map(part=>part[0]).join("").slice(0,2).toUpperCase()||account?.email?.slice(0,2).toUpperCase()||"SIGN IN";
 
   return <div className={`shell ${menuOpen ? "menu-open" : ""}`}>
-    {menuOpen && <button className="sidebar-scrim" aria-label="Close menu" onClick={()=>setMenuOpen(false)}/>}
-    <aside className="sidebar" aria-label="Companion navigation">
-      <div className="mobile-sidebar-head"><span>Menu</span><button className="iconbtn" aria-label="Close menu" onClick={()=>setMenuOpen(false)}><X size={18}/></button></div>
+    {menuOpen && <button className="sidebar-scrim" aria-label="Close menu" onClick={()=>{setMenuOpen(false);window.requestAnimationFrame(()=>openMenuRef.current?.focus())}}/>}
+    <aside id="app-sidebar" className="sidebar" aria-label="Companion navigation" aria-hidden={mobileLayout&&!menuOpen?true:undefined} inert={mobileLayout&&!menuOpen?true:undefined}>
+      <div className="mobile-sidebar-head"><span>Menu</span><button ref={closeMenuRef} className="iconbtn" aria-label="Close menu" onClick={()=>{setMenuOpen(false);window.requestAnimationFrame(()=>openMenuRef.current?.focus())}}><X size={18}/></button></div>
       <a className="brand" href="/dashboard" aria-label="Debrief dashboard" onClick={()=>setMenuOpen(false)}>
         <span className="brandmark"><ShieldCheck size={22}/></span>
         <span className="brandcopy"><strong>Debrief</strong><small>Claim preparation</small></span>
@@ -76,9 +90,9 @@ export function AppShell({ children, current = "home", user }: { children: React
       <div className="sidebar-legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div>
       <a className="side-help" href="https://www.va.gov/get-help-from-accredited-representative/" target="_blank" rel="noreferrer" onClick={()=>setMenuOpen(false)}><LifeBuoy size={19}/><span><strong>Need claim help?</strong><small>Find a VA-accredited representative</small></span></a>
     </aside>
-    <main className="main">
+    <main className="main" aria-hidden={menuOpen?true:undefined} inert={menuOpen?true:undefined}>
       <header className="topbar">
-        <button className="iconbtn mobile-menu" aria-label="Open menu" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}><Menu size={19}/></button>
+        <button ref={openMenuRef} className="iconbtn mobile-menu" aria-label="Open menu" aria-controls="app-sidebar" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}><Menu size={19}/></button>
         <div className="search-wrap">
           <label className="search"><Search size={18}/><input aria-label="Search conditions and VA forms" placeholder="Search conditions and VA forms…" value={query} onChange={event=>setQuery(event.target.value)} autoComplete="off"/></label>
           {query && <div className="search-results" role="listbox" aria-label="Search results">
