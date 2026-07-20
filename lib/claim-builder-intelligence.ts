@@ -1,4 +1,5 @@
-export type Answers={condition:string;otherCondition:string;claimType:string;diagnosis:string;symptoms:string;onset:string;branch:string;role:string;serviceEvent:string;exposures:string;treatment:string;providers:string;evidence:string[];statementName:string;continuity:string;specificExamples:string;additionalContext:string;previousDecision:string;previousEvaluation:string;worsening:string;worseningDate:string;primaryCondition:string;secondaryRelationship:string;clinicianDiscussion:string;symptomFrequency:string;symptomDuration:string;flareUps:string;workImpact:string;dailyImpact:string;conditionDetail1:string;conditionDetail2:string;conditionDetail3:string;conditionDetail4:string};
+export type IntentToFileStatus=""|"submitted"|"online_started"|"not_submitted"|"not_sure";
+export type Answers={condition:string;otherCondition:string;claimType:string;intentToFileStatus:IntentToFileStatus;intentToFileDate:string;diagnosis:string;symptoms:string;onset:string;branch:string;role:string;serviceEvent:string;exposures:string;treatment:string;providers:string;evidence:string[];statementName:string;continuity:string;specificExamples:string;additionalContext:string;previousDecision:string;previousEvaluation:string;worsening:string;worseningDate:string;primaryCondition:string;secondaryRelationship:string;clinicianDiscussion:string;symptomFrequency:string;symptomDuration:string;flareUps:string;workImpact:string;dailyImpact:string;conditionDetail1:string;conditionDetail2:string;conditionDetail3:string;conditionDetail4:string};
 export type TimelineEvent={id:string;date:string;title:string;details:string;source:string;approximate:boolean};
 export type EvidenceStatus="record_available"|"personal_recollection"|"witness_statement"|"record_not_obtained"|"none_identified";
 export type EvidenceLink={status:EvidenceStatus;source:string};
@@ -8,7 +9,15 @@ export type ConditionPrompt={key:"conditionDetail1"|"conditionDetail2"|"conditio
 export type StatementField="diagnosis"|"symptoms"|"symptomFrequency"|"symptomDuration"|"onset"|"serviceEvent"|"exposures"|"treatment"|"specificExamples"|"additionalContext"|"worsening"|"worseningDate"|"primaryCondition"|"secondaryRelationship"|"clinicianDiscussion"|"workImpact"|"dailyImpact"|"continuity"|"flareUps"|"conditionDetail1"|"conditionDetail2"|"conditionDetail3"|"conditionDetail4";
 export type StatementGap={field:StatementField;question:string;reason:string;placeholder:string;multiline?:boolean};
 
-export const initialAnswers:Answers={condition:"",otherCondition:"",claimType:"",diagnosis:"",symptoms:"",onset:"",branch:"",role:"",serviceEvent:"",exposures:"",treatment:"",providers:"",evidence:[],statementName:"",continuity:"",specificExamples:"",additionalContext:"",previousDecision:"",previousEvaluation:"",worsening:"",worseningDate:"",primaryCondition:"",secondaryRelationship:"",clinicianDiscussion:"",symptomFrequency:"",symptomDuration:"",flareUps:"",workImpact:"",dailyImpact:"",conditionDetail1:"",conditionDetail2:"",conditionDetail3:"",conditionDetail4:""};
+export const initialAnswers:Answers={condition:"",otherCondition:"",claimType:"",intentToFileStatus:"",intentToFileDate:"",diagnosis:"",symptoms:"",onset:"",branch:"",role:"",serviceEvent:"",exposures:"",treatment:"",providers:"",evidence:[],statementName:"",continuity:"",specificExamples:"",additionalContext:"",previousDecision:"",previousEvaluation:"",worsening:"",worseningDate:"",primaryCondition:"",secondaryRelationship:"",clinicianDiscussion:"",symptomFrequency:"",symptomDuration:"",flareUps:"",workImpact:"",dailyImpact:"",conditionDetail1:"",conditionDetail2:"",conditionDetail3:"",conditionDetail4:""};
+
+export function intentToFileLabel(status:IntentToFileStatus){
+  if(status==="submitted")return "Submitted to VA";
+  if(status==="online_started")return "Started an eligible claim online";
+  if(status==="not_submitted")return "Not submitted";
+  if(status==="not_sure")return "Not sure";
+  return "Not answered yet";
+}
 
 export const evidenceStatuses:Array<{value:EvidenceStatus;label:string;description:string}>=[
   {value:"record_available",label:"Supporting record available",description:"A record, log, photo, or medical opinion is available now."},

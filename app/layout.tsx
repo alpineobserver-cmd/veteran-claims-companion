@@ -3,5 +3,7 @@ import "./globals.css";
 import "./shell.css";
 import "./theme.css";
 import "./accessibility.css";
+import "./deployment-banner.css";
+import { DeploymentBanner } from "@/components/deployment-banner";
 export const metadata: Metadata = { title: { default:"Debrief", template:"%s | Debrief" }, description: "A self-directed educational tool for organizing fictional alpha claim scenarios.", robots:{index:false,follow:false,nocache:true} };
-export default function RootLayout({children}:{children:React.ReactNode}) { return <html lang="en"><body>{children}</body></html>; }
+export default function RootLayout({children}:{children:React.ReactNode}) { return <html lang="en"><body><DeploymentBanner/>{children}</body></html>; }

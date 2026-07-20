@@ -1,0 +1,12 @@
+.choice-list.compact{grid-template-columns:1fr 1fr}
+.intent-to-file{border:1px solid #d9d5cc;background:#f8f6ef;border-radius:12px;padding:18px;margin-bottom:22px}
+.question-card .intent-to-file h2{font-size:20px;margin:5px 0 6px}
+.intent-to-file>p{font-size:11px;line-height:1.5;color:var(--muted);margin:0 0 14px}
+.intent-date{margin:16px 0 4px}
+.intent-date small{font-weight:500;color:var(--muted)}
+.intent-guidance{display:flex;gap:8px;margin-top:14px;color:#59655f}
+.intent-guidance svg{flex:none}
+.intent-guidance p{font-size:10px;line-height:1.55;margin:0}
+.intent-guidance a,.intent-review a{color:var(--pine);font-weight:700}
+.intent-review{background:#f3f0e9;border:0;border-radius:10px;padding:14px}
+@media(max-width:620px){.choice-list.compact{grid-template-columns:1fr}}

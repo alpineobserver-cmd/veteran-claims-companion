@@ -1,6 +1,6 @@
 # Debrief Alpha feedback register
 
-Last triaged: July 19, 2026  
+Last triaged: July 20, 2026
 Next routine triage: when new feedback arrives, and no later than the next Monday/Thursday review  
 Data boundary: fictional Alpha activity only
 
@@ -56,6 +56,7 @@ When uncertain between two levels, use the higher level until reproduction clari
 | ID | Received | Tester | Category | Severity | Workflow stage | Environment | Fictional scenario | Summary | Status | Owner | Duplicate of | Resolution/evidence |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | AF-0001 | 2026-07-19 | T-UNASSIGNED | Usability | High | Public access | Production; browser unknown | Not applicable | A protected Vercel deployment alias was shared, so a visitor reached Vercel access rather than the Debrief splash page. | Resolved | Product/Engineering | — | Canonical URL independently returned `200`; protected aliases returned Vercel SSO redirects. README and tester-link guidance identify `https://veteran-claims-companion.vercel.app` as the only public Alpha address. Follow-up automation: `TEST-006`. |
+| AF-0002 | 2026-07-20 | T-UNASSIGNED | Missing feature | High | Claim Builder — Claim details | Production; multiple users; device/browser not reported | Not applicable | The claim process did not ask whether the user had submitted an intent to file, risking omission of an important filing-timeline checkpoint. | Ready to verify | Product/Engineering | — | Added required status selection, optional date, official VA guidance, readiness/PDF retention, and three regression checks. Production verification remains after deployment. |
 
 ## Detailed records
 
@@ -77,6 +78,29 @@ When uncertain between two levels, use the higher level until reproduction clari
 - **Resolution:** Share only `https://veteran-claims-companion.vercel.app`. The canonical address was independently verified as public; generated deployment and branch aliases were verified as protected.
 - **Verification:** Anonymous request to the canonical origin returned the Debrief application with HTTP `200`. Anonymous requests to generated aliases redirected to Vercel SSO.
 - **Regression/follow-up:** Complete `TEST-006` and `OPS-012` in `docs/product-backlog.md` so release checks and tester communications reject protected aliases.
+- **Sensitive information recorded:** No.
+
+### AF-0002 — Intent-to-file checkpoint missing from claim preparation
+
+- **Received:** July 20, 2026
+- **Tester code:** T-UNASSIGNED; reported as feedback from multiple users
+- **Category:** Missing feature
+- **Severity:** High
+- **Status:** Ready to verify
+- **Owner:** Product/Engineering
+- **Workflow stage:** Claim Builder — Claim details
+- **Device/browser:** Not reported
+- **Fictional scenario:** Not applicable
+- **Expected:** The claim-preparation process asks whether an intent to file for disability compensation was submitted or an eligible online claim was started, and records a known date.
+- **Observed:** No intent-to-file checkpoint appeared in the process.
+- **Reproduction:** Start a fictional claim, choose a condition and claim path, and continue to Claim details; the prior release moved directly to condition-specific facts.
+- **Frequency/scope:** Every claim flow; multiple users reported the omission.
+- **Workaround:** Leave Debrief and independently review the VA intent-to-file process.
+- **Decision/next action:** Add one required status choice with Yes, eligible online-started, No, and Not sure paths; keep the date optional; link official VA guidance.
+- **Resolution:** Implemented in source. The answer is saved with the condition workspace, shown during readiness review, and retained in the condition-review PDF. Wording describes only a potential effective date and does not guarantee retroactive payment.
+- **Verification:** Type checking, the full production build, the 40-scenario evaluation, and three new intent-to-file regression checks passed. Production UI verification remains after deployment.
+- **Regression/follow-up:** `tests/claim-process.test.mjs` and the July 20 public changelog entry.
+- **Duplicate of:** Not a duplicate.
 - **Sensitive information recorded:** No.
 
 ## New feedback intake template
@@ -125,10 +149,10 @@ Copy this section below **Detailed records**, complete it with fictional/minimal
 
 | Measure | Count |
 |---|---:|
-| Total canonical reports | 1 |
+| Total canonical reports | 2 |
 | Open Blocker | 0 |
 | Open Critical | 0 |
-| Open High | 0 |
+| Open High | 1 |
 | Open Medium | 0 |
 | Open Low | 0 |
 | Resolved | 1 |

@@ -6,6 +6,8 @@ An independent educational and organizational MVP for veterans preparing VA disa
 
 Use the [product backlog](docs/product-backlog.md) as the working source of truth for priorities, release gates, Alpha follow-up, and future milestones. Record and triage tester reports in the single [Alpha feedback register](docs/alpha-feedback-register.md).
 
+Environment separation, promotion, smoke testing, emergency fixes, and rollback are defined in the [deployment environment runbook](docs/deployment-environments.md). Create a dated copy of the [release record template](docs/release-record-template.md) for each Staging and Production decision.
+
 The Alpha evaluation kit includes [success measures](docs/alpha-success-measures.md), a [post-test survey](docs/alpha-post-test-survey.md), a [moderated-test script](docs/alpha-moderated-test-script.md), and the canonical [tester invitation](docs/alpha-tester-invitation.md). Aggregate privacy-safe session scorecards with `npm run eval:alpha`.
 
 ## Included in this increment
@@ -71,3 +73,5 @@ The current build is deliberately excluded from search indexing and is intended 
 Create a PostgreSQL database, configure the environment variables in Vercel, connect a **Private** Vercel Blob store, run `prisma migrate deploy` during deployment, and deploy the Next.js project. For an existing database that was created with `prisma db push` and has no migration history, reconcile the baseline before using `prisma migrate deploy`. Before public release, verify all educational content against current official VA resources and complete privacy, security, accessibility, and legal reviews.
 
 Required Production authentication values are `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_URL=https://veteran-claims-companion.vercel.app`, and `AUTH_CANONICAL_HOST=veteran-claims-companion.vercel.app`. Vercel masks secret values, so permanence is an operating control: confirm there is one Production `AUTH_SECRET`, do not replace it during normal releases, and record any intentional emergency rotation as an incident or planned maintenance event. A secret rotation signs users out and invalidates OAuth attempts already in progress.
+
+Production also uses `APP_ENV=production` and `DATA_ENVIRONMENT=production`. The separate Staging project uses `APP_ENV=staging`, `DATA_ENVIRONMENT=staging`, its own database, private Blob store, permanent authentication secret, and Google OAuth client. Run `npm run deployment:env-check` and `npm run test:release` before promotion; the complete two-project procedure is in `docs/deployment-environments.md`.

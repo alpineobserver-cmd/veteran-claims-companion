@@ -1,5 +1,5 @@
-import { evidenceStatusLabel, type EvidenceMap } from "./claim-builder-intelligence";
-type PackageInput={condition:string;claimType:string;name:string;statement:string;timeline:{date:string;title:string;details:string;source:string;approximate:boolean}[];evidenceMap:EvidenceMap;selectedEvidence:string[];qualityFindings:{level:string;title:string;detail:string}[]};
+import { evidenceStatusLabel, intentToFileLabel, type EvidenceMap, type IntentToFileStatus } from "./claim-builder-intelligence";
+type PackageInput={condition:string;claimType:string;intentToFileStatus:IntentToFileStatus;intentToFileDate:string;name:string;statement:string;timeline:{date:string;title:string;details:string;source:string;approximate:boolean}[];evidenceMap:EvidenceMap;selectedEvidence:string[];qualityFindings:{level:string;title:string;detail:string}[]};
 const factLabels:Record<string,string>={current:"Current condition",onset:"Onset or worsening",service:"In-service event or circumstances",function:"Symptoms and functional effects",treatment:"Treatment history",worsening:"Change since prior decision",secondary:"Secondary relationship"};
 const clean=(value:string)=>value.normalize("NFKD").replace(/[^\x20-\x7E\n]/g,"-").replace(/\s+/g," ").trim();
 const escapePdf=(value:string)=>value.replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");
@@ -19,7 +19,7 @@ export function createClaimPackagePdf(input:PackageInput){
   line("PERSONAL STATEMENT REVIEW PACKAGE",{size:19,bold:true,leading:28});
   paragraph("Preparation document - not an official VA form and not proof of submission.",{size:9,gap:18});
   heading("Package details");
-  line(`Condition: ${input.condition}`,{bold:true});line(`Claim path: ${input.claimType||"Not selected"}`);if(input.name)line(`Name: ${input.name}`);line(`Generated: ${new Date().toISOString().slice(0,10)}`);y-=12;
+  line(`Condition: ${input.condition}`,{bold:true});line(`Claim path: ${input.claimType||"Not selected"}`);line(`Intent to file: ${intentToFileLabel(input.intentToFileStatus)}`);if(input.intentToFileDate)line(`Potential effective date recorded: ${input.intentToFileDate}`);if(input.name)line(`Name: ${input.name}`);line(`Generated: ${new Date().toISOString().slice(0,10)}`);paragraph("An intent to file may preserve a potential effective date, but VA determines the effective date and whether retroactive payments apply. Verify VA confirmation and the one-year filing deadline.",{size:8,gap:12});y-=4;
   heading("Personal statement");
   input.statement.split(/\n\s*\n/).filter(Boolean).forEach(value=>paragraph(value));
   heading("Condition timeline");

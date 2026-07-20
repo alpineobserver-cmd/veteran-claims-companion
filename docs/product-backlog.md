@@ -67,14 +67,24 @@ This file is the working source of truth for product tasks. Update the checkbox 
 - [x] **TEST-002 · P1** — Run a fresh fictional-veteran test set after the first Alpha corrections. On July 20, all 40 scenarios passed with a 99.9/100 average; see `docs/alpha-test-report-2026-07-20.md`.
   - Preserve the existing 40-scenario suite as a minimum regression gate.
   - Add scenarios derived from Alpha defects without including tester information.
-- [ ] **TEST-003 · P1 · [Partially completed]** — Test the complete experience on representative mobile, tablet, and desktop sizes. Public routes and the full signed-out claim flow passed; signed-in storage/package/account paths need the dedicated test account.
+- [ ] **TEST-003 · P1 · [Partially completed]** — Test the complete experience on representative mobile, tablet, and desktop sizes. The deployed public route matrix passed 24/24 checks, protected-route redirects passed 9/9 checks, and both the signed-out flow and signed-in cloud claim save/resume/package/delete flow passed. Signed-in package content also reflowed correctly at 390 × 844, and the fictional cloud claim was removed without affecting the existing migraine claim. Chrome blocked automated file injection, and the PDF download event could not be observed, so a manual fictional upload/download/file-deletion pass remains.
   - Cover splash page, login, workspace creation, upload, claim builder, review, save/resume, package workspace, export, deletion, and logout.
-- [ ] **TEST-004 · P1 · [Partially completed]** — Complete a manual WCAG 2.2 AA accessibility review. Initial rendered review and source remediation are complete; a post-deploy human screen-reader and 200% zoom pass remains.
+- [ ] **TEST-004 · P1 · [Partially completed]** — Complete a manual WCAG 2.2 AA accessibility review. Post-deploy mobile focus/inert behavior, accessible step/progress labels, error recovery, responsive reflow, the 200%-zoom equivalent, reduced-motion CSS, and touch-target CSS passed. A human VoiceOver and full keyboard-only pass remains.
   - Include keyboard-only operation, visible focus, screen-reader labels and announcements, headings, error recovery, contrast, 200% zoom, reflow, touch targets, and reduced motion.
-- [ ] **TEST-005 · P1 · [Added] · [Partially completed]** — Run a real end-to-end Google login check with a dedicated fictional Alpha account before each Alpha release. All seven live non-credential boundary checks passed; the human Google callback and account lifecycle remain.
+- [ ] **TEST-005 · P1 · [Added] · [Partially completed]** — Run a real end-to-end Google login check with a dedicated fictional Alpha account before each Alpha release. Seven live non-credential boundary checks, Google callback, session creation, post-login session requests, expired-check recovery, and logout passed. The available Chrome session belongs to the existing Christopher James account and contains a pre-existing migraine workspace, so destructive account deletion was intentionally not attempted. Account deletion on a disposable fictional account remains.
   - Confirm login, callback, session creation, logout, expired-check recovery, and account deletion.
   - Never store the account password or MFA secret in source control or application logs.
 - [x] **TEST-006 · P1 · [Added]** — Add an automated link check that confirms public invitations, OAuth settings, Privacy, and Terms use the canonical production address rather than protected Vercel deployment aliases. Repository and live canonical checks passed July 20.
+- [ ] **TEST-007 · P1 · [Added]** — Run a structured 90-persona fictional usability study focused on how easily people can enter, understand, navigate, and complete the website and Claim Builder.
+  - Use three equal cohorts: 30 personas in their mid-20s with high technology fluency, 30 in their mid-40s with moderate technology fluency, and 30 in their mid-60s with low technology fluency.
+  - Give each cohort a comparable mix of fictional conditions, claim paths, evidence situations, device sizes, and complete/incomplete information so age and technology fluency are not confused with scenario difficulty.
+  - Evaluate the complete journey from splash page and login through workspace creation, optional document intake, starting a claim, layered questions, review, statement verification, claim-package handoff, save/resume, and next-step guidance.
+  - Record privacy-safe behavioral signals: time and actions needed to begin, hesitation points, incorrect selections, repeated clicks, backtracking, abandoned stages, help requests, missed optional layers, misunderstood terms, answer changes, completion, and confidence about the next action.
+  - Specifically identify processes, instructions, controls, and questions that appear confusing; distinguish wording problems from navigation, information architecture, visual hierarchy, accessibility, and system-feedback problems.
+  - Compare results by cohort and device without treating age as ability or using stereotypes. Document the assumptions used to model technology fluency.
+  - Define low-barrier acceptance thresholds before running the study, including successful unaided start, questionnaire progression, recovery from mistakes, save/resume, statement completion, and knowing what to do after export.
+  - Publish a cohort-comparison report with severity-ranked findings, supporting interaction traces, recommended changes, and new backlog items. Do not include medical information or other sensitive data.
+  - Treat fictional-persona findings as design hypotheses, not proof of human usability. Validate the highest-risk findings with moderated human sessions representing all three fluency cohorts before closing the item.
 
 ## Phase 2 — Complete the claim-package workflow
 
@@ -171,12 +181,22 @@ These items must be completed and reviewed together before the real-data gate ca
 - [ ] **OPS-002 · P1** — Create monitored domain-based privacy, security, and support email addresses.
 - [ ] **OPS-003 · P2 · [Blocked]** — Move Google OAuth from Testing to Production only when the broader-release gates and Google requirements are met.
 - [ ] **OPS-004 · P3** — Evaluate a non-Google login option using the same security and recovery requirements.
-- [ ] **OPS-005 · P1** — Separate development, staging, and production data, credentials, storage, OAuth clients, and deployment controls.
-- [ ] **OPS-006 · P1** — Add automated build, type, unit, integration, migration, dependency, security, and release-gate checks.
+- [ ] **OPS-005 · P1 · [Partially completed / owner setup required]** — Establish separate development, staging, and production environments. Repository controls and the operating runbook were completed July 20; the second Vercel project and provider resources still require owner setup.
+  - [ ] Create the **Debrief Staging** Vercel project connected to the same GitHub repository; retain the existing project as **Debrief Production**.
+  - [ ] Create and protect the long-lived `staging` branch; keep `main` as Production and use feature branches for disposable previews.
+  - [ ] Provision separate Staging PostgreSQL, private Blob, permanent `AUTH_SECRET`, Google OAuth client/callback, and environment variables. Audit Vercel variable scopes so Production credentials exist only in the existing project's Production scope and Staging/previews cannot read or modify Production data.
+  - [x] Add a persistent **Development build — fictional data only** banner containing the environment and release/commit identifier to every non-Production build.
+  - [x] Add build-time environment and data-label checks that block Staging from using the Production OAuth origin and block an explicitly mislabeled Production data boundary.
+  - [x] Preserve the current canonical Production Alpha origin and add a repository test rejecting protected Vercel aliases in tester-facing content.
+  - [x] Add an automated GitHub release gate for `staging`, `main`, and their pull requests.
+  - [x] Document the feature → Staging → Production promotion flow, smoke test, emergency fix, rollback, and database-migration caution in `docs/deployment-environments.md`.
+  - [x] Add `docs/release-record-template.md` for commit/version, migrations, approver, notes, rollback target, and smoke results.
+  - [ ] Complete the first isolated Staging smoke test and Production promotion record after owner setup.
+- [ ] **OPS-006 · P1 · [Partially completed]** — Add automated build, type, unit, integration, migration, dependency, security, and release-gate checks. The GitHub release gate now runs the existing application regression suite; build, migration, dependency, and security jobs remain.
 - [ ] **OPS-007 · P1** — Add privacy-conscious error, authentication-health, uptime, and performance monitoring.
 - [ ] **OPS-008 · P1** — Add service-health alerts and a public status page before a broader release.
-- [ ] **OPS-009 · P1** — Document deployment, promotion, rollback, backup, restoration, and disaster-recovery procedures.
-- [ ] **OPS-010 · P1** — Establish a release checklist, named approver, version number, release notes, and rollback decision for every release.
+- [ ] **OPS-009 · P1 · [Partially completed]** — Document deployment, promotion, rollback, backup, restoration, and disaster-recovery procedures. Promotion and application rollback are documented; database backup/restore and full disaster recovery remain.
+- [ ] **OPS-010 · P1 · [Partially completed]** — Establish a release checklist, named approver, version number, release notes, and rollback decision for every release. The template and required fields exist; the owner must name the Production approver and use the record for each release.
 - [ ] **OPS-011 · P1** — Monitor Auth.js releases and security advisories; re-evaluate the pinned beta according to `docs/auth-dependency-decision.md`.
 - [ ] **OPS-012 · P1 · [Added]** — Add a canonical-domain check to release verification and ensure protected preview/deployment URLs never appear in tester communications.
 - [ ] **OPS-013 · P1 · [Added]** — Define service-level objectives for sign-in success, availability, save success, export success, and incident response.

@@ -1,6 +1,6 @@
 import type { Answers, TimelineEvent } from "./claim-builder-intelligence";
 
-export type StatementSource=Omit<Answers,"otherCondition">&{timeline:TimelineEvent[]};
+export type StatementSource=Omit<Answers,"otherCondition"|"intentToFileStatus"|"intentToFileDate">&{timeline:TimelineEvent[]};
 
 export function statementHeading(input:Pick<StatementSource,"statementName"|"condition">){
   return ["PERSONAL STATEMENT IN SUPPORT OF CLAIM",input.statementName&&`Name: ${input.statementName}`,`Condition: ${input.condition}`].filter(Boolean).join("\n");
