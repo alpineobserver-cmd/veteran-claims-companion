@@ -18,6 +18,10 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Prisma validates the URL while generating its client during npm ci.
+      # Release checks do not connect to this fictional local database.
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/debrief_ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
