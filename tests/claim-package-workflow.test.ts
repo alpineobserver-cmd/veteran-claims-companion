@@ -9,13 +9,14 @@ import { deriveStatementProvenance, statementProvenanceSummary } from "../lib/st
 import { guidedDraft } from "../lib/personal-statement-template";
 import { createClaimPackagePdf } from "../lib/claim-package-pdf";
 import { claimScenarios } from "../evals/claim-scenarios";
+import { compareStatementVersions } from "../lib/statement-version-comparison";
 
 const root=process.cwd();
 const read=(relative:string)=>readFile(path.join(root,relative),"utf8");
 
 function completeDraft(){
   return {
-    answers:{condition:"Migraines",otherCondition:"",claimType:"Original or new claim",intentToFileStatus:"submitted",intentToFileDate:"2026-07-01",diagnosis:"Evaluated by a clinician",symptoms:"Head pain and light sensitivity",onset:"2020",branch:"Army",role:"Fictional role",serviceEvent:"Symptoms started during a fictional training period in 2020",exposures:"",treatment:"Medication",providers:"Fictional clinic",evidence:["Service treatment records"],statementName:"Fictional Veteran",continuity:"Ongoing",specificExamples:"I stopped a household task and rested in a dark room.",additionalContext:"",previousDecision:"",previousEvaluation:"",worsening:"",worseningDate:"",primaryCondition:"",secondaryRelationship:"",clinicianDiscussion:"",symptomFrequency:"Twice per month",symptomDuration:"Four hours",flareUps:"",workImpact:"Interrupted tasks",dailyImpact:"Required rest",conditionDetail1:"Two attacks per month",conditionDetail2:"Light sensitivity",conditionDetail3:"Interrupted tasks",conditionDetail4:"Headache log"},
+    answers:{condition:"Migraines",otherCondition:"",claimType:"Original or new claim",intentToFileStatus:"submitted" as const,intentToFileDate:"2026-07-01",diagnosis:"Evaluated by a clinician",symptoms:"Head pain and light sensitivity",onset:"2020",branch:"Army",role:"Fictional role",serviceEvent:"Symptoms started during a fictional training period in 2020",exposures:"",treatment:"Medication",providers:"Fictional clinic",evidence:["Service treatment records"],statementName:"Fictional Veteran",continuity:"Ongoing",specificExamples:"I stopped a household task and rested in a dark room.",additionalContext:"",previousDecision:"",previousEvaluation:"",worsening:"",worseningDate:"",primaryCondition:"",secondaryRelationship:"",clinicianDiscussion:"",symptomFrequency:"Twice per month",symptomDuration:"Four hours",flareUps:"",workImpact:"Interrupted tasks",dailyImpact:"Required rest",conditionDetail1:"Two attacks per month",conditionDetail2:"Light sensitivity",conditionDetail3:"Interrupted tasks",conditionDetail4:"Headache log"},
     step:10,furthestStep:10,statement:"Personal statement heading\n\nI experienced fictional migraine symptoms beginning in 2020.",statementMode:"edited" as const,
     timeline:[{id:"timeline-1",date:"2020",title:"Symptoms began",details:"Fictional symptoms began",source:"Personal recollection",approximate:true}],
     evidenceMap:{current:{status:"personal_recollection" as const,source:"Personal statement"},onset:{status:"personal_recollection" as const,source:"Personal statement"},service:{status:"personal_recollection" as const,source:"Personal statement"},function:{status:"personal_recollection" as const,source:"Personal statement"},treatment:{status:"record_available" as const,source:"VA treatment records"}},
@@ -63,10 +64,22 @@ test("package workspace exposes sources, lifecycle tracking, official submission
   assert.match(page,/Marked submitted/);
   assert.match(questionnaire,/Uploaded files that support this fact/);
   assert.match(questionnaire,/Revision history/);
+  assert.match(questionnaire,/Saved version and current draft/);
+  assert.match(questionnaire,/Hide comparison/);
   assert.match(pdf,/Uploaded document links/);
   assert.match(buddyPage,/The witness—not the veteran—must confirm/);
   assert.match(buddyRoute,/buddyStatementGaps/);
   for(const action of ["archive","restore","duplicate","package_status"])assert.match(actions,new RegExp(`"${action}"`));
+});
+
+test("statement revision comparison reports meaningful saved-to-current changes",()=>{
+  const changed=compareStatementVersions("I rest in a dark room.","I usually rest in a dark and quiet room.");
+  assert.deepEqual(changed,{identical:false,savedWords:6,currentWords:9,addedWords:3,removedWords:0,savedParagraphs:1,currentParagraphs:1});
+  const identical=compareStatementVersions("First section.\n\nSecond section.","First section.\n\nSecond section.");
+  assert.equal(identical.identical,true);
+  assert.equal(identical.savedParagraphs,2);
+  assert.equal(identical.addedWords,0);
+  assert.equal(identical.removedWords,0);
 });
 
 test("guided statements retain sentence-level answer and timeline provenance",()=>{

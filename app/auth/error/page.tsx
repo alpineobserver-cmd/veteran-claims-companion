@@ -2,6 +2,7 @@ import { ArrowLeft, RefreshCw, ShieldAlert } from "lucide-react";
 
 const errorMessages:Record<string,{title:string;message:string;next:string}>={
   AccessDenied:{title:"This account is not authorized yet.",message:"During closed Alpha, Google sign-in is limited to email addresses on the tester allowlist.",next:"Ask the Alpha administrator to add the exact email address connected to your Google Account."},
+  RegistrationPaused:{title:"New Alpha registrations are temporarily paused.",message:"Existing Debrief accounts can still sign in, but the administrator has paused creation of new accounts.",next:"Try again after the administrator confirms that new registrations have resumed."},
   OAuthAccountNotLinked:{title:"This email is connected differently.",message:"For account safety, Debrief will not automatically combine sign-in methods that use the same email address.",next:"Use the Google Account originally connected to this Debrief workspace."},
   OAuthCallbackError:{title:"Google sign-in did not finish.",message:"The authorization response could not be completed.",next:"Close older Google sign-in tabs and begin one fresh attempt."},
   OAuthSignin:{title:"Google sign-in could not start.",message:"Debrief could not open a valid authorization request.",next:"Wait a moment, then begin one fresh attempt."},

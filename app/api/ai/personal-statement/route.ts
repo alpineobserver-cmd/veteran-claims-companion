@@ -5,6 +5,7 @@ import { guidedDraft, statementHeading } from "@/lib/personal-statement-template
 import { deriveStatementProvenance } from "@/lib/statement-provenance";
 import { auth } from "@/auth";
 import { hasAcceptableContentLength, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
+import { aiGenerationEnabled } from "@/lib/operational-controls";
 
 export const runtime = "nodejs";
 
@@ -76,7 +77,7 @@ Rules:
 - Do not add a certification or claim that the veteran has already reviewed, signed, or sworn to the draft.
 - Do not ask for optional facts merely to make the statement longer.`;
 
-export function GET(){return NextResponse.json({configured:Boolean(process.env.OPENAI_API_KEY),mode:process.env.OPENAI_API_KEY?"ai":"template"},{headers:{"Cache-Control":"no-store"}})}
+export function GET(){const configured=Boolean(process.env.OPENAI_API_KEY)&&aiGenerationEnabled();return NextResponse.json({configured,mode:configured?"ai":"template"},{headers:{"Cache-Control":"no-store"}})}
 
 export async function POST(request:NextRequest){
   const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
@@ -90,9 +91,10 @@ export async function POST(request:NextRequest){
   const gaps=statementGaps(input);
   if(gaps.length)return NextResponse.json({status:"needs_information",questions:gaps.map(({field,question,reason})=>({field,question,reason})),notice:"Answer these focused questions before drafting. Debrief will not invent the missing facts."});
 
-  if(!process.env.OPENAI_API_KEY){
+  if(!process.env.OPENAI_API_KEY||!aiGenerationEnabled()){
     const statement=guidedDraft(input);
-    return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"template",notice:"OpenAI is not connected. This draft uses fixed rules to organize your answers into a narrative; it has not been interpreted or verified by AI."});
+    const notice=process.env.OPENAI_API_KEY?"AI-assisted drafting is temporarily paused. This draft uses fixed rules to organize your answers and was not sent to an AI provider.":"OpenAI is not connected. This draft uses fixed rules to organize your answers into a narrative; it has not been interpreted or verified by AI.";
+    return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"template",notice});
   }
   const session=await auth();
   if(!session?.user?.id)return NextResponse.json({error:"Sign in before sending questionnaire answers to the AI drafting service."},{status:401});
