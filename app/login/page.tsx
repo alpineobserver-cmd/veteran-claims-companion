@@ -20,7 +20,7 @@ export default async function Login({searchParams}:{searchParams:Promise<{redire
       {params.retry==="1"&&<div className="login-retry-note" role="status"><strong>Fresh sign-in ready.</strong><span>Close any older Google sign-in tabs, then continue once below.</span></div>}
       <form action={async()=>{"use server";logAuthEvent("sign_in_started",{provider:"google"});await signIn("google",{redirectTo})}}><GoogleSignInButton/></form>
       <div className="login-caution"><strong>Alpha data boundary</strong><span>Use fictional information and documents only. Do not enter health information, a Social Security number, a VA file number, or another person’s information.</span></div>
-      <p className="login-disclaimer">By continuing, you acknowledge the <a href="/terms">Alpha Terms</a> and <a href="/privacy">Privacy Notice</a>. Debrief is independent and is not affiliated with VA.</p>
+      <p className="login-disclaimer">By continuing, you acknowledge the <a href="/terms">Alpha Terms</a> and <a href="/privacy">Privacy Notice</a>. Debrief is independent educational software—not VA or a VA-accredited representative—and does not provide legal or medical advice.</p>
     </section>
   </main>
 }

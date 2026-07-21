@@ -6,6 +6,7 @@ import { documentStorage, StorageConfigurationError } from "@/lib/storage";
 import { NextResponse } from "next/server";
 import { hasAcceptableContentLength, MAX_DOCUMENT_REQUEST_BYTES, MAX_DOCUMENTS_PER_USER, MAX_DOCUMENTS_PER_WORKSPACE, rejectCrossOriginMutation } from "@/lib/request-security";
 import { enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
+import { deleteObjectAndVerify, recordStorageReconciliation, retryUploadRollbackTasks } from "@/lib/storage-reconciliation";
 
 export const runtime="nodejs";
 
@@ -38,6 +39,7 @@ export async function POST(request:Request){
   try{buffer=Buffer.from(await file.arrayBuffer());inspected=inspectDocument(buffer,{fileName:file.name,declaredMimeType:file.type})}catch(reason){return NextResponse.json({error:reason instanceof Error?reason.message:"The file is not accepted."},{status:400})}
   const storageKey=syntheticStorageKey(session.user.id,claimId,inspected.extension);let storage;
   try{storage=documentStorage()}catch(reason){return NextResponse.json({error:reason instanceof StorageConfigurationError?reason.message:"Private storage is unavailable."},{status:503})}
+  await retryUploadRollbackTasks(session.user.id,storage).catch(()=>{});
   let storedKey="";
   try{
     storedKey=(await storage.put(buffer,storageKey,inspected.mimeType)).key;
@@ -47,5 +49,8 @@ export async function POST(request:Request){
       return created;
     });
     return NextResponse.json({document},{status:201});
-  }catch(reason){if(storedKey)await storage.delete(storedKey).catch(()=>{});console.error("Synthetic document upload failed",reason instanceof Error?reason.name:"UnknownError");return NextResponse.json({error:"The test document could not be stored."},{status:500})}
+  }catch(reason){
+    if(storedKey)try{await deleteObjectAndVerify(storage,storedKey)}catch(cleanupReason){await recordStorageReconciliation({userId:session.user.id,operation:"DELETE_OBJECT",scope:"upload-rollback",entityId:claimId,storageKey:storedKey,reason:cleanupReason})}
+    console.error("Synthetic document upload failed",reason instanceof Error?reason.name:"UnknownError");return NextResponse.json({error:"The test document could not be stored."},{status:500})
+  }
 }

@@ -38,7 +38,7 @@ export default async function LandingPage() {
     </section>
 
     <footer className="landing-footer">
-      <span>Debrief is an independent educational tool. It does not submit claims and is not affiliated with VA.</span>
+      <span>Debrief is independent educational software—not VA or a VA-accredited representative. It does not submit claims or provide legal or medical advice.</span>
       <span className="landing-legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a></span>
     </footer>
   </main>;

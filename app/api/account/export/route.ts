@@ -25,12 +25,17 @@ export async function GET(){
     auditEvents:{orderBy:{createdAt:"asc"},select:{id:true,claimId:true,documentId:true,action:true,metadata:true,createdAt:true}}
   }});
   if(!account)return NextResponse.json({error:"Account not found."},{status:404});
-  const securityCounters=await prisma.rateLimitBucket.findMany({where:{principalHash:rateLimitPrincipalHash(`user:${session.user.id}`)},orderBy:{windowStart:"asc"},select:{scope:true,windowStart:true,windowEndsAt:true,count:true}});
+  const principalHash=rateLimitPrincipalHash(`user:${session.user.id}`);
+  const [securityCounters,storageReconciliation]=await Promise.all([
+    prisma.rateLimitBucket.findMany({where:{principalHash},orderBy:{windowStart:"asc"},select:{scope:true,windowStart:true,windowEndsAt:true,count:true}}),
+    prisma.storageReconciliationTask.findMany({where:{principalHash},orderBy:{createdAt:"asc"},select:{operation:true,scope:true,entityId:true,status:true,attempts:true,lastErrorCode:true,lastAttemptAt:true,resolvedAt:true,createdAt:true,updatedAt:true}})
+  ]);
   const exportedAt=new Date();
   const payload={
     export:{schemaVersion:1,generatedAt:exportedAt.toISOString(),product:"Debrief",dataBoundary:"Closed Alpha — fictional information only"},
     account,
     securityCounters,
+    storageReconciliation,
     fileNotice:{binaryFilesIncluded:false,documentCount:account.documents.length,legacyUploadCount:account.uploads.length,instructions:"Download each fictional binary file separately from Document Upload. This JSON includes its metadata and SHA-256 fingerprint but never includes private storage keys."},
     exclusions:["OAuth access, refresh, and identity tokens","Database session tokens","Password hashes","Private object-storage keys","Provider backups and infrastructure logs"]
   };

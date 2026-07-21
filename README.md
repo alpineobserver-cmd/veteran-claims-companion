@@ -8,7 +8,9 @@ Use the [product backlog](docs/product-backlog.md) as the working source of trut
 
 Environment separation, promotion, smoke testing, emergency fixes, and rollback are defined in the [deployment environment runbook](docs/deployment-environments.md). Create a dated copy of the [release record template](docs/release-record-template.md) for each Staging and Production decision.
 
-The Alpha evaluation kit includes [success measures](docs/alpha-success-measures.md), a [post-test survey](docs/alpha-post-test-survey.md), a [moderated-test script](docs/alpha-moderated-test-script.md), and the canonical [tester invitation](docs/alpha-tester-invitation.md). Aggregate privacy-safe session scorecards with `npm run eval:alpha`.
+The Alpha evaluation kit includes [success measures](docs/alpha-success-measures.md), a [post-test survey](docs/alpha-post-test-survey.md), a [moderated-test script](docs/alpha-moderated-test-script.md), the canonical [tester invitation](docs/alpha-tester-invitation.md), and the [tester lifecycle checklist](docs/alpha-tester-lifecycle.md). Aggregate privacy-safe session scorecards with `npm run eval:alpha`.
+
+Operational security procedures include [durable rate limits](docs/durable-rate-limits.md), [storage deletion reconciliation](docs/storage-reconciliation.md), and the [secret inventory and rotation checklist](docs/secret-inventory-and-rotation.md).
 
 ## Included in this increment
 
