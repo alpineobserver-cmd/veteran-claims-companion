@@ -29,3 +29,29 @@ test("terms explicitly reject affiliation, advice, representation, and submissio
     assert.match(terms,new RegExp(phrase,"i"),phrase);
   }
 });
+
+test("public support separates request types without collecting sensitive details",async()=>{
+  const support=await read("app/support/page.tsx");
+  for(const phrase of ["Account, privacy, or deletion","Security concern","Accessibility barrier","Outdated, broken, or incorrect content","General product feedback"]){
+    assert.match(support,new RegExp(phrase,"i"),phrase);
+  }
+  assert.match(support,/PRIVACY_CONTACT_EMAIL/);
+  assert.match(support,/Never send passwords/);
+  assert.match(support,/medical records/);
+  assert.doesNotMatch(support,/<form\b/i);
+});
+
+test("accessibility review process defines the WCAG 2.2 AA manual and release gate",async()=>{
+  const process=await read("docs/accessibility-review-process.md");
+  for(const phrase of ["WCAG 2.2 Level AA","Keyboard only","VoiceOver","200%","320 CSS pixels","Blocker and Critical findings stop promotion","fictional scenarios"]){
+    assert.match(process,new RegExp(phrase,"i"),phrase);
+  }
+});
+
+test("support operations minimize intake data and cover all request classes",async()=>{
+  const process=await read("docs/support-and-correction-operations.md");
+  for(const phrase of ["privacy, deletion, security, accessibility, content-correction","neutral request ID","Never ask for a password","Account and data","Critical until triage","retest before closure"]){
+    assert.match(process,new RegExp(phrase,"i"),phrase);
+  }
+  assert.match(process,/Do not ask how the content applies to the reporter/);
+});

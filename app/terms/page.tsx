@@ -14,5 +14,5 @@ export default function TermsPage(){return <main className="legal-page"><Link cl
   <section><h2>Feedback</h2><p>You may provide product feedback, but do not include real claimant facts or confidential information. Feedback may be used to improve Debrief.</p></section>
   <section><h2>Privacy and deletion</h2><p>The <Link href="/privacy">Alpha Privacy Notice</Link> describes current data handling. Signed-in testers can delete individual workspaces and documents or delete the entire account through Account and data.</p></section>
   <section><h2>Before any real-data release</h2><p>These alpha terms are not a substitute for product-specific legal advice. Qualified counsel must review veterans-benefit accreditation boundaries, consumer protection, health privacy and breach duties, state privacy requirements, contracts, and these terms before Debrief accepts real claimant information.</p></section>
-  <footer><Link href="/privacy">Alpha Privacy Notice</Link><span>Debrief is independent and is not affiliated with VA.</span></footer>
+  <footer><span><Link href="/support">Support</Link> · <Link href="/privacy">Alpha Privacy Notice</Link></span><span>Debrief is independent and is not affiliated with VA.</span></footer>
 </main>}

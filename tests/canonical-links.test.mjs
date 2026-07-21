@@ -48,9 +48,23 @@ test("canonical public legal and authentication routes exist",async()=>{
     "app/auth/error/page.tsx",
     "app/privacy/page.tsx",
     "app/terms/page.tsx",
+    "app/support/page.tsx",
     "app/api/auth/[...nextauth]/route.ts",
   ];
   for(const relative of required)assert.equal((await stat(path.join(root,relative))).isFile(),true,`${relative} is missing`);
+});
+
+test("public and authenticated navigation expose the support route",async()=>{
+  const [landing,shell,conditions,forms]=await Promise.all([
+    readFile(path.join(root,"app/page.tsx"),"utf8"),
+    readFile(path.join(root,"components/app-shell.tsx"),"utf8"),
+    readFile(path.join(root,"app/conditions/page.tsx"),"utf8"),
+    readFile(path.join(root,"app/forms/page.tsx"),"utf8"),
+  ]);
+  assert.match(landing,/href="\/support"/);
+  assert.match(shell,/href="\/support"/);
+  assert.match(conditions,/href="\/support#content-correction"/);
+  assert.match(forms,/href="\/support#content-correction"/);
 });
 
 test("environment example preserves local development and the canonical Production host",async()=>{
@@ -62,7 +76,7 @@ test("environment example preserves local development and the canonical Producti
 test("live canonical pages are public when PUBLIC_E2E_BASE_URL is supplied",{skip:!process.env.PUBLIC_E2E_BASE_URL},async()=>{
   const base=new URL(process.env.PUBLIC_E2E_BASE_URL);
   assert.equal(base.origin,canonicalOrigin,"Live release checks must target the canonical origin.");
-  for(const route of ["/","/login","/privacy","/terms"]){
+  for(const route of ["/","/login","/privacy","/terms","/support"]){
     const response=await fetch(new URL(route,base),{redirect:"manual"});
     assert.equal(response.status,200,`${route} returned ${response.status}`);
     assert.doesNotMatch(response.headers.get("location")||"",/vercel\.com\/sso-api/);

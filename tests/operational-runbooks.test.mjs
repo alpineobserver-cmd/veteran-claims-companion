@@ -26,3 +26,12 @@ test("rotation and emergency procedures require redeploy, verification, and prov
   assert.doesNotMatch(inventory,/postgres(?:ql)?:\/\/[^\s`]+:[^\s`]+@/i);
   assert.doesNotMatch(inventory,/sk-[A-Za-z0-9_-]{16,}/);
 });
+
+test("service objectives define measurable reliability and privacy boundaries",async()=>{
+  const objectives=await read("docs/service-level-objectives.md");
+  for(const phrase of ["Availability","99.5%","Sign-in success","98.0%","Save success","99.0%","Export success","Critical incident acknowledgement","within 1 hour","error budget","rolling 30-day"]){
+    assert.match(objectives,new RegExp(phrase,"i"),phrase);
+  }
+  assert.match(objectives,/Do not record names, email addresses/);
+  assert.match(objectives,/OPS-007 remains the implementation item/);
+});
