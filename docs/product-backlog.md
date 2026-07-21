@@ -1,6 +1,6 @@
 # Debrief product backlog
 
-Last reviewed: July 20, 2026
+Last reviewed: July 21, 2026
 Current release: closed Alpha  
 Current data boundary: fictional information and fictional documents only
 
@@ -75,7 +75,12 @@ This file is the working source of truth for product tasks. Update the checkbox 
   - Confirm login, callback, session creation, logout, expired-check recovery, and account deletion.
   - Never store the account password or MFA secret in source control or application logs.
 - [x] **TEST-006 · P1 · [Added]** — Add an automated link check that confirms public invitations, OAuth settings, Privacy, and Terms use the canonical production address rather than protected Vercel deployment aliases. Repository and live canonical checks passed July 20.
-- [ ] **TEST-007 · P1 · [Added]** — Run a structured 90-persona fictional usability study focused on how easily people can enter, understand, navigate, and complete the website and Claim Builder.
+- [ ] **TEST-007 · P1 · [Added] · [Partially completed]** — Run a structured 90-persona fictional usability study focused on how easily people can enter, understand, navigate, and complete the website and Claim Builder. The balanced, deterministic modeled-persona run and first correction cycle were completed July 21; see `docs/usability-simulation-2026-07-21.md`. Moderated human validation remains required.
+  - [x] Run 90 modeled personas with 30 personas in each requested age/technology-fluency cohort.
+  - [x] Balance device, claim path, evidence situation, and information completeness across cohorts.
+  - [x] Publish baseline and post-change cohort comparisons with privacy-safe interaction signals.
+  - [x] Implement the first high-confidence barrier corrections and add the usability regression harness to the release gate.
+  - [ ] Validate mistake recovery, statement verification, missing-information follow-ups, and workspace vocabulary in moderated human sessions representing all three fluency cohorts.
   - Use three equal cohorts: 30 personas in their mid-20s with high technology fluency, 30 in their mid-40s with moderate technology fluency, and 30 in their mid-60s with low technology fluency.
   - Give each cohort a comparable mix of fictional conditions, claim paths, evidence situations, device sizes, and complete/incomplete information so age and technology fluency are not confused with scenario difficulty.
   - Evaluate the complete journey from splash page and login through workspace creation, optional document intake, starting a claim, layered questions, review, statement verification, claim-package handoff, save/resume, and next-step guidance.
@@ -92,7 +97,7 @@ This file is the working source of truth for product tasks. Update the checkbox 
 
 - [x] **CLAIM-001 · P1** — Support multiple conditions within one overall claim package while keeping each condition's evidence and narrative isolated. Completed July 20: each active condition remains an isolated workspace and is assembled in the consolidated package view.
 - [x] **CLAIM-002 · P1** — Connect uploaded records to the relevant condition or conditions. Completed July 20: any account-owned upload can be linked to one or more key facts across condition workspaces without duplicating the stored file.
-- [ ] **CLAIM-003 · P1 · [Partially completed]** — Show which user answer or source document supports each factual statement. The package now shows a fact-to-source ledger and linked upload names, and the exported review PDF retains those links. Sentence-level provenance and direct answer-field references remain.
+- [x] **CLAIM-003 · P1** — Show which user answer or source document supports each factual statement. Completed July 21: every factual statement now carries deterministic sentence-level links to its answer field or timeline event, related fact/evidence status, and linked upload names in the editor, verification step, consolidated package, saved revision history, and review PDF. Untraceable wording is surfaced for review, and untraceable AI wording blocks readiness rather than receiving a guessed source.
 - [x] **CLAIM-004 · P1** — Build a consolidated claim-package workspace for statements, evidence, forms, missing items, and readiness status. Completed July 20 with per-condition metrics, source checklists, blockers, package-wide checks, status tracking, form references, and next actions.
 - [x] **CLAIM-005 · P1** — Generate an individualized supporting-evidence checklist without implying that listed evidence guarantees an outcome. Completed July 20 with claim-path-specific facts, source status, linked files, pending-record treatment, and explicit no-guarantee language.
 - [x] **CLAIM-006 · P1** — Provide a clear “What to do next” screen after export. Completed July 20 through the three-step submission bridge in the package workspace.

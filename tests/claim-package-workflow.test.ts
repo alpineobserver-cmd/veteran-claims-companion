@@ -5,6 +5,10 @@ import test from "node:test";
 import { claimDraftSchema } from "../lib/claim-drafts";
 import { evidenceChecklist, packageReadiness, packageStatuses, validatePackageClaim, validatePackageEnvironment } from "../lib/claim-package-workflow";
 import { buddyStatementGaps, createBuddyStatement } from "../lib/buddy-statement";
+import { deriveStatementProvenance, statementProvenanceSummary } from "../lib/statement-provenance";
+import { guidedDraft } from "../lib/personal-statement-template";
+import { createClaimPackagePdf } from "../lib/claim-package-pdf";
+import { claimScenarios } from "../evals/claim-scenarios";
 
 const root=process.cwd();
 const read=(relative:string)=>readFile(path.join(root,relative),"utf8");
@@ -57,10 +61,57 @@ test("package workspace exposes sources, lifecycle tracking, official submission
   assert.match(page,/Debrief does not collect VA credentials, submit a claim, or verify receipt/);
   assert.match(page,/https:\/\/www\.va\.gov\/disability\/how-to-file-claim\//);
   assert.match(page,/Marked submitted/);
-  assert.match(questionnaire,/Uploaded files linked to this fact/);
+  assert.match(questionnaire,/Uploaded files that support this fact/);
   assert.match(questionnaire,/Revision history/);
   assert.match(pdf,/Uploaded document links/);
   assert.match(buddyPage,/The witness—not the veteran—must confirm/);
   assert.match(buddyRoute,/buddyStatementGaps/);
   for(const action of ["archive","restore","duplicate","package_status"])assert.match(actions,new RegExp(`"${action}"`));
+});
+
+test("guided statements retain sentence-level answer and timeline provenance",()=>{
+  const draft=completeDraft();
+  const answers=draft.answers;
+  const statement=guidedDraft({...answers,timeline:draft.timeline});
+  const first=deriveStatementProvenance(statement,answers,draft.timeline);
+  const second=deriveStatementProvenance(statement,answers,draft.timeline);
+  assert.deepEqual(first,second,"the same saved facts must produce the same source trace");
+  assert.deepEqual(statementProvenanceSummary(first),{total:first.sentences.length,mapped:first.sentences.length,unmapped:0});
+  assert.ok(first.sentences.some(sentence=>sentence.origins.some(origin=>origin.field==="symptoms"&&origin.factId==="function")));
+  assert.ok(first.sentences.some(sentence=>sentence.origins.some(origin=>origin.field==="serviceEvent"&&origin.factId==="service")));
+});
+
+test("all draft-ready fictional claim baselines have a complete guided source trace",()=>{
+  const ready=claimScenarios.filter(scenario=>scenario.expected.gaps.length===0);
+  const failures=ready.flatMap(scenario=>{
+    const statement=guidedDraft({...scenario.answers,timeline:scenario.timeline});
+    const summary=statementProvenanceSummary(deriveStatementProvenance(statement,scenario.answers,scenario.timeline));
+    return summary.unmapped?[`${scenario.id}: ${summary.unmapped} unmapped`]:[];
+  });
+  assert.equal(ready.length,33);
+  assert.deepEqual(failures,[]);
+});
+
+test("new unsupported wording is marked for review and preserved with revisions",()=>{
+  const draft=completeDraft();
+  const answers=draft.answers;
+  const statement=`${guidedDraft({...answers,timeline:draft.timeline})}\n\nThis sentence was added without a supporting answer.`;
+  const provenance=deriveStatementProvenance(statement,answers,draft.timeline);
+  assert.equal(provenance.sentences.at(-1)?.status,"unmapped");
+  assert.deepEqual(provenance.sentences.at(-1)?.origins,[]);
+  const stored={...draft,statement,statementMode:"ai" as const,statementProvenance:provenance,statementVersions:[{id:"version-source-1",content:statement,mode:"ai" as const,createdAt:"2026-07-21T12:00:00.000Z",provenance}]};
+  assert.equal(claimDraftSchema.safeParse(stored).success,true);
+  assert.ok(validatePackageClaim(stored,"Migraines").some(item=>item.id==="statement-sources-unmapped"&&item.level==="blocker"));
+});
+
+test("condition review PDF carries the statement source trace and related file names",()=>{
+  const draft=completeDraft();
+  const answers=draft.answers;
+  const statement=guidedDraft({...answers,timeline:draft.timeline});
+  const statementProvenance=deriveStatementProvenance(statement,answers,draft.timeline);
+  const pdf=createClaimPackagePdf({condition:answers.condition,claimType:answers.claimType,intentToFileStatus:answers.intentToFileStatus,intentToFileDate:answers.intentToFileDate,name:answers.statementName,statement,statementProvenance,timeline:draft.timeline,evidenceMap:draft.evidenceMap,selectedEvidence:answers.evidence,linkedDocuments:[{factId:"treatment",documentName:"fictional-treatment-record.pdf"}],qualityFindings:[]}).toString("ascii");
+  assert.match(pdf,/STATEMENT SOURCES/);
+  assert.match(pdf,/Health history - current symptoms/);
+  assert.match(pdf,/fictional-treatment-record\.pdf/);
+  assert.match(pdf,/A source link does not prove the fact/);
 });

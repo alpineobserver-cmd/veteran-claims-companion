@@ -16,12 +16,14 @@
     "test:links": "node --test tests/canonical-links.test.mjs",
     "test:accessibility": "node --test tests/accessibility-contract.test.mjs",
     "test:claim-process": "node --import tsx --test tests/claim-process.test.mjs tests/claim-package-workflow.test.ts",
-    "test:release": "npm run test:deployment && npm run test:links && npm run test:accessibility && npm run test:claim-process && npm run test:auth && npm run eval:claims && npm run eval:alpha",
+    "test:usability": "node --import tsx --test tests/usability-simulation.test.ts",
+    "test:release": "npm run test:deployment && npm run test:links && npm run test:accessibility && npm run test:claim-process && npm run test:usability && npm run test:auth && npm run eval:claims && npm run eval:alpha",
     "eval:alpha": "node scripts/summarize-alpha-sessions.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "eval:claims": "node --import tsx evals/run-claim-evals.ts"
+    "eval:claims": "node --import tsx evals/run-claim-evals.ts",
+    "eval:usability": "node --import tsx evals/run-usability-evals.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",

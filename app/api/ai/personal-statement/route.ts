@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { statementGaps } from "@/lib/claim-builder-intelligence";
 import { guidedDraft, statementHeading } from "@/lib/personal-statement-template";
+import { deriveStatementProvenance } from "@/lib/statement-provenance";
 import { auth } from "@/auth";
 import { hasAcceptableContentLength, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
 
@@ -90,7 +91,8 @@ export async function POST(request:NextRequest){
   if(gaps.length)return NextResponse.json({status:"needs_information",questions:gaps.map(({field,question,reason})=>({field,question,reason})),notice:"Answer these focused questions before drafting. Debrief will not invent the missing facts."});
 
   if(!process.env.OPENAI_API_KEY){
-    return NextResponse.json({status:"ready",statement:guidedDraft(input),mode:"template",notice:"OpenAI is not connected. This draft uses fixed rules to organize your answers into a narrative; it has not been interpreted or verified by AI."});
+    const statement=guidedDraft(input);
+    return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"template",notice:"OpenAI is not connected. This draft uses fixed rules to organize your answers into a narrative; it has not been interpreted or verified by AI."});
   }
   const session=await auth();
   if(!session?.user?.id)return NextResponse.json({error:"Sign in before sending questionnaire answers to the AI drafting service."},{status:401});
@@ -111,7 +113,8 @@ export async function POST(request:NextRequest){
     if(!result.success)throw new Error("The model returned an invalid drafting result.");
     if(result.data.status==="needs_information")return NextResponse.json({status:"needs_information",questions:result.data.questions,notice:"The drafting assistant needs a few factual details before it can continue without guessing."});
     if(!result.data.statement.trim())throw new Error("The model returned an empty statement.");
-    return NextResponse.json({status:"ready",statement:`${statementHeading(input)}\n\n${result.data.statement.trim()}`,mode:"ai"});
+    const statement=`${statementHeading(input)}\n\n${result.data.statement.trim()}`;
+    return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"ai"});
   }catch(error){
     console.error("Personal statement generation failed",error instanceof Error?error.name:"UnknownError");
     return NextResponse.json({error:"The AI draft could not be generated right now. Your answers are still saved on this device."},{status:502});
