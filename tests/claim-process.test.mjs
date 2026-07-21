@@ -42,3 +42,44 @@ test("condition review exports retain the intent-to-file checkpoint",async()=>{
   }
   assert.match(pdf,/VA determines the effective date/);
 });
+
+test("claim package exposes a complete statement workflow without the redundant metric strip",async()=>{
+  const [page,questionnaire,buddy,intake]=await Promise.all([
+    read("app/claim-package/page.tsx"),
+    read("components/claim-questionnaire.tsx"),
+    read("app/buddy-statement/page.tsx"),
+    read("components/document-intake.tsx"),
+  ]);
+  assert.doesNotMatch(page,/className="package-summary"/);
+  assert.match(page,/Personal statement/);
+  assert.match(page,/Buddy statements/);
+  assert.match(page,/Review and download/);
+  assert.match(page,/section=statement/);
+  assert.match(page,/section=package/);
+  assert.match(questionnaire,/initialSection/);
+  for(const source of [page,buddy,intake])assert.match(source,/Return to Claim Builder/);
+});
+
+test("condition discovery hides empty systems and connects guides to code paths",async()=>{
+  const [library,page]=await Promise.all([
+    read("components/condition-library.tsx"),
+    read("app/conditions/page.tsx"),
+  ]);
+  assert.match(library,/const populatedSystems=bodySystems\.filter/);
+  assert.match(library,/Diagnostic-code paths/);
+  assert.match(library,/conditionSlugs\.includes\(condition\.slug\)/);
+  assert.match(library,/href=\{code\.sourceUrl\}/);
+  assert.match(page,/Start with the body system/);
+});
+
+test("public entry and dashboard use one restrained visual surface",async()=>{
+  const [landing,landingCss,theme]=await Promise.all([
+    read("app/page.tsx"),
+    read("app/landing.css"),
+    read("app/theme.css"),
+  ]);
+  assert.doesNotMatch(landing,/landing-steps/);
+  assert.match(landingCss,/background:#e8ebe6/);
+  assert.doesNotMatch(theme,/Dashboard command center/);
+  assert.doesNotMatch(theme,/\.main:has\(>\.dashboard-content\)/);
+});

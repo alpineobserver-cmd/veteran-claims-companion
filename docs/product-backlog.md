@@ -109,6 +109,7 @@ This file is the working source of truth for product tasks. Update the checkbox 
 - [x] **CLAIM-010 · P2** — Add buddy-statement questionnaires and drafting. Completed July 20 with a condition-specific firsthand-observation questionnaire, missing-information gate, guided editable draft, save/resume/delete, copy/download, and witness-review warning.
 - [x] **CLAIM-011 · P2 · [Added]** — Add package-level validation for conflicting dates, duplicate evidence, unsupported relationships, incomplete conditions, and stale forms before export. Completed July 20 with blocking, attention, and check-level validation plus package-wide file-fingerprint and form-verification checks.
 - [x] **CLAIM-012 · P2 · [Added]** — Let users mark package items as planned, requested, obtained, reviewed, exported, or submitted by the user, with a clear explanation that Debrief cannot verify VA receipt. Completed July 20; marking submitted requires an explicit user confirmation and remains labeled as unverified by Debrief.
+- [x] **CLAIM-013 · P1 · [Added]** — Make the multi-condition statement workflow explicit. Completed July 21 after Alpha feedback: removed the redundant package metric strip, added direct Personal Statement, optional Buddy Statement, and Review/Download actions to every condition, added safe deep links to saved questionnaire sections, and added Return to Claim Builder actions to supporting workspaces.
 
 ## Phase 3 — Storage, privacy, and operational security
 
@@ -180,6 +181,7 @@ These items must be completed and reviewed together before the real-data gate ca
 - [ ] **CONTENT-010 · P1** — Record every published content change in the public changelog.
 - [ ] **CONTENT-011 · P1** — Let users report outdated, broken, or incorrect content without including claim or health details.
 - [ ] **CONTENT-012 · P1 · [Added]** — Preserve source snapshots or hashes and an internal provenance record so reviewers can reproduce what authority supported each release.
+- [x] **CONTENT-013 · P1 · [Added]** — Remove empty body-system navigation and connect condition guides directly to potentially relevant diagnostic-code paths. Completed July 21: the directory now shows only systems with indexed content, groups code links under each condition, keeps official-source links visible, and labels code-only material that lacks a full Debrief guide.
 
 ## Phase 7 — Production operations
 
