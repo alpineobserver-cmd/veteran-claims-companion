@@ -31,7 +31,7 @@ export function AppShell({ children, current = "home", user }: { children: React
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [account,setAccount]=useState<ShellUser|undefined>(user);
+  const [fetchedAccount,setFetchedAccount]=useState<ShellUser|undefined>();
   const [mobileLayout,setMobileLayout]=useState(false);
   const openMenuRef=useRef<HTMLButtonElement>(null);
   const closeMenuRef=useRef<HTMLButtonElement>(null);
@@ -61,12 +61,13 @@ export function AppShell({ children, current = "home", user }: { children: React
   useEffect(()=>{if(menuOpen)closeMenuRef.current?.focus()},[menuOpen]);
 
   useEffect(()=>{
-    if(user){setAccount(user);return}
+    if(user)return;
     let cancelled=false;
-    fetch("/api/auth/session").then(response=>response.json()).then((session:{user?:ShellUser})=>{if(!cancelled&&session.user)setAccount(session.user)}).catch(()=>{});
+    fetch("/api/auth/session").then(response=>response.json()).then((session:{user?:ShellUser})=>{if(!cancelled&&session.user)setFetchedAccount(session.user)}).catch(()=>{});
     return()=>{cancelled=true};
   },[user]);
 
+  const account=user??fetchedAccount;
   const initials=account?.name?.split(/\s+/).map(part=>part[0]).join("").slice(0,2).toUpperCase()||account?.email?.slice(0,2).toUpperCase()||"SIGN IN";
 
   return <div className={`shell ${menuOpen ? "menu-open" : ""}`}>
@@ -97,7 +98,7 @@ export function AppShell({ children, current = "home", user }: { children: React
         <div className="search-wrap">
           <label className="search"><Search size={18}/><input aria-label="Search conditions and VA forms" placeholder="Search conditions and VA forms…" value={query} onChange={event=>setQuery(event.target.value)} autoComplete="off"/></label>
           {query && <div className="search-results" role="listbox" aria-label="Search results">
-            {results.length ? results.map(item => <a href={item.href} key={item.href} role="option"><span><strong>{item.label}</strong><small>{item.detail}</small></span><em>{item.type}</em></a>) : <p>No matching conditions or forms found.</p>}
+            {results.length ? results.map(item => <a href={item.href} key={item.href} role="option" aria-selected="false"><span><strong>{item.label}</strong><small>{item.detail}</small></span><em>{item.type}</em></a>) : <p>No matching conditions or forms found.</p>}
           </div>}
         </div>
         <div className="top-actions">

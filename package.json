@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "vercel-build": "npm run deployment:env-check && npm run auth:env-check && prisma migrate deploy && next build",
     "start": "next start",
@@ -22,14 +23,15 @@
     "test:rate-limit": "node --import tsx --test tests/durable-rate-limit.test.ts",
     "test:reconciliation": "node --import tsx --test tests/storage-reconciliation.test.ts",
     "test:api-security": "node --import tsx --test tests/api-isolation-security.test.ts",
+    "test:isolation-e2e": "node --import tsx --test tests/database-two-user-isolation.test.ts",
     "test:legal": "node --test tests/legal-boundaries.test.mjs",
     "test:runbooks": "node --test tests/operational-runbooks.test.mjs",
     "test:claim-process": "node --import tsx --test tests/claim-process.test.mjs tests/claim-package-workflow.test.ts",
     "test:usability": "node --import tsx --test tests/usability-simulation.test.ts",
     "test:unit": "npm run test:deployment && npm run test:links && npm run test:accessibility && npm run test:runbooks && npm run test:claim-process && npm run test:usability && npm run eval:claims && npm run eval:alpha",
     "test:integration": "npm run test:storage && npm run test:data-controls && npm run test:reconciliation",
-    "test:security": "npm run test:controls && npm run test:rate-limit && npm run test:api-security && npm run test:auth && npm run test:legal",
-    "test:release": "npm run test:deployment && npm run test:links && npm run test:accessibility && npm run test:storage && npm run test:controls && npm run test:data-controls && npm run test:rate-limit && npm run test:reconciliation && npm run test:api-security && npm run test:legal && npm run test:runbooks && npm run test:claim-process && npm run test:usability && npm run test:auth && npm run eval:claims && npm run eval:alpha",
+    "test:security": "npm run test:controls && npm run test:rate-limit && npm run test:api-security && npm run test:isolation-e2e && npm run test:auth && npm run test:legal",
+    "test:release": "npm run test:deployment && npm run test:links && npm run test:accessibility && npm run test:storage && npm run test:controls && npm run test:data-controls && npm run test:rate-limit && npm run test:reconciliation && npm run test:api-security && npm run test:isolation-e2e && npm run test:legal && npm run test:runbooks && npm run test:claim-process && npm run test:usability && npm run test:auth && npm run eval:claims && npm run eval:alpha",
     "check:dependencies": "npm ls --depth=0 && npm audit --audit-level=high",
     "eval:alpha": "node scripts/summarize-alpha-sessions.mjs",
     "db:generate": "prisma generate",
@@ -57,6 +59,8 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.3",
     "@types/react-dom": "^19.0.2",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.20",
     "prisma": "^6.1.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
@@ -70,6 +74,7 @@
     "esbuild@0.28.1": true,
     "fsevents@2.3.3": true,
     "prisma@6.19.3": true,
-    "sharp@0.34.5": true
+    "sharp@0.34.5": true,
+    "unrs-resolver@1.12.2": true
   }
 }
