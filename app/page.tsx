@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { ArrowRight, ClipboardPenLine, Fingerprint, FolderOpen, Info, PackageCheck } from "lucide-react";
+import { ArrowRight, Fingerprint, Info } from "lucide-react";
 import "./landing.css";
 import Link from "next/link";
 
@@ -20,19 +20,13 @@ export default async function LandingPage() {
 
     <section className="landing-hero">
       <div className="landing-copy">
-        <p className="landing-kicker">A clearer way to prepare</p>
-        <h1>Build your VA claim one condition at a time.</h1>
-        <p className="landing-lede">Organize documents, work through guided questions, and turn your own facts into a reviewable personal statement and claim package.</p>
+        <p className="landing-kicker">Veteran claim preparation</p>
+        <h1>Prepare your claim, one condition at a time.</h1>
+        <p className="landing-lede">Answer guided questions, organize supporting information, and prepare a personal statement for your review.</p>
         <div className="landing-actions">
-          <Link className="landing-primary" href={signedIn?"/dashboard":"/login?redirectTo=/dashboard"}>{signedIn?"Continue to your workspace":"Start your workspace"} <ArrowRight size={17}/></Link>
-          {!signedIn&&<Link className="landing-secondary" href="/dashboard">Explore without signing in</Link>}
+          <Link className="landing-primary" href={signedIn?"/dashboard":"/login?redirectTo=/dashboard"}>{signedIn?"Open dashboard":"Log in to begin"} <ArrowRight size={17}/></Link>
+          {!signedIn&&<Link className="landing-secondary" href="/dashboard">Continue without an account</Link>}
         </div>
-      </div>
-
-      <div className="landing-steps" aria-label="How Debrief works">
-        <article><FolderOpen size={19}/><span>1</span><div><strong>Organize</strong><p>Create a workspace and gather the documents you may need.</p></div></article>
-        <article><ClipboardPenLine size={19}/><span>2</span><div><strong>Prepare</strong><p>Answer focused questions and draft one statement per condition.</p></div></article>
-        <article><PackageCheck size={19}/><span>3</span><div><strong>Review</strong><p>Bring statements, evidence reminders, and next actions together.</p></div></article>
       </div>
 
       <div className="landing-alpha"><Info size={16}/><p><strong>Alpha review:</strong> Use fictional information only. Do not enter medical records, an SSN, or a VA file number.</p></div>

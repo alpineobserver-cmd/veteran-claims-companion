@@ -37,3 +37,10 @@ test("global accessibility styles preserve focus, contrast, touch targets, and r
   assert.match(css,/min-height:24px/);
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
 });
+
+test("mobile application chrome does not force horizontal overflow",async()=>{
+  const [shell,banner]=await Promise.all([read("app/shell.css"),read("app/deployment-banner.css")]);
+  assert.match(shell,/\.search-wrap\{min-width:0\}/);
+  assert.match(shell,/@media\(max-width:620px\).*\.notifications-wrap\{display:none\}/s);
+  assert.match(banner,/@media\(max-width:620px\).*font-size:10px/s);
+});

@@ -23,7 +23,7 @@ function claimTitle(draft:StoredDraft){
 
 function scrollToTop(){window.scrollTo({top:0,behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"})}
 
-export function ClaimQuestionnaire({user,initialClaimId,fresh=false}:{user?:{id:string;name?:string|null};initialClaimId?:string;fresh?:boolean}) {
+export function ClaimQuestionnaire({user,initialClaimId,initialSection,fresh=false}:{user?:{id:string;name?:string|null};initialClaimId?:string;initialSection?:"statement"|"package";fresh?:boolean}) {
   const [step, setStep] = useState(0);
   const [furthestStep,setFurthestStep]=useState(0);
   const [answers, setAnswers] = useState<Answers>(initial);
@@ -55,9 +55,12 @@ export function ClaimQuestionnaire({user,initialClaimId,fresh=false}:{user?:{id:
   useEffect(() => {
     let cancelled=false;
     function applyDraft(draft:StoredDraft){
+      const requestedStep=initialSection==="statement"?9:initialSection==="package"?10:undefined;
+      const restoredStep=Math.min(Math.max(draft.step||0,0),steps.length-1);
+      const restoredFurthest=Math.min(Math.max(draft.furthestStep??draft.step??0,0),steps.length-1);
       setAnswers({...initial,...draft.answers});
-      setStep(Math.min(Math.max(draft.step||0,0),steps.length-1));
-      setFurthestStep(Math.min(Math.max(draft.furthestStep??draft.step??0,0),steps.length-1));
+      setStep(requestedStep??restoredStep);
+      setFurthestStep(Math.max(restoredFurthest,requestedStep??0));
       setStatement(draft.statement||"");setStatementMode(draft.statementMode||"");
       setTimeline(draft.timeline||[]);setEvidenceMap(normalizeEvidenceMap(draft.evidenceMap));setConfirmations(draft.confirmations||{});setDocumentLinks(draft.documentLinks||{});setStatementVersions(draft.statementVersions||[]);setPackageStatus(draft.packageStatus||"planned");setPackageStatusUpdatedAt(draft.packageStatusUpdatedAt||"");setPackageExportedAt(draft.packageExportedAt||"");setPackageSubmittedAt(draft.packageSubmittedAt||"");setBuddyStatements(draft.buddyStatements||[]);
       setSaved(true);
@@ -103,7 +106,7 @@ export function ClaimQuestionnaire({user,initialClaimId,fresh=false}:{user?:{id:
       if(!cancelled)setHydrated(true);
     }
     void load();return()=>{cancelled=true};
-  }, [fresh,initialClaimId,user]);
+  }, [fresh,initialClaimId,initialSection,user]);
   useEffect(()=>{if(!user||!currentClaimId)return;let cancelled=false;fetch("/api/documents",{cache:"no-store"}).then(response=>response.json()).then((data:{documents?:DocumentRecord[]})=>{if(!cancelled)setLoadedDocuments(data.documents||[])}).catch(()=>{if(!cancelled)setLoadedDocuments([])});return()=>{cancelled=true}},[currentClaimId,user]);
   const condition = answers.condition === "Other / condition not listed" ? answers.otherCondition : answers.condition;
   const progress = Math.round(((furthestStep + 1) / steps.length) * 100);
