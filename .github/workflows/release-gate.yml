@@ -15,12 +15,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      # Prisma validates the URL while generating its client during npm ci.
-      # Release checks do not connect to this fictional local database.
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/debrief_ci
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check TypeScript
+        run: npm run typecheck
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/debrief_ci
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build the production application
+        run: npm run build
+
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/debrief_ci
     steps:
       - uses: actions/checkout@v4
@@ -29,5 +59,99 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Run the Debrief release checks
-        run: npm run test:release
+      - name: Run deterministic unit and evaluation checks
+        run: npm run test:unit
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/debrief_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Run storage and data-lifecycle integration checks
+        run: npm run test:integration
+
+  migration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: debrief_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d debrief_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/debrief_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Validate the Prisma schema
+        run: npm run db:validate
+      - name: Apply every migration to an empty PostgreSQL database
+        run: npm run db:migrate:deploy
+      - name: Confirm the migration history is current
+        run: npm run db:migrate:status
+
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/debrief_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Validate the dependency tree and block high-severity advisories
+        run: npm run check:dependencies
+
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/debrief_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Run authentication, authorization, abuse, and legal-boundary checks
+        run: npm run test:security
+
+  verify:
+    if: always()
+    needs: [typecheck, build, unit, integration, migration, dependencies, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm every release check passed
+        run: |
+          test "${{ needs.typecheck.result }}" = "success"
+          test "${{ needs.build.result }}" = "success"
+          test "${{ needs.unit.result }}" = "success"
+          test "${{ needs.integration.result }}" = "success"
+          test "${{ needs.migration.result }}" = "success"
+          test "${{ needs.dependencies.result }}" = "success"
+          test "${{ needs.security.result }}" = "success"
