@@ -15,19 +15,6 @@ type StoredDraft = { answers: Answers; step: number; furthestStep?:number; state
 type CloudState = "idle"|"loading"|"saving"|"saved"|"error";
 type CloudClaim = { id:string; title:string; progress:number; draftVersion:number; draftData:StoredDraft|null; updatedAt:string };
 const steps = ["Condition","Claim path","Claim details","Health history","Service history","Timeline","Treatment","Evidence","Review","Personal statement","Claim package"];
-const stepGuidance = [
-  "Choose one condition or health issue for this workspace.",
-  "Select the claim path that best matches this condition.",
-  "Record the intent-to-file checkpoint and the core service connection facts.",
-  "Describe current symptoms, onset, and one concrete example.",
-  "Add only the service details that help explain this condition.",
-  "Organize key events in date order, or skip this optional section.",
-  "Summarize treatment and add provider details only when useful.",
-  "Identify what supports each important fact. Uploads are not required to continue.",
-  "Resolve essential gaps and review optional evidence suggestions separately.",
-  "Create and verify a first-person draft using only the facts you supplied.",
-  "Confirm each section, download an optional review PDF, and add the condition to your package."
-] as const;
 
 function claimTitle(draft:StoredDraft){
   const selected=draft.answers.condition==="Other / condition not listed"?draft.answers.otherCondition:draft.answers.condition;
@@ -204,16 +191,6 @@ export function ClaimQuestionnaire({user,initialClaimId,fresh=false}:{user?:{id:
         <div className="builder-actions">{step>0?<button className="button secondary" onClick={back}><ArrowLeft size={16}/>Back</button>:<a className="button secondary" href="/dashboard">Cancel</a>}<button className="button primary" disabled={!canContinue} onClick={step===steps.length-1?finish:next}>{step===steps.length-1?(user?"Add to claim package":completed?"Saved on this device":statement?"Save statement":"Save draft"):continueLabel}{step<steps.length-1&&<ArrowRight size={16}/>}</button></div>
         {completed && <div className="summary-next-actions"><a className="text-action" href="/dashboard">Return to dashboard <ArrowRight size={14}/></a><button type="button" onClick={startNew}>Add another condition</button></div>}
       </section>
-      <aside className="builder-context" aria-label="Current claim preparation status">
-        <header><span>Preparation picture</span><strong>{progress}% organized</strong></header>
-        <dl>
-          <div><dt>Current section</dt><dd>{steps[step]}</dd></div>
-          <div><dt>Condition</dt><dd>{condition || "Not selected yet"}</dd></div>
-          <div><dt>Save status</dt><dd>{saveLabel}</dd></div>
-        </dl>
-        <section><h2>What happens here</h2><p>{stepGuidance[step]}</p></section>
-        <section className="builder-context-caution"><h2>You stay in control</h2><p>Nothing is submitted to VA from this page. Review every statement and decide what to keep.</p></section>
-      </aside>
     </div>
     <div className="builder-note"><Info size={17}/><p><strong>Fictional alpha scenarios only.</strong> Do not enter real health or identifying information. This self-directed tool organizes what you provide; it does not represent you, determine eligibility, or submit anything to VA.</p></div>
   </div>;
