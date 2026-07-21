@@ -108,6 +108,20 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model RateLimitBucket {
+  id String @id @default(cuid())
+  scope String
+  principalHash String
+  windowStart DateTime
+  windowEndsAt DateTime
+  count Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, principalHash, windowStart])
+  @@index([windowEndsAt])
+}
+
 model Claim {
   id String @id @default(cuid())
   userId String

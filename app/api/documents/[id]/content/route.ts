@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { verifyDocumentDownloadTicket } from "@/lib/document-download-ticket";
 import { prisma } from "@/lib/prisma";
 import { documentStorage } from "@/lib/storage";
+import { enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
 export const runtime="nodejs";
@@ -9,6 +10,7 @@ type Context={params:Promise<{id:string}>};
 
 export async function GET(request:Request,context:Context){
   const session=await auth();if(!session?.user?.id)return NextResponse.json({error:"Sign in to download this document."},{status:401});
+  const limited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.documentAccess],"Too many document requests. Please wait before trying again.");if(limited)return limited;
   const {id}=await context.params;const token=new URL(request.url).searchParams.get("token")||"";
   if(!verifyDocumentDownloadTicket(token,id,session.user.id))return NextResponse.json({error:"This secure download link is invalid or has expired. Request a new link."},{status:403,headers:{"Cache-Control":"private, no-store","Referrer-Policy":"no-referrer"}});
   const document=await prisma.document.findFirst({where:{id,userId:session.user.id},select:{id:true,claimId:true,originalName:true,storageKey:true,mimeType:true}});

@@ -31,6 +31,20 @@ test("production rejects a staging data label",()=>{
   assert.match(result.stderr,/Production must use DATA_ENVIRONMENT=production/);
 });
 
+test("deployment rejects unsafe AI cost ceilings",()=>{
+  for(const overrides of [
+    {DEBRIEF_AI_DAILY_USER_LIMIT:"0"},
+    {DEBRIEF_AI_DAILY_USER_LIMIT:"1.5"},
+    {DEBRIEF_AI_DAILY_GLOBAL_LIMIT:"5001"},
+  ]){
+    const result=validate(overrides);
+    assert.notEqual(result.status,0);
+    assert.match(result.stderr,/DEBRIEF_AI_DAILY_(USER|GLOBAL)_LIMIT/);
+  }
+  const safe=validate({DEBRIEF_AI_DAILY_USER_LIMIT:"30",DEBRIEF_AI_DAILY_GLOBAL_LIMIT:"200"});
+  assert.equal(safe.status,0,safe.stderr);
+});
+
 test("the root layout includes a server-rendered non-production banner",async()=>{
   const [layout,banner]=await Promise.all([
     readFile(path.join(root,"app/layout.tsx"),"utf8"),

@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { documentStorage } from "@/lib/storage";
 import { hasAcceptableContentLength, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
+import { enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -25,6 +26,7 @@ export async function PATCH(request: Request, context: Context) {
   if(!hasAcceptableContentLength(request,MAX_JSON_REQUEST_BYTES))return NextResponse.json({error:"This claim draft is too large to process."},{status:413});
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Sign in to save this claim." }, { status: 401 });
+  const limited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.claimMutation]);if(limited)return limited;
   const { id } = await context.params;
   const parsed = updateClaimSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "The claim draft is not valid." }, { status: 400 });
@@ -56,6 +58,7 @@ export async function DELETE(request: Request, context: Context) {
   const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Sign in to delete this claim." }, { status: 401 });
+  const limited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.claimMutation]);if(limited)return limited;
   const { id } = await context.params;
   const documents = await prisma.document.findMany({ where: { claimId: id, userId: session.user.id }, select: { storageKey: true } });
   if (documents.length) {

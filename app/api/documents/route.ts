@@ -5,6 +5,7 @@ import { uploadsEnabled } from "@/lib/operational-controls";
 import { documentStorage, StorageConfigurationError } from "@/lib/storage";
 import { NextResponse } from "next/server";
 import { hasAcceptableContentLength, MAX_DOCUMENT_REQUEST_BYTES, MAX_DOCUMENTS_PER_USER, MAX_DOCUMENTS_PER_WORKSPACE, rejectCrossOriginMutation } from "@/lib/request-security";
+import { enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 export const runtime="nodejs";
 
@@ -22,6 +23,7 @@ export async function POST(request:Request){
   if(!hasAcceptableContentLength(request,MAX_DOCUMENT_REQUEST_BYTES))return NextResponse.json({error:"The upload request is larger than the 4 MB alpha limit."},{status:413});
   const session=await auth();if(!session?.user?.id)return NextResponse.json({error:"Sign in to upload a test document."},{status:401});
   if(!uploadsEnabled())return NextResponse.json({error:"Document uploads are temporarily paused by the Alpha administrator. Existing files remain available."},{status:503,headers:{"Cache-Control":"private, no-store"}});
+  const limited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.documentUploadHour,rateLimitPolicies.documentUploadDay],"Too many upload attempts. Please wait before trying again.");if(limited)return limited;
   const form=await request.formData().catch(()=>null);if(!form)return NextResponse.json({error:"The upload could not be read."},{status:400});
   const file=form.get("file");const claimId=form.get("claimId");const syntheticConfirmed=form.get("syntheticConfirmed");
   if(!(file instanceof File)||typeof claimId!=="string")return NextResponse.json({error:"Choose a workspace and file."},{status:400});

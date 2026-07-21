@@ -6,6 +6,7 @@ import { deriveStatementProvenance } from "@/lib/statement-provenance";
 import { auth } from "@/auth";
 import { hasAcceptableContentLength, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
 import { aiGenerationEnabled } from "@/lib/operational-controls";
+import { aiGlobalDailyPolicy, aiUserDailyPolicy, enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -38,16 +39,6 @@ type StatementInput=z.infer<typeof requestSchema>;
 type OpenAIResponse={output_text?:string;output?:Array<{content?:Array<{type?:string;text?:string}>}>;error?:{message?:string}};
 const statementFields=["diagnosis","symptoms","symptomFrequency","symptomDuration","onset","serviceEvent","exposures","treatment","specificExamples","additionalContext","worsening","worseningDate","primaryCondition","secondaryRelationship","clinicianDiscussion","workImpact","dailyImpact","continuity","flareUps","conditionDetail1","conditionDetail2","conditionDetail3","conditionDetail4"] as const;
 const aiResultSchema=z.object({status:z.enum(["ready","needs_information"]),statement:z.string(),questions:z.array(z.object({field:z.enum(statementFields),question:z.string(),reason:z.string()})).max(3)});
-
-const limits=new Map<string,{count:number;reset:number}>();
-function isRateLimited(request:NextRequest){
-  const key=request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()||"local";
-  const now=Date.now();
-  const current=limits.get(key);
-  if(!current||current.reset<now){limits.set(key,{count:1,reset:now+10*60*1000});return false}
-  current.count+=1;
-  return current.count>8;
-}
 
 function responseText(data:OpenAIResponse){
   if(data.output_text?.trim())return data.output_text.trim();
@@ -82,7 +73,6 @@ export function GET(){const configured=Boolean(process.env.OPENAI_API_KEY)&&aiGe
 export async function POST(request:NextRequest){
   const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
   if(!hasAcceptableContentLength(request,MAX_JSON_REQUEST_BYTES))return NextResponse.json({error:"The drafting request is too large."},{status:413});
-  if(isRateLimited(request))return NextResponse.json({error:"Too many drafting requests. Please wait a few minutes and try again."},{status:429});
   let body:unknown;
   try{body=await request.json()}catch{return NextResponse.json({error:"The request could not be read."},{status:400})}
   const parsed=requestSchema.safeParse(body);
@@ -98,6 +88,8 @@ export async function POST(request:NextRequest){
   }
   const session=await auth();
   if(!session?.user?.id)return NextResponse.json({error:"Sign in before sending questionnaire answers to the AI drafting service."},{status:401});
+  const userLimited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.aiBurst,aiUserDailyPolicy()],"AI drafting limit reached. Please wait before trying again.");if(userLimited)return userLimited;
+  const globalLimited=await enforceAccountRateLimit("global-ai-generation",[aiGlobalDailyPolicy()],"AI drafting is temporarily unavailable because the Alpha daily safety limit was reached.");if(globalLimited)return globalLimited;
 
   const modelInput=Object.fromEntries(Object.entries(input).filter(([key])=>key!=="statementName"));
   const controller=new AbortController();

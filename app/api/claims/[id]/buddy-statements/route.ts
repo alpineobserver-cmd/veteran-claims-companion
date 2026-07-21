@@ -6,6 +6,7 @@ import { buddyStatementGaps, buddyStatementInputSchema, createBuddyStatement } f
 import { claimDraftSchema } from "@/lib/claim-drafts";
 import { prisma } from "@/lib/prisma";
 import { hasAcceptableContentLength, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
+import { enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 type Context={params:Promise<{id:string}>};
 const saveSchema=buddyStatementInputSchema.extend({id:z.string().max(100).optional(),statement:z.string().max(50_000).optional(),version:z.number().int().positive()}).strict();
@@ -17,6 +18,7 @@ export async function POST(request:Request,context:Context){
   const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
   if(!hasAcceptableContentLength(request,MAX_JSON_REQUEST_BYTES))return NextResponse.json({error:"The buddy statement is too large to save."},{status:413});
   const session=await auth();if(!session?.user?.id)return NextResponse.json({error:"Sign in to save a buddy statement."},{status:401});
+  const limited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.claimMutation]);if(limited)return limited;
   const parsed=saveSchema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"Review the buddy statement answers and try again."},{status:400});
   const {id}=await context.params;const claim=await ownedClaim(id,session.user.id);if(!claim)return NextResponse.json({error:"Claim not found."},{status:404});
   const draft=claimDraftSchema.safeParse(claim.draftData);if(!draft.success)return NextResponse.json({error:"Open and save this claim before adding a buddy statement."},{status:409});
@@ -34,6 +36,7 @@ export async function DELETE(request:Request,context:Context){
   const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
   if(!hasAcceptableContentLength(request,MAX_JSON_REQUEST_BYTES))return NextResponse.json({error:"The buddy statement request is too large."},{status:413});
   const session=await auth();if(!session?.user?.id)return NextResponse.json({error:"Sign in to delete a buddy statement."},{status:401});
+  const limited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.claimMutation]);if(limited)return limited;
   const parsed=deleteSchema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"The buddy statement request is not valid."},{status:400});
   const {id}=await context.params;const claim=await ownedClaim(id,session.user.id);if(!claim)return NextResponse.json({error:"Claim not found."},{status:404});
   const draft=claimDraftSchema.safeParse(claim.draftData);if(!draft.success)return NextResponse.json({error:"This claim needs to be opened and saved again."},{status:409});
