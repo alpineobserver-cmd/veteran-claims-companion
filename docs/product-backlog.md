@@ -90,20 +90,20 @@ This file is the working source of truth for product tasks. Update the checkbox 
 
 ### Claim Builder
 
-- [ ] **CLAIM-001 · P1** — Support multiple conditions within one overall claim package while keeping each condition's evidence and narrative isolated.
-- [ ] **CLAIM-002 · P1** — Connect uploaded records to the relevant condition or conditions.
-- [ ] **CLAIM-003 · P1** — Show which user answer or source document supports each factual statement.
-- [ ] **CLAIM-004 · P1** — Build a consolidated claim-package workspace for statements, evidence, forms, missing items, and readiness status.
-- [ ] **CLAIM-005 · P1** — Generate an individualized supporting-evidence checklist without implying that listed evidence guarantees an outcome.
-- [ ] **CLAIM-006 · P1** — Provide a clear “What to do next” screen after export.
-- [ ] **CLAIM-007 · P1** — Build the first submission bridge as a guided package with official VA submission links.
+- [x] **CLAIM-001 · P1** — Support multiple conditions within one overall claim package while keeping each condition's evidence and narrative isolated. Completed July 20: each active condition remains an isolated workspace and is assembled in the consolidated package view.
+- [x] **CLAIM-002 · P1** — Connect uploaded records to the relevant condition or conditions. Completed July 20: any account-owned upload can be linked to one or more key facts across condition workspaces without duplicating the stored file.
+- [ ] **CLAIM-003 · P1 · [Partially completed]** — Show which user answer or source document supports each factual statement. The package now shows a fact-to-source ledger and linked upload names, and the exported review PDF retains those links. Sentence-level provenance and direct answer-field references remain.
+- [x] **CLAIM-004 · P1** — Build a consolidated claim-package workspace for statements, evidence, forms, missing items, and readiness status. Completed July 20 with per-condition metrics, source checklists, blockers, package-wide checks, status tracking, form references, and next actions.
+- [x] **CLAIM-005 · P1** — Generate an individualized supporting-evidence checklist without implying that listed evidence guarantees an outcome. Completed July 20 with claim-path-specific facts, source status, linked files, pending-record treatment, and explicit no-guarantee language.
+- [x] **CLAIM-006 · P1** — Provide a clear “What to do next” screen after export. Completed July 20 through the three-step submission bridge in the package workspace.
+- [x] **CLAIM-007 · P1** — Build the first submission bridge as a guided package with official VA submission links. Completed July 20 with direct official VA filing links and manual lifecycle tracking.
   - Do not collect VA.gov credentials or automate submission.
   - Clearly distinguish prepared, downloaded, and actually submitted states.
-- [ ] **CLAIM-008 · P1** — Preserve statement versions and revision history with restore and comparison controls.
-- [ ] **CLAIM-009 · P1** — Improve autosave, resume, duplicate, archive, and permanent-delete behavior.
-- [ ] **CLAIM-010 · P2** — Add buddy-statement questionnaires and drafting.
-- [ ] **CLAIM-011 · P2 · [Added]** — Add package-level validation for conflicting dates, duplicate evidence, unsupported relationships, incomplete conditions, and stale forms before export.
-- [ ] **CLAIM-012 · P2 · [Added]** — Let users mark package items as planned, requested, obtained, reviewed, exported, or submitted by the user, with a clear explanation that Debrief cannot verify VA receipt.
+- [ ] **CLAIM-008 · P1 · [Partially completed]** — Preserve statement versions and revision history with restore and comparison controls. Up to 20 generated or manually saved versions are preserved with timestamp, mode, preview, and restore controls; side-by-side or highlighted comparison remains.
+- [x] **CLAIM-009 · P1** — Improve autosave, resume, duplicate, archive, and permanent-delete behavior. Completed July 20: the existing optimistic cloud autosave/resume flow now includes duplicate, recoverable archive, restore, and separately warned permanent deletion.
+- [x] **CLAIM-010 · P2** — Add buddy-statement questionnaires and drafting. Completed July 20 with a condition-specific firsthand-observation questionnaire, missing-information gate, guided editable draft, save/resume/delete, copy/download, and witness-review warning.
+- [x] **CLAIM-011 · P2 · [Added]** — Add package-level validation for conflicting dates, duplicate evidence, unsupported relationships, incomplete conditions, and stale forms before export. Completed July 20 with blocking, attention, and check-level validation plus package-wide file-fingerprint and form-verification checks.
+- [x] **CLAIM-012 · P2 · [Added]** — Let users mark package items as planned, requested, obtained, reviewed, exported, or submitted by the user, with a clear explanation that Debrief cannot verify VA receipt. Completed July 20; marking submitted requires an explicit user confirmation and remains labeled as unverified by Debrief.
 
 ## Phase 3 — Storage, privacy, and operational security
 

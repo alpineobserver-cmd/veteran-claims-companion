@@ -1,5 +1,5 @@
 import { evidenceStatusLabel, intentToFileLabel, type EvidenceMap, type IntentToFileStatus } from "./claim-builder-intelligence";
-type PackageInput={condition:string;claimType:string;intentToFileStatus:IntentToFileStatus;intentToFileDate:string;name:string;statement:string;timeline:{date:string;title:string;details:string;source:string;approximate:boolean}[];evidenceMap:EvidenceMap;selectedEvidence:string[];qualityFindings:{level:string;title:string;detail:string}[]};
+type PackageInput={condition:string;claimType:string;intentToFileStatus:IntentToFileStatus;intentToFileDate:string;name:string;statement:string;timeline:{date:string;title:string;details:string;source:string;approximate:boolean}[];evidenceMap:EvidenceMap;selectedEvidence:string[];linkedDocuments:{factId:string;documentName:string}[];qualityFindings:{level:string;title:string;detail:string}[]};
 const factLabels:Record<string,string>={current:"Current condition",onset:"Onset or worsening",service:"In-service event or circumstances",function:"Symptoms and functional effects",treatment:"Treatment history",worsening:"Change since prior decision",secondary:"Secondary relationship"};
 const clean=(value:string)=>value.normalize("NFKD").replace(/[^\x20-\x7E\n]/g,"-").replace(/\s+/g," ").trim();
 const escapePdf=(value:string)=>value.replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");
@@ -28,6 +28,7 @@ export function createClaimPackagePdf(input:PackageInput){
   if(input.selectedEvidence.length)input.selectedEvidence.forEach(bullet);else paragraph("No evidence types were selected.");
   y-=5;line("Fact-to-evidence links",{size:11,bold:true,leading:18});
   const links=Object.entries(input.evidenceMap);if(links.length)links.forEach(([fact,link])=>bullet(`${factLabels[fact]||fact}: ${evidenceStatusLabel(link.status)}${link.source?` - ${link.source}`:""}`));else paragraph("No support statuses were entered for the major facts.");
+  if(input.linkedDocuments.length){y-=5;line("Uploaded document links",{size:11,bold:true,leading:18});input.linkedDocuments.forEach(item=>bullet(`${factLabels[item.factId]||item.factId}: ${item.documentName}`))}else paragraph("No uploaded files were linked to a specific fact. This does not mean supporting information is absent.",{size:9});
   ensure(90);heading("Readiness checks");
   if(input.qualityFindings.length)input.qualityFindings.forEach(item=>{ensure(50);line(`[${item.level.toUpperCase()}] ${item.title}`,{bold:true});paragraph(item.detail,{indent:10})});else paragraph("No automated issues were identified. This does not replace review by the person making the statement or an accredited representative.");
   ensure(105);heading("Final review");

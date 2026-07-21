@@ -8,7 +8,7 @@ import { ArrowRight, BookOpen, Check, Cloud, FileText, Files, Info, PackageCheck
 export default async function Dashboard() {
   const session=await auth();
   const user=session?.user;
-  const claims=user?await prisma.claim.findMany({where:{userId:user.id,status:{not:"ARCHIVED"}},orderBy:{updatedAt:"desc"},select:{id:true,title:true,status:true,progress:true,updatedAt:true}}):[];
+  const [claims,archivedClaims]=user?await Promise.all([prisma.claim.findMany({where:{userId:user.id,status:{not:"ARCHIVED"}},orderBy:{updatedAt:"desc"},select:{id:true,title:true,status:true,progress:true,updatedAt:true}}),prisma.claim.findMany({where:{userId:user.id,status:"ARCHIVED"},orderBy:{updatedAt:"desc"},select:{id:true,title:true,updatedAt:true}})]):[[],[]];
   const first=claims[0];
   const average=claims.length?Math.round(claims.reduce((sum,claim)=>sum+claim.progress,0)/claims.length):0;
   const shellUser=user?{id:user.id,name:user.name,email:user.email,image:user.image}:undefined;
@@ -29,6 +29,7 @@ export default async function Dashboard() {
       <section className="panel claims-panel">
         <div className="section-title"><div><span className="kicker">Active casework</span><h2>Claims in progress</h2></div><a className="link" href="/claim-builder?new=1">New claim</a></div>
         {claims.length?claims.map((claim,index)=><Claim key={claim.id} {...claim} tone={index%2?"clay":"olive"}/>):<div className="empty-claims"><Cloud size={23}/><strong>{user?"No saved claims yet":"Cloud saving is available after sign-in"}</strong><p>{user?"Start the guided questionnaire and it will appear here after your first save.":"A browser-only draft can still be created without an account."}</p><a href="/claim-builder?new=1">Open a new claim <ArrowRight size={14}/></a></div>}
+        {archivedClaims.length>0&&<details className="archived-claims"><summary>{archivedClaims.length} archived {archivedClaims.length===1?"workspace":"workspaces"}</summary>{archivedClaims.map(claim=><article key={claim.id}><div><strong>{claim.title}</strong><small>Archived {formatUpdated(claim.updatedAt)}</small></div><div className="claim-controls"><DeleteClaimButton id={claim.id} title={claim.title} archived/></div></article>)}</details>}
       </section>
 
       <aside className="panel overview-panel">
