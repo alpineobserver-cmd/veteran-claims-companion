@@ -145,8 +145,8 @@ These items must be completed and reviewed together before the real-data gate ca
 - [ ] **LEGAL-006 · P0 · [Blocked]** — Define informed consent for document processing and AI use, including withdrawal and deletion behavior.
 - [ ] **LEGAL-007 · P1 · [Blocked]** — Review VA trademarks, seals, branding, attribution, and the “Debrief” product name/domain.
 - [ ] **LEGAL-008 · P1** — Review third-party software, content, and data licenses; generate required notices and attribution.
-- [ ] **LEGAL-009 · P1** — Establish WCAG 2.2 AA as the accessibility target and document the review process.
-- [ ] **LEGAL-010 · P1** — Create an operating process for privacy, deletion, security, accessibility, and content-correction requests.
+- [x] **LEGAL-009 · P1** — Establish WCAG 2.2 AA as the accessibility target and document the review process. Completed July 21: `docs/accessibility-review-process.md` defines the WCAG 2.2 AA target, required keyboard, screen-reader, reflow, contrast, form, touch, motion, and readability reviews, privacy-safe evidence, finding severity, release-blocking rules, retest, and exception controls. Automated and manual evidence remain required; this is a target, not a certification.
+- [x] **LEGAL-010 · P1** — Create an operating process for privacy, deletion, security, accessibility, and content-correction requests. Completed July 21: the public `/support` route and `docs/support-and-correction-operations.md` establish privacy-minimized intake through the monitored Alpha contact, category-specific handling, neutral tracking fields, immediate security/privacy escalation, identity-safe deletion handling, retest/source-review closure, and legal escalation boundaries.
 - [ ] **LEGAL-011 · P1 · [Added]** — Define who is authorized to approve real-data, AI, content, and production releases; preserve dated approval records.
 
 ## Phase 5 — Evidence-grounded generative AI
@@ -179,7 +179,7 @@ These items must be completed and reviewed together before the real-data gate ca
 - [ ] **CONTENT-008 · P2** — Build recurring checks for revised, replaced, or withdrawn VA forms and official URLs.
 - [ ] **CONTENT-009 · P1** — Require human review and approval before automated content changes are published.
 - [ ] **CONTENT-010 · P1** — Record every published content change in the public changelog.
-- [ ] **CONTENT-011 · P1** — Let users report outdated, broken, or incorrect content without including claim or health details.
+- [x] **CONTENT-011 · P1** — Let users report outdated, broken, or incorrect content without including claim or health details. Completed July 21: Conditions and VA Forms now link directly to the public Support correction section, which asks only for the affected content, suspected problem, and optional official source while explicitly rejecting health, claim, credential, and private account details. No sensitive web form or new support database was added.
 - [ ] **CONTENT-012 · P1 · [Added]** — Preserve source snapshots or hashes and an internal provenance record so reviewers can reproduce what authority supported each release.
 - [x] **CONTENT-013 · P1 · [Added]** — Remove empty body-system navigation and connect condition guides directly to potentially relevant diagnostic-code paths. Completed July 21: the directory now shows only systems with indexed content, groups code links under each condition, keeps official-source links visible, and labels code-only material that lacks a full Debrief guide.
 
@@ -212,8 +212,8 @@ These items must be completed and reviewed together before the real-data gate ca
 - [ ] **OPS-009 · P1 · [Partially completed]** — Document deployment, promotion, rollback, backup, restoration, and disaster-recovery procedures. Promotion and application rollback are documented; database backup/restore and full disaster recovery remain.
 - [ ] **OPS-010 · P1 · [Partially completed]** — Establish a release checklist, named approver, version number, release notes, and rollback decision for every release. The template and required fields exist; the owner must name the Production approver and use the record for each release.
 - [ ] **OPS-011 · P1** — Monitor Auth.js releases and security advisories; re-evaluate the pinned beta according to `docs/auth-dependency-decision.md`.
-- [ ] **OPS-012 · P1 · [Added]** — Add a canonical-domain check to release verification and ensure protected preview/deployment URLs never appear in tester communications.
-- [ ] **OPS-013 · P1 · [Added]** — Define service-level objectives for sign-in success, availability, save success, export success, and incident response.
+- [x] **OPS-012 · P1 · [Added]** — Add a canonical-domain check to release verification and ensure protected preview/deployment URLs never appear in tester communications. Completed July 21: the release suite scans repository text for non-canonical Vercel addresses, validates the tester invitation's canonical address and protected-alias warning, confirms required public routes, and live-checks the canonical pages when the release URL is supplied. Support is now included in both static and live route coverage.
+- [x] **OPS-013 · P1 · [Added]** — Define service-level objectives for sign-in success, availability, save success, export success, and incident response. Completed July 21: `docs/service-level-objectives.md` defines rolling 30-day indicators and targets, raw-count reporting for small Alpha samples, privacy-minimized measurement, error budgets, feature-pause rules, and Critical/High support-response targets. Monitoring implementation remains explicitly tracked by OPS-007.
 - [ ] **OPS-014 · P2 · [Added]** — Review the 13 foreign-key index recommendations reported by the Supabase performance advisor, add only query-supported indexes, and record before/after query plans. This is not blocking the fictional-data Alpha because no slow query or excessive egress finding is currently present.
 
 ## Phase 8 — Controlled retest and Beta decision
