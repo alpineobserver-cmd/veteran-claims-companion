@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { ArrowRight, ClipboardPenLine, Fingerprint, FolderOpen, Info, PackageCheck } from "lucide-react";
 import "./landing.css";
+import Link from "next/link";
 
 export default async function LandingPage() {
   const session=await auth();
@@ -8,13 +9,13 @@ export default async function LandingPage() {
 
   return <main className="landing">
     <header className="landing-nav">
-      <a className="landing-brand" href="/" aria-label="Debrief home">
+      <Link className="landing-brand" href="/" aria-label="Debrief home">
         <span className="landing-brandmark"><Fingerprint size={21}/></span>
         <span><strong>Debrief</strong><small>Veteran claim preparation</small></span>
-      </a>
+      </Link>
       {signedIn
-        ? <a className="landing-login" href="/dashboard">Open dashboard <ArrowRight size={15}/></a>
-        : <a className="landing-login" href="/login?redirectTo=/dashboard">Log in <ArrowRight size={15}/></a>}
+        ? <Link className="landing-login" href="/dashboard">Open dashboard <ArrowRight size={15}/></Link>
+        : <Link className="landing-login" href="/login?redirectTo=/dashboard">Log in <ArrowRight size={15}/></Link>}
     </header>
 
     <section className="landing-hero">
@@ -23,8 +24,8 @@ export default async function LandingPage() {
         <h1>Build your VA claim one condition at a time.</h1>
         <p className="landing-lede">Organize documents, work through guided questions, and turn your own facts into a reviewable personal statement and claim package.</p>
         <div className="landing-actions">
-          <a className="landing-primary" href={signedIn?"/dashboard":"/login?redirectTo=/dashboard"}>{signedIn?"Continue to your workspace":"Start your workspace"} <ArrowRight size={17}/></a>
-          {!signedIn&&<a className="landing-secondary" href="/dashboard">Explore without signing in</a>}
+          <Link className="landing-primary" href={signedIn?"/dashboard":"/login?redirectTo=/dashboard"}>{signedIn?"Continue to your workspace":"Start your workspace"} <ArrowRight size={17}/></Link>
+          {!signedIn&&<Link className="landing-secondary" href="/dashboard">Explore without signing in</Link>}
         </div>
       </div>
 
@@ -38,8 +39,8 @@ export default async function LandingPage() {
     </section>
 
     <footer className="landing-footer">
-      <span>Debrief is independent educational software—not VA or a VA-accredited representative. It does not submit claims or provide legal or medical advice.</span>
-      <span className="landing-legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a></span>
+      <span>Debrief is independent educational software, not VA or a VA-accredited representative. It does not submit claims or provide legal or medical advice.</span>
+      <span className="landing-legal"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></span>
     </footer>
   </main>;
 }

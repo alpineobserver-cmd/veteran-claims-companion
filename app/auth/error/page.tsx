@@ -1,4 +1,5 @@
 import { ArrowLeft, RefreshCw, ShieldAlert } from "lucide-react";
+import Link from "next/link";
 
 const errorMessages:Record<string,{title:string;message:string;next:string}>={
   AccessDenied:{title:"This account is not authorized yet.",message:"During closed Alpha, Google sign-in is limited to email addresses on the tester allowlist.",next:"Ask the Alpha administrator to add the exact email address connected to your Google Account."},
@@ -22,7 +23,7 @@ export default async function AuthErrorPage({searchParams}:{searchParams:Promise
   const content=errorMessages[code]??errorMessages.Default;
   return <main className="login-screen">
     <div className="login-grid" aria-hidden="true"/>
-    <a className="login-back" href="/"><ArrowLeft size={15} aria-hidden="true"/> Return to briefing</a>
+    <Link className="login-back" href="/"><ArrowLeft size={15} aria-hidden="true"/> Return to briefing</Link>
     <section className="login-card auth-error-card" aria-labelledby="auth-error-title">
       <div className="login-emblem auth-error-emblem"><ShieldAlert size={25} aria-hidden="true"/></div>
       <div className="classification">SECURE ACCESS // ATTEMPT ENDED</div>
@@ -30,7 +31,7 @@ export default async function AuthErrorPage({searchParams}:{searchParams:Promise
       <h1 id="auth-error-title">{content.title}</h1>
       <p>{content.message}</p>
       <div className="auth-error-next"><strong>Recommended next step</strong><span>{content.next}</span></div>
-      <a className="login-submit auth-retry-button" href="/login?retry=1"><RefreshCw size={16} aria-hidden="true"/> Try login again</a>
+      <Link className="login-submit auth-retry-button" href="/login?retry=1"><RefreshCw size={16} aria-hidden="true"/> Try login again</Link>
       <p className="auth-error-reference">Reference: <code>{code}</code></p>
       <p className="login-disclaimer">Do not send passwords, authentication codes, or screenshots containing private account information when reporting an error.</p>
     </section>

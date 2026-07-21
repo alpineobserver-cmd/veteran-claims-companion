@@ -8,7 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { VA_FORM_DOWNLOADS_VERIFIED } from "@/lib/va-forms";
 import { PackageStatusControl } from "@/components/package-status-control";
 import { statementProvenanceSummary, type StatementProvenance } from "@/lib/statement-provenance";
-import { AlertTriangle, ArrowRight, Check, ClipboardCheck, Files, FolderOpen, Info, Link2, Plus, ShieldCheck, Users } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, ClipboardCheck, Files, FolderOpen, Link2, Plus, ShieldCheck, Users } from "lucide-react";
+import Link from "next/link";
 import "./claim-package.css";
 import "./statement-provenance.css";
 
@@ -92,9 +93,7 @@ export default async function ClaimPackagePage(){
   const claims=await prisma.claim.findMany({where:{userId:user.id,status:{not:"ARCHIVED"}},orderBy:{updatedAt:"desc"},select:{id:true,title:true,progress:true,draftVersion:true,updatedAt:true,draftData:true,documents:{select:{id:true,originalName:true,sha256:true}}}});
   const documentNames=Object.fromEntries(claims.flatMap(claim=>claim.documents.map(document=>[document.id,document.originalName])));
   const items=claims.map(claim=>packageItem(claim,documentNames));
-  const drafted=items.filter(item=>item.statement).length;
   const verified=items.filter(item=>item.statementSections>0&&item.confirmedSections===item.statementSections).length;
-  const pending=items.reduce((sum,item)=>sum+item.pendingRecords,0);
   const documents=items.reduce((sum,item)=>sum+item.documents,0);
   const ready=items.filter(item=>item.readiness==="ready").length;
   const packageChecks=validatePackageEnvironment(claims.flatMap(claim=>claim.documents),VA_FORM_DOWNLOADS_VERIFIED);
@@ -119,7 +118,7 @@ export default async function ClaimPackagePage(){
     <div className="package-layout"><section className="package-conditions"><div className="package-section-head"><div><span className="kicker">One statement per condition</span><h2>Conditions in this package</h2></div></div>{items.length?items.map(item=><ConditionCard key={item.id} item={item}/>):<div className="package-empty"><ClipboardCheck size={28}/><h2>No conditions have been added yet</h2><p>Start a guided questionnaire. Your first saved condition will appear here automatically.</p><a className="button primary" href="/claim-builder?new=1">Start first condition <ArrowRight size={15}/></a></div>}</section>
 
       <aside className="package-next"><span className="kicker">Next actions</span><h2>Keep moving</h2><Action icon={Plus} title="Work another condition" text="Start a fresh questionnaire without changing existing work." href="/claim-builder?new=1"/><Action icon={FolderOpen} title="Add or review documents" text="Return to the document workspace for any condition." href="/intake"/><Action icon={Users} title="Prepare a buddy statement" text="Guide a witness through a firsthand supporting statement." href={items[0]?`/buddy-statement?claim=${items[0].id}`:"/claim-builder?new=1"}/><Action icon={Files} title="Review common VA forms" text="Use the forms library to confirm current official instructions." href="/forms"/>
-        <div className="form-resources"><strong>Common official resources</strong><p>These links are reference points, not a determination of which form you must file.</p><a href="/forms/21-526ez">VA Form 21-526EZ <ArrowRight size={13}/></a><a href="/forms/21-4138">VA Form 21-4138 <ArrowRight size={13}/></a></div>
+        <div className="form-resources"><strong>Common official resources</strong><p>These links are reference points, not a determination of which form you must file.</p><Link href="/forms/21-526ez">VA Form 21-526EZ <ArrowRight size={13}/></Link><Link href="/forms/21-4138">VA Form 21-4138 <ArrowRight size={13}/></Link></div>
       </aside>
     </div>
 

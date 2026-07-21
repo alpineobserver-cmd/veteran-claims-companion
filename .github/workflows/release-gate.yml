@@ -15,6 +15,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/debrief_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check React, Next.js, accessibility, and TypeScript lint rules
+        run: npm run lint
+
   typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -142,13 +157,14 @@ jobs:
 
   verify:
     if: always()
-    needs: [typecheck, build, unit, integration, migration, dependencies, security]
+    needs: [lint, typecheck, build, unit, integration, migration, dependencies, security]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Confirm every release check passed
         run: |
           test "${{ needs.typecheck.result }}" = "success"
+          test "${{ needs.lint.result }}" = "success"
           test "${{ needs.build.result }}" = "success"
           test "${{ needs.unit.result }}" = "success"
           test "${{ needs.integration.result }}" = "success"
