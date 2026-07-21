@@ -6,6 +6,7 @@ import { claimDraftSchema } from "@/lib/claim-drafts";
 import { packageStatuses } from "@/lib/claim-package-workflow";
 import { prisma } from "@/lib/prisma";
 import { hasAcceptableContentLength, MAX_ACTIVE_CLAIMS_PER_USER, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
+import { enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 type Context={params:Promise<{id:string}>};
 const actionSchema=z.discriminatedUnion("action",[
@@ -19,6 +20,7 @@ export async function POST(request:Request,context:Context){
   const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
   if(!hasAcceptableContentLength(request,MAX_JSON_REQUEST_BYTES))return NextResponse.json({error:"The claim action request is too large."},{status:413});
   const session=await auth();if(!session?.user?.id)return NextResponse.json({error:"Sign in to update this claim."},{status:401});
+  const limited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.claimMutation]);if(limited)return limited;
   const parsed=actionSchema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"The requested claim action is not valid."},{status:400});
   const {id}=await context.params;
   const claim=await prisma.claim.findFirst({where:{id,userId:session.user.id},select:{id:true,title:true,status:true,progress:true,draftData:true,draftVersion:true}});

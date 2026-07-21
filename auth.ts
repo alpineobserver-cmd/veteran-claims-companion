@@ -3,6 +3,7 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { authAuditLogger, logAuthEvent } from "@/lib/auth-audit";
+import { registrationsEnabled } from "@/lib/operational-controls";
 
 export const {handlers,auth,signIn,signOut}=NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -19,6 +20,13 @@ export const {handlers,auth,signIn,signOut}=NextAuth({
     }
   },
   callbacks: {
+    async signIn({account}) {
+      if(registrationsEnabled()||!account?.provider||!account.providerAccountId)return true;
+      const existing=await prisma.account.findUnique({where:{provider_providerAccountId:{provider:account.provider,providerAccountId:account.providerAccountId}},select:{id:true}});
+      if(existing)return true;
+      logAuthEvent("sign_in_blocked",{code:"registrations_paused",provider:account.provider});
+      return "/auth/error?error=RegistrationPaused";
+    },
     session({ session, user }) {
       session.user.id = user.id;
       return session;

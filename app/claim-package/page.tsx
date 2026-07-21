@@ -7,8 +7,10 @@ import { evidenceChecklist, packageReadiness, packageStatus, validatePackageClai
 import { prisma } from "@/lib/prisma";
 import { VA_FORM_DOWNLOADS_VERIFIED } from "@/lib/va-forms";
 import { PackageStatusControl } from "@/components/package-status-control";
+import { statementProvenanceSummary, type StatementProvenance } from "@/lib/statement-provenance";
 import { AlertTriangle, ArrowRight, Check, ClipboardCheck, Files, FolderOpen, Info, Link2, Plus, ShieldCheck, Users } from "lucide-react";
 import "./claim-package.css";
+import "./statement-provenance.css";
 
 type PackageClaim={
   id:string;
@@ -27,6 +29,9 @@ type PackageItem={
   progress:number;
   updatedAt:Date;
   statement:string;
+  statementProvenance:StatementProvenance;
+  sourcedStatements:number;
+  unsourcedStatements:number;
   statementSections:number;
   confirmedSections:number;
   evidenceFacts:number;
@@ -54,8 +59,11 @@ function packageItem(claim:PackageClaim,documentNames:Record<string,string>):Pac
   const sections=statement.split(/\n\s*\n/).map(value=>value.trim()).filter(Boolean);
   const confirmations=draft?.confirmations||{};
   const validations=validatePackageClaim(claim.draftData,claim.title);
+  const statementProvenance=(draft?.statementProvenance||{version:1,sentences:[]}) as StatementProvenance;
+  const sourceSummary=statementProvenanceSummary(statementProvenance);
   return {
     id:claim.id,condition,claimType:answers.claimType,progress:claim.progress,updatedAt:claim.updatedAt,statement,
+    statementProvenance,sourcedStatements:sourceSummary.mapped,unsourcedStatements:sourceSummary.unmapped,
     statementSections:sections.length,
     confirmedSections:sections.filter((_,index)=>confirmations[String(index)]).length,
     evidenceFacts:facts.length,
@@ -91,14 +99,21 @@ export default async function ClaimPackagePage(){
   const ready=items.filter(item=>item.readiness==="ready").length;
   const packageChecks=validatePackageEnvironment(claims.flatMap(claim=>claim.documents),VA_FORM_DOWNLOADS_VERIFIED);
   const blockers=items.reduce((sum,item)=>sum+item.validations.filter(validation=>validation.level==="blocker").length,0)+packageChecks.filter(check=>check.level==="blocker").length;
+  const nextItem=items.find(item=>!item.statement)||items.find(item=>item.statementSections>item.confirmedSections)||items.find(item=>item.readiness!=="ready");
+  const priorityAction=!items.length
+    ?{title:"Start your first condition",text:"Begin the guided questions. You can save and return at any time.",href:"/claim-builder?new=1",label:"Start condition"}
+    :nextItem
+      ?{title:`Continue ${nextItem.condition}`,text:itemState(nextItem).label==="Verify statement"?"Review and confirm each statement section before moving on.":nextItem.readiness==="needs_work"?"Resolve the required items shown for this condition.":"Finish the next incomplete part of this condition.",href:`/claim-builder?claim=${nextItem.id}`,label:itemState(nextItem).action}
+      :{title:"Review the filing steps",text:"Your condition workspaces are prepared. Review the official filing guidance and submit outside Debrief when you choose.",href:"#submission-heading",label:"See filing steps"};
   const shellUser={id:user.id,name:user.name,email:user.email,image:user.image};
 
   return <AppShell current="package" user={shellUser}><div className="package-wrap">
     <header className="package-hero"><div><span className="kicker">Claim assembly</span><h1>Your claim package</h1><p>Keep one personal statement per condition, see what still needs attention, and choose the next useful action.</p></div><a className="button primary" href="/claim-builder?new=1"><Plus size={16}/>Add a condition</a></header>
 
-    <ol className="package-flow" aria-label="Claim preparation workflow"><li className="done"><span><Check size={13}/></span><div><strong>Documents</strong><small>Organize records</small></div></li><li className="current"><span>2</span><div><strong>Build conditions</strong><small>Statements and evidence</small></div></li><li><span>3</span><div><strong>Review package</strong><small>Resolve missing items</small></div></li><li><span>4</span><div><strong>Submit through VA</strong><small>Follow official instructions</small></div></li></ol>
+    <ol className="package-flow" aria-label="Claim preparation workflow"><li className={documents?"done":"optional"}><span>{documents?<Check size={13}/>:"1"}</span><div><strong>Documents</strong><small>{documents?"Records organized":"Optional · none uploaded"}</small></div></li><li className="current"><span>2</span><div><strong>Build conditions</strong><small>Statements and evidence</small></div></li><li><span>3</span><div><strong>Review package</strong><small>Resolve missing items</small></div></li><li><span>4</span><div><strong>Submit through VA</strong><small>Follow official instructions</small></div></li></ol>
 
     <section className="package-summary" aria-label="Package summary"><Summary icon={Files} label="Conditions" value={items.length}/><Summary icon={ShieldCheck} label="Ready for export" value={ready}/><Summary icon={ClipboardCheck} label="Statements verified" value={verified}/><Summary icon={FolderOpen} label="Documents uploaded" value={documents}/><Summary icon={blockers?AlertTriangle:Check} label="Blocking checks" value={blockers}/></section>
+    <section className="package-priority" aria-labelledby="package-priority-heading"><div><span className="kicker">One clear next step</span><h2 id="package-priority-heading">{priorityAction.title}</h2><p>{priorityAction.text}</p></div><a className="button primary" href={priorityAction.href}>{priorityAction.label}<ArrowRight size={15}/></a></section>
     {packageChecks.length>0&&<section className="package-global-checks" aria-label="Package-wide checks"><AlertTriangle size={17}/><div><strong>Package-wide review</strong>{packageChecks.map(check=><p key={check.id}><b>{check.title}:</b> {check.detail}</p>)}</div></section>}
 
     <div className="package-layout"><section className="package-conditions"><div className="package-section-head"><div><span className="kicker">One statement per condition</span><h2>Conditions in this package</h2></div></div>{items.length?items.map(item=><ConditionCard key={item.id} item={item}/>):<div className="package-empty"><ClipboardCheck size={28}/><h2>No conditions have been added yet</h2><p>Start a guided questionnaire. Your first saved condition will appear here automatically.</p><a className="button primary" href="/claim-builder?new=1">Start first condition <ArrowRight size={15}/></a></div>}</section>
@@ -119,9 +134,10 @@ function ConditionCard({item}:{item:PackageItem}){
   const state=itemState(item);
   const blockers=item.validations.filter(validation=>validation.level==="blocker");
   const notices=item.validations.filter(validation=>validation.level!=="blocker");
-  return <article className={`package-condition readiness-${item.readiness}`}><div className="package-condition-main"><div className="package-condition-title"><span className={`package-state ${state.tone}`}>{state.label}</span><span className={`readiness-pill ${item.readiness}`}>{item.readiness==="ready"?"Ready for export":item.readiness==="review"?"Review suggested":"Needs attention"}</span><h3>{item.condition}</h3><p>{item.claimType||"Claim path not selected"} · Updated {new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",year:"numeric"}).format(item.updatedAt)}</p></div><div className="package-progress"><span><i style={{width:`${item.progress}%`}}/></span><strong>{item.progress}% prepared</strong></div><div className="package-metrics"><span><strong>{item.statement?"Drafted":"Not drafted"}</strong>Statement</span><span><strong>{item.confirmedSections} of {item.statementSections}</strong>Sections verified</span><span><strong>{item.linkedDocuments} of {item.documents}</strong>Files linked</span><span><strong>{item.validations.length}</strong>Readiness checks</span></div>
+  return <article className={`package-condition readiness-${item.readiness}`}><div className="package-condition-main"><div className="package-condition-title"><span className={`package-state ${state.tone}`}>{state.label}</span><span className={`readiness-pill ${item.readiness}`}>{item.readiness==="ready"?"Ready for export":item.readiness==="review"?"Review suggested":"Needs attention"}</span><h3>{item.condition}</h3><p>{item.claimType||"Claim path not selected"} · Updated {new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",year:"numeric"}).format(item.updatedAt)}</p></div><div className="package-progress"><span><i style={{width:`${item.progress}%`}}/></span><strong>{item.progress}% prepared</strong></div><div className="package-metrics"><span><strong>{item.statement?"Drafted":"Not drafted"}</strong>Statement</span><span><strong>{item.confirmedSections} of {item.statementSections}</strong>Sections verified</span><span><strong>{item.sourcedStatements} sourced</strong>{item.unsourcedStatements?`${item.unsourcedStatements} need review`:"Statement trace"}</span><span><strong>{item.linkedDocuments} of {item.documents}</strong>Files linked</span><span><strong>{item.validations.length}</strong>Readiness checks</span></div>
     {(blockers.length>0||notices.length>0)&&<details className="package-validation" open={blockers.length>0}><summary><AlertTriangle size={14}/>{blockers.length?`${blockers.length} blocking ${blockers.length===1?"item":"items"}`:`${notices.length} review ${notices.length===1?"item":"items"}`}</summary><ul>{item.validations.map(validation=><li className={validation.level} key={validation.id}><strong>{validation.title}</strong><span>{validation.detail}</span></li>)}</ul></details>}
     <details className="package-evidence"><summary><Link2 size={14}/>Evidence checklist and sources</summary><div>{item.checklist.map(row=><section key={row.id}><strong>{row.fact}</strong><span>{row.source||row.suggested}</span><small>{row.status.replaceAll("_"," ")}{row.documentIds.length?` · ${row.documentIds.map(id=>item.documentNames[id]).filter(Boolean).join(", ")}`:" · no uploaded file linked"}</small></section>)}</div><p>This checklist organizes identified support; it does not predict whether evidence is sufficient or guarantee a claim result.</p></details>
+    {item.statementProvenance.sentences.length>0&&<details className={`package-sources ${item.unsourcedStatements?"has-warning":""}`}><summary><Link2 size={14}/>Personal statement source trace · {item.sourcedStatements} of {item.statementProvenance.sentences.length} linked</summary><div>{item.statementProvenance.sentences.map(sentence=><section className={sentence.status} key={sentence.id}><p>“{sentence.text}”</p>{sentence.origins.length?sentence.origins.map((origin,index)=>{const fact=item.checklist.find(row=>row.id===origin.factId);return <span key={`${origin.field||origin.timelineEventId}-${index}`}><strong>{origin.label}</strong><small>{origin.excerpt}</small>{fact&&<em>Related support: {fact.status.replaceAll("_"," ")}{fact.documentIds.length?` · ${fact.documentIds.map(id=>item.documentNames[id]).filter(Boolean).join(", ")}`:""}</em>}</span>}):<span className="source-needed"><strong>Source review needed</strong><small>Revise this wording or add the supporting answer before export.</small></span>}</section>)}</div><p>These links identify where wording originated; they do not prove a fact or guarantee that a related document supports every word.</p></details>}
     {item.statement&&<blockquote>{item.statement.slice(0,220)}{item.statement.length>220?"…":""}</blockquote>}{item.buddyStatements>0&&<p className="package-buddy"><Users size={13}/>{item.buddyStatements} buddy statement {item.buddyStatements===1?"draft":"drafts"} saved</p>}</div><div className="package-condition-actions"><PackageStatusControl claimId={item.id} status={item.status} version={item.draftVersion}/><a className="button secondary" href={`/buddy-statement?claim=${item.id}`}>Buddy statements<ArrowRight size={14}/></a><a className="button secondary" href={`/claim-builder?claim=${item.id}`}>{state.action}<ArrowRight size={14}/></a></div></article>;
 }
 

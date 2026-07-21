@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { statementGaps } from "@/lib/claim-builder-intelligence";
 import { guidedDraft, statementHeading } from "@/lib/personal-statement-template";
+import { deriveStatementProvenance } from "@/lib/statement-provenance";
 import { auth } from "@/auth";
 import { hasAcceptableContentLength, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
+import { aiGenerationEnabled } from "@/lib/operational-controls";
+import { aiGlobalDailyPolicy, aiUserDailyPolicy, enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -37,16 +40,6 @@ type OpenAIResponse={output_text?:string;output?:Array<{content?:Array<{type?:st
 const statementFields=["diagnosis","symptoms","symptomFrequency","symptomDuration","onset","serviceEvent","exposures","treatment","specificExamples","additionalContext","worsening","worseningDate","primaryCondition","secondaryRelationship","clinicianDiscussion","workImpact","dailyImpact","continuity","flareUps","conditionDetail1","conditionDetail2","conditionDetail3","conditionDetail4"] as const;
 const aiResultSchema=z.object({status:z.enum(["ready","needs_information"]),statement:z.string(),questions:z.array(z.object({field:z.enum(statementFields),question:z.string(),reason:z.string()})).max(3)});
 
-const limits=new Map<string,{count:number;reset:number}>();
-function isRateLimited(request:NextRequest){
-  const key=request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()||"local";
-  const now=Date.now();
-  const current=limits.get(key);
-  if(!current||current.reset<now){limits.set(key,{count:1,reset:now+10*60*1000});return false}
-  current.count+=1;
-  return current.count>8;
-}
-
 function responseText(data:OpenAIResponse){
   if(data.output_text?.trim())return data.output_text.trim();
   return data.output?.flatMap(item=>item.content||[]).filter(item=>item.type==="output_text"&&item.text).map(item=>item.text).join("\n").trim()||"";
@@ -75,12 +68,11 @@ Rules:
 - Do not add a certification or claim that the veteran has already reviewed, signed, or sworn to the draft.
 - Do not ask for optional facts merely to make the statement longer.`;
 
-export function GET(){return NextResponse.json({configured:Boolean(process.env.OPENAI_API_KEY),mode:process.env.OPENAI_API_KEY?"ai":"template"},{headers:{"Cache-Control":"no-store"}})}
+export function GET(){const configured=Boolean(process.env.OPENAI_API_KEY)&&aiGenerationEnabled();return NextResponse.json({configured,mode:configured?"ai":"template"},{headers:{"Cache-Control":"no-store"}})}
 
 export async function POST(request:NextRequest){
   const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
   if(!hasAcceptableContentLength(request,MAX_JSON_REQUEST_BYTES))return NextResponse.json({error:"The drafting request is too large."},{status:413});
-  if(isRateLimited(request))return NextResponse.json({error:"Too many drafting requests. Please wait a few minutes and try again."},{status:429});
   let body:unknown;
   try{body=await request.json()}catch{return NextResponse.json({error:"The request could not be read."},{status:400})}
   const parsed=requestSchema.safeParse(body);
@@ -89,11 +81,15 @@ export async function POST(request:NextRequest){
   const gaps=statementGaps(input);
   if(gaps.length)return NextResponse.json({status:"needs_information",questions:gaps.map(({field,question,reason})=>({field,question,reason})),notice:"Answer these focused questions before drafting. Debrief will not invent the missing facts."});
 
-  if(!process.env.OPENAI_API_KEY){
-    return NextResponse.json({status:"ready",statement:guidedDraft(input),mode:"template",notice:"OpenAI is not connected. This draft uses fixed rules to organize your answers into a narrative; it has not been interpreted or verified by AI."});
+  if(!process.env.OPENAI_API_KEY||!aiGenerationEnabled()){
+    const statement=guidedDraft(input);
+    const notice=process.env.OPENAI_API_KEY?"AI-assisted drafting is temporarily paused. This draft uses fixed rules to organize your answers and was not sent to an AI provider.":"OpenAI is not connected. This draft uses fixed rules to organize your answers into a narrative; it has not been interpreted or verified by AI.";
+    return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"template",notice});
   }
   const session=await auth();
   if(!session?.user?.id)return NextResponse.json({error:"Sign in before sending questionnaire answers to the AI drafting service."},{status:401});
+  const userLimited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.aiBurst,aiUserDailyPolicy()],"AI drafting limit reached. Please wait before trying again.");if(userLimited)return userLimited;
+  const globalLimited=await enforceAccountRateLimit("global-ai-generation",[aiGlobalDailyPolicy()],"AI drafting is temporarily unavailable because the Alpha daily safety limit was reached.");if(globalLimited)return globalLimited;
 
   const modelInput=Object.fromEntries(Object.entries(input).filter(([key])=>key!=="statementName"));
   const controller=new AbortController();
@@ -111,7 +107,8 @@ export async function POST(request:NextRequest){
     if(!result.success)throw new Error("The model returned an invalid drafting result.");
     if(result.data.status==="needs_information")return NextResponse.json({status:"needs_information",questions:result.data.questions,notice:"The drafting assistant needs a few factual details before it can continue without guessing."});
     if(!result.data.statement.trim())throw new Error("The model returned an empty statement.");
-    return NextResponse.json({status:"ready",statement:`${statementHeading(input)}\n\n${result.data.statement.trim()}`,mode:"ai"});
+    const statement=`${statementHeading(input)}\n\n${result.data.statement.trim()}`;
+    return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"ai"});
   }catch(error){
     console.error("Personal statement generation failed",error instanceof Error?error.name:"UnknownError");
     return NextResponse.json({error:"The AI draft could not be generated right now. Your answers are still saved on this device."},{status:502});

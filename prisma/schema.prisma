@@ -108,6 +108,40 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model RateLimitBucket {
+  id String @id @default(cuid())
+  scope String
+  principalHash String
+  windowStart DateTime
+  windowEndsAt DateTime
+  count Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, principalHash, windowStart])
+  @@index([windowEndsAt])
+}
+
+model StorageReconciliationTask {
+  id String @id @default(cuid())
+  fingerprint String @unique
+  principalHash String
+  operation String
+  scope String
+  entityId String?
+  storageKey String?
+  status String @default("PENDING")
+  attempts Int @default(1)
+  lastErrorCode String
+  lastAttemptAt DateTime @default(now())
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([principalHash, status])
+  @@index([status, createdAt])
+}
+
 model Claim {
   id String @id @default(cuid())
   userId String

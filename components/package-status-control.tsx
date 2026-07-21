@@ -3,7 +3,7 @@
 import { Check, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { packageStatusLabels, packageStatuses, type PackageStatus } from "@/lib/claim-package-workflow";
+import { packageStatusDescriptions, packageStatusLabels, packageStatuses, type PackageStatus } from "@/lib/claim-package-workflow";
 
 export function PackageStatusControl({claimId,status,version}:{claimId:string;status:PackageStatus;version:number}){
   const router=useRouter();const [working,setWorking]=useState(false);const [error,setError]=useState("");
@@ -17,5 +17,5 @@ export function PackageStatusControl({claimId,status,version}:{claimId:string;st
     if(!response.ok){setError(data.error||"The package status could not be updated.");setWorking(false);return}
     router.refresh();
   }
-  return <div className="package-status-control"><label><span>Package item status</span><select value={status} disabled={working} onChange={event=>void update(event.target.value as PackageStatus)}>{packageStatuses.map(item=><option key={item} value={item}>{packageStatusLabels[item]}</option>)}</select></label>{working?<small><LoaderCircle className="spin" size={12}/>Saving status…</small>:status==="submitted"?<small><Check size={12}/>User-recorded status; VA receipt is not verified.</small>:null}{error&&<small className="error" role="alert">{error}</small>}</div>;
+  return <div className="package-status-control"><label><span>Your tracking status</span><select value={status} disabled={working} onChange={event=>void update(event.target.value as PackageStatus)}>{packageStatuses.map(item=><option key={item} value={item}>{packageStatusLabels[item]}</option>)}</select></label>{working?<small><LoaderCircle className="spin" size={12}/>Saving status…</small>:<small>{status==="submitted"&&<Check size={12}/>}<span>{packageStatusDescriptions[status]}</span></small>}{error&&<small className="error" role="alert">{error}</small>}</div>;
 }

@@ -1,5 +1,6 @@
 import { claimDraftSchema } from "./claim-drafts";
 import { factRows, hasSupportingInformation, initialAnswers, normalizeEvidenceMap, qualityFindings, type Answers } from "./claim-builder-intelligence";
+import { statementProvenanceSummary } from "./statement-provenance";
 
 export const packageStatuses=["planned","requested","obtained","reviewed","exported","submitted"] as const;
 export type PackageStatus=(typeof packageStatuses)[number];
@@ -12,6 +13,15 @@ export const packageStatusLabels:Record<PackageStatus,string>={
   reviewed:"Reviewed",
   exported:"Exported",
   submitted:"Marked submitted"
+};
+
+export const packageStatusDescriptions:Record<PackageStatus,string>={
+  planned:"You plan to include this condition in the package.",
+  requested:"You requested supporting evidence and are waiting for it.",
+  obtained:"The evidence you requested is now available for review.",
+  reviewed:"You reviewed this condition, its statement, and its supporting information.",
+  exported:"You downloaded preparation materials from Debrief.",
+  submitted:"You recorded that you filed outside Debrief; VA receipt is not verified."
 };
 
 export function parsedClaimDraft(value:unknown){
@@ -38,6 +48,11 @@ export function validatePackageClaim(value:unknown,title:string):PackageValidati
   const add=(id:PackageValidation["id"],level:PackageValidation["level"],heading:string,detail:string)=>validations.push({id,level,title:heading,detail});
   if(!statement)add("statement","blocker","Personal statement is missing","Complete the guided draft or write a statement for this condition.");
   else if(draft.statementMode==="stale")add("statement-stale","blocker","Statement no longer matches the answers","Regenerate or revise the statement after the latest questionnaire changes.");
+  if(statement){
+    const provenance=statementProvenanceSummary(draft.statementProvenance);
+    if(!provenance.total)add("statement-sources","attention","Statement sources need refresh","Open this condition and save it again so Debrief can connect each factual statement to the answer or timeline entry it came from.");
+    else if(provenance.unmapped)add("statement-sources-unmapped",draft.statementMode==="ai"?"blocker":"attention",`${provenance.unmapped} statement ${provenance.unmapped===1?"needs":"need"} a source review`,"Review the highlighted wording. Revise it or add the supporting answer before treating the draft as fully traceable.");
+  }
   if(statement&&(!sections.length||sections.some((_,index)=>!confirmations[String(index)])))add("verification","blocker","Statement verification is incomplete","Confirm every statement section before treating this condition as reviewed.");
   if(facts.some(fact=>!hasSupportingInformation(evidenceMap[fact.id])))add("evidence","attention","Some facts have no identified support","Classify each key fact as a record, personal recollection, witness statement, pending record, or not identified.");
   if(facts.some(fact=>evidenceMap[fact.id]?.status==="record_not_obtained"))add("pending-records","attention","An identified record is still pending","The package can continue, but the record is not counted as available evidence.");

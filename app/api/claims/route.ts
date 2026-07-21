@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { hasAcceptableContentLength, MAX_ACTIVE_CLAIMS_PER_USER, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
+import { enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 export async function GET() {
   const session = await auth();
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
   if(!hasAcceptableContentLength(request,MAX_JSON_REQUEST_BYTES))return NextResponse.json({error:"This claim draft is too large to process."},{status:413});
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Sign in to save this claim." }, { status: 401 });
+  const limited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.claimMutation,rateLimitPolicies.workspaceCreate]);if(limited)return limited;
 
   const parsed = createClaimSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "The claim draft is not valid." }, { status: 400 });
