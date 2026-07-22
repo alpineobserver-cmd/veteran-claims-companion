@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { rejectCrossOriginMutation } from "@/lib/request-security";
 import { enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
+import { emitSecurityEvent, securityEventErrorCode } from "@/lib/security-events";
 
 export const runtime="nodejs";
 type Context={params:Promise<{id:string}>};
@@ -20,7 +21,7 @@ export async function POST(request:Request,context:Context){
     const url=`/api/documents/${encodeURIComponent(document.id)}/content?token=${encodeURIComponent(ticket.token)}`;
     return NextResponse.json({url,expiresAt:new Date(ticket.expiresAt).toISOString()},{headers:{"Cache-Control":"private, no-store","Referrer-Policy":"no-referrer"}});
   }catch(reason){
-    console.error("Document download ticket creation failed",reason instanceof DocumentDownloadConfigurationError?reason.name:"UnknownError");
+    emitSecurityEvent("document_ticket_failed",{operation:"ISSUE_TICKET",scope:"document-download",code:reason instanceof DocumentDownloadConfigurationError?reason.name:securityEventErrorCode(reason)},"error");
     return NextResponse.json({error:"Secure document download is unavailable."},{status:503});
   }
 }

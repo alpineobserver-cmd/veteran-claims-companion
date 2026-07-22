@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { emitSecurityEvent, securityEventErrorCode } from "@/lib/security-events";
 
 export type RateLimitPolicy={scope:string;limit:number;windowMs:number};
 export type RateLimitResult={allowed:boolean;limit:number;remaining:number;retryAfterSeconds:number;scope:string};
@@ -47,9 +48,9 @@ export async function consumeRateLimits(principal:string,policies:readonly RateL
     const bucket=await prisma.rateLimitBucket.upsert({where:{scope_principalHash_windowStart:{scope:policy.scope,principalHash,windowStart:window.windowStart}},create:{scope:policy.scope,principalHash,windowStart:window.windowStart,windowEndsAt:window.windowEndsAt,count:1},update:{count:{increment:1},windowEndsAt:window.windowEndsAt},select:{count:true}});
     return{allowed:bucket.count<=policy.limit,limit:policy.limit,remaining:Math.max(0,policy.limit-bucket.count),retryAfterSeconds:window.retryAfterSeconds,scope:policy.scope};
   }));
-  if(now-lastCleanupAt>HOUR){lastCleanupAt=now;await prisma.rateLimitBucket.deleteMany({where:{windowEndsAt:{lt:new Date(now-RETENTION_MS)}}}).catch(reason=>console.error("Rate-limit cleanup failed",reason instanceof Error?reason.name:"UnknownError"))}
+  if(now-lastCleanupAt>HOUR){lastCleanupAt=now;await prisma.rateLimitBucket.deleteMany({where:{windowEndsAt:{lt:new Date(now-RETENTION_MS)}}}).catch(reason=>emitSecurityEvent("rate_limit_cleanup_failed",{code:securityEventErrorCode(reason)},"error"))}
   const blocked=results.filter(result=>!result.allowed).sort((a,b)=>b.retryAfterSeconds-a.retryAfterSeconds)[0];
-  if(blocked){console.warn(`[security-event] ${JSON.stringify({timestamp:new Date(now).toISOString(),event:"rate_limit_exceeded",scope:blocked.scope,retryAfterSeconds:blocked.retryAfterSeconds})}`);return blocked}
+  if(blocked){emitSecurityEvent("rate_limit_exceeded",{scope:blocked.scope,retryAfterSeconds:blocked.retryAfterSeconds},"warn");return blocked}
   return results.sort((a,b)=>a.remaining-b.remaining)[0]??{allowed:true,limit:0,remaining:0,retryAfterSeconds:0,scope:"none"};
 }
 
@@ -58,7 +59,7 @@ export async function enforceAccountRateLimit(userId:string,policies:readonly Ra
     const result=await consumeRateLimits(`user:${userId}`,policies);if(result.allowed)return null;
     return NextResponse.json({error:message},{status:429,headers:{"Cache-Control":"private, no-store","Retry-After":String(result.retryAfterSeconds),"X-RateLimit-Limit":String(result.limit),"X-RateLimit-Remaining":"0"}});
   }catch(reason){
-    console.error("Durable rate limit failed",reason instanceof Error?reason.name:"UnknownError");
+    emitSecurityEvent("rate_limit_backend_failed",{code:securityEventErrorCode(reason)},"error");
     return NextResponse.json({error:"The request could not be safely processed right now."},{status:503,headers:{"Cache-Control":"private, no-store"}});
   }
 }

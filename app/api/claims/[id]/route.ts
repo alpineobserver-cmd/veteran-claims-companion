@@ -7,6 +7,7 @@ import { documentStorage } from "@/lib/storage";
 import { hasAcceptableContentLength, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
 import { enforceAccountRateLimit, rateLimitPolicies, rateLimitPrincipalHash } from "@/lib/rate-limit";
 import { deleteObjectAndVerify, recordStorageReconciliation, resolveStorageReconciliation } from "@/lib/storage-reconciliation";
+import { emitSecurityEvent, securityEventErrorCode } from "@/lib/security-events";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -79,12 +80,12 @@ export async function DELETE(request: Request, context: Context) {
     if(failures.length){
       await Promise.all(failures.map(failure=>recordStorageReconciliation({userId:session.user.id,operation:"DELETE_OBJECT",scope:"claim-delete",entityId:id,storageKey:failure.storageKey,reason:failure.reason})));
       await recordStorageReconciliation({userId:session.user.id,operation:"DELETE_DATABASE_RECORD",scope:"claim-delete",entityId:id,reason:new Error("ObjectDeletionPending")});
-      console.error("Workspace object cleanup failed","ObjectDeletionPending");
+      emitSecurityEvent("claim_object_cleanup_failed",{operation:"DELETE_OBJECT",scope:"claim-delete",code:"ObjectDeletionPending"},"error");
       return NextResponse.json({ error: "Stored documents could not be deleted. The workspace was kept so you can try again." }, { status: 503 });
     }
   }
   let result;
-  try{result=await prisma.claim.deleteMany({ where: { id, userId: session.user.id } })}catch(reason){await recordStorageReconciliation({userId:session.user.id,operation:"DELETE_DATABASE_RECORD",scope:"claim-delete",entityId:id,reason});console.error("Workspace database cleanup failed",reason instanceof Error?reason.name:"UnknownError");return NextResponse.json({error:"Stored files were removed, but the workspace record still needs cleanup. Try deleting it again."},{status:503})}
+  try{result=await prisma.claim.deleteMany({ where: { id, userId: session.user.id } })}catch(reason){await recordStorageReconciliation({userId:session.user.id,operation:"DELETE_DATABASE_RECORD",scope:"claim-delete",entityId:id,reason});emitSecurityEvent("claim_database_cleanup_failed",{operation:"DELETE_DATABASE_RECORD",scope:"claim-delete",code:securityEventErrorCode(reason)},"error");return NextResponse.json({error:"Stored files were removed, but the workspace record still needs cleanup. Try deleting it again."},{status:503})}
   if (!result.count) return NextResponse.json({ error: "Claim not found." }, { status: 404 });
   await resolveStorageReconciliation(session.user.id,"claim-delete",id);
   return new NextResponse(null, { status: 204 });
