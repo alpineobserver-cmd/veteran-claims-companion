@@ -88,7 +88,7 @@ export function AppShell({ children, current = "home", user }: { children: React
       <nav className="nav utility-nav" aria-label="Account navigation">
         {account?<a className={current==="account"?"active":""} href="/account"><User size={18}/><span>Account &amp; data</span></a>:<a href="/login?redirectTo=/dashboard"><User size={18}/><span>Sign in</span></a>}
       </nav>
-      <div className="sidebar-legal"><a href="/support">Support</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div>
+      <div className="sidebar-legal"><a href="/support">Support</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/sources">Sources</a><a href="/licenses">Licenses</a></div>
       <p className="sidebar-disclosure">Independent educational software—not VA or a VA-accredited representative. No legal or medical advice.</p>
       <a className="side-help" href="https://www.va.gov/get-help-from-accredited-representative/" target="_blank" rel="noreferrer" onClick={()=>setMenuOpen(false)}><LifeBuoy size={19}/><span><strong>Need claim help?</strong><small>Find a VA-accredited representative</small></span></a>
     </aside>

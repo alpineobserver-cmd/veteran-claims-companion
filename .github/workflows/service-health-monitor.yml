@@ -1,0 +1,44 @@
+name: Service health monitor
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Public HTTPS origin to check
+        required: false
+        type: string
+  schedule:
+    - cron: "17,47 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  production-public-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HEALTHCHECK_BASE_URL: ${{ inputs.target || 'https://veteran-claims-companion.vercel.app' }}
+      HEALTHCHECK_MAX_MS: "5000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check public, authentication, and session health
+        run: node scripts/check-service-health.mjs
+
+  staging-public-health:
+    if: ${{ vars.STAGING_HEALTH_URL != '' && inputs.target == '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HEALTHCHECK_BASE_URL: ${{ vars.STAGING_HEALTH_URL }}
+      HEALTHCHECK_MAX_MS: "5000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check isolated Staging health
+        run: node scripts/check-service-health.mjs

@@ -6,16 +6,17 @@ import { schemesForCondition } from "@/lib/rating-schemes";
 import { CATALOG_VERIFIED_THROUGH, codesForCondition } from "@/lib/diagnostic-codes";
 import { ArrowLeft, ArrowRight, CalendarDays, ExternalLink, Info } from "lucide-react";
 import Link from "next/link";
+import { conditionProvenance } from "@/lib/content-provenance";
 import "../conditions.css";
 import "../catalog.css";
 import "./ratings.css";
 
 export function generateStaticParams(){return conditions.map(c=>({slug:c.slug}))}
 export default async function ConditionPage({params}:{params:Promise<{slug:string}>}){
-  const {slug}=await params; const c=getCondition(slug); if(!c)notFound(); const codes=codesForCondition(slug); const schemes=schemesForCondition(slug);
+  const {slug}=await params; const c=getCondition(slug); if(!c)notFound(); const codes=codesForCondition(slug); const schemes=schemesForCondition(slug); const provenance=conditionProvenance(slug)!;
   return <AppShell current="conditions"><div className="condition-detail">
     <Link href="/conditions" className="back-link"><ArrowLeft size={15}/>All conditions</Link>
-    <header className="detail-hero"><span className="condition-category">{c.category}</span><h1>{c.name}</h1><p>{c.short}</p><div className="verified"><CalendarDays size={14}/>Regulatory summaries checked against eCFR current through {CATALOG_VERIFIED_THROUGH}</div></header>
+    <header className="detail-hero"><span className="condition-category">{c.category}</span><h1>{c.name}</h1><p>{c.short}</p><div className="verified"><CalendarDays size={14}/>Regulatory summaries checked against eCFR current through {CATALOG_VERIFIED_THROUGH} · {provenance.contentVersion} · <Link href="/sources">record {provenance.localRecordSha256.slice(0,12)}</Link></div></header>
     <RatingSchemeExplorer conditionName={c.name} schemes={schemes}/>
     <div className="detail-layout"><main>
       <DetailSection title="Overview"><p>{c.overview}</p></DetailSection>

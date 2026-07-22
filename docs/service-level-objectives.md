@@ -26,6 +26,6 @@ When an objective exhausts its error budget, pause non-essential feature promoti
 
 Collect only the timestamp, environment, release, route or operation class, success/failure, safe error code, latency bucket, and a pseudonymous request or incident correlation value when necessary. Do not record names, email addresses, IP addresses in product analytics, questionnaire answers, condition names, claim facts, document names or contents, storage keys, tokens, or cookies.
 
-OPS-007 remains the implementation item for privacy-conscious uptime, authentication-health, error, and performance monitoring. Until that monitoring is installed, release checks and privacy-minimized operational logs provide evidence but do not prove these rolling SLOs are met.
+The OPS-007 foundation now supplies public uptime, authentication-configuration, liveness, and coarse-latency checks plus privacy-minimized application error events. It does not yet measure authenticated save/export success or Google callback completion, and protected event export/retention/alert ownership remain open. These controls provide evidence but do not by themselves prove the rolling SLOs are met.
 
 Review the definitions quarterly and after any architecture, authentication, persistence, or export change. Record approved definition changes with the release evidence so trend comparisons remain honest.

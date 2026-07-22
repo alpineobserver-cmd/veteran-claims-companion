@@ -49,6 +49,9 @@ test("canonical public legal and authentication routes exist",async()=>{
     "app/privacy/page.tsx",
     "app/terms/page.tsx",
     "app/support/page.tsx",
+    "app/sources/page.tsx",
+    "app/licenses/page.tsx",
+    "app/api/health/route.ts",
     "app/api/auth/[...nextauth]/route.ts",
   ];
   for(const relative of required)assert.equal((await stat(path.join(root,relative))).isFile(),true,`${relative} is missing`);

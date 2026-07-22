@@ -40,4 +40,6 @@ test("deployment validation and the environment template enumerate every control
     assert.match(validator,new RegExp(key));
     assert.match(example,new RegExp(`${key}="true"`));
   }
+  assert.match(validator,/DEBRIEF_AI_POLICY_VERSION/);
+  assert.match(example,/DEBRIEF_AI_POLICY_VERSION="personal-statement-v1"/);
 });

@@ -17,5 +17,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+      - name: Check production security advisories
+        run: npm audit --omit=dev --audit-level=high
       - name: Compare Auth.js release channels
         run: node scripts/check-auth-release.mjs

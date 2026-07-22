@@ -33,5 +33,5 @@ test("service objectives define measurable reliability and privacy boundaries",a
     assert.match(objectives,new RegExp(phrase,"i"),phrase);
   }
   assert.match(objectives,/Do not record names, email addresses/);
-  assert.match(objectives,/OPS-007 remains the implementation item/);
+  assert.match(objectives,/OPS-007 foundation now supplies/);
 });
