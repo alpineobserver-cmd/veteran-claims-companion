@@ -35,3 +35,12 @@ test("service objectives define measurable reliability and privacy boundaries",a
   assert.match(objectives,/Do not record names, email addresses/);
   assert.match(objectives,/OPS-007 foundation now supplies/);
 });
+
+test("disaster recovery separates database, object, configuration, and approval evidence",async()=>{
+  const runbook=await read("docs/backup-restore-and-disaster-recovery.md");
+  for(const phrase of ["Prisma migrations","Supabase PostgreSQL","Vercel Blob","environment variables","new isolated project","invalidate them before allowing sign-in","Recovery acceptance record"]){
+    assert.match(runbook,new RegExp(phrase,"i"),phrase);
+  }
+  assert.match(runbook,/does not restore Blob bytes/i);
+  assert.match(runbook,/Do not record credentials, object keys, filenames, emails, claim facts, or document contents/i);
+});

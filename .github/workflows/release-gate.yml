@@ -155,9 +155,28 @@ jobs:
       - name: Run authentication, authorization, abuse, and legal-boundary checks
         run: npm run test:security
 
+  content-governance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Require reviewed, recorded authoritative content changes
+        env:
+          CONTENT_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+          CONTENT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          CONTENT_REVIEW_REQUIRED: ${{ github.event_name == 'pull_request' }}
+          CONTENT_REVIEW_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'content-reviewed') }}
+        run: npm run content:governance-check
+
   verify:
     if: always()
-    needs: [lint, typecheck, build, unit, integration, migration, dependencies, security]
+    needs: [lint, typecheck, build, unit, integration, migration, dependencies, security, content-governance]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -171,3 +190,4 @@ jobs:
           test "${{ needs.migration.result }}" = "success"
           test "${{ needs.dependencies.result }}" = "success"
           test "${{ needs.security.result }}" = "success"
+          test "${{ needs.content-governance.result }}" = "success"
