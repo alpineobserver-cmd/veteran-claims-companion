@@ -28,7 +28,7 @@ export async function GET(){
   const principalHash=rateLimitPrincipalHash(`user:${session.user.id}`);
   const [securityCounters,storageReconciliation]=await Promise.all([
     prisma.rateLimitBucket.findMany({where:{principalHash},orderBy:{windowStart:"asc"},select:{scope:true,windowStart:true,windowEndsAt:true,count:true}}),
-    prisma.storageReconciliationTask.findMany({where:{principalHash},orderBy:{createdAt:"asc"},select:{operation:true,scope:true,entityId:true,status:true,attempts:true,lastErrorCode:true,lastAttemptAt:true,resolvedAt:true,createdAt:true,updatedAt:true}})
+    prisma.storageReconciliationTask.findMany({where:{principalHash},orderBy:{createdAt:"asc"},select:{operation:true,scope:true,entityId:true,storageProvider:true,status:true,attempts:true,lastErrorCode:true,lastAttemptAt:true,resolvedAt:true,createdAt:true,updatedAt:true}})
   ]);
   const exportedAt=new Date();
   const payload={

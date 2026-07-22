@@ -17,10 +17,11 @@ Never record a secret value in this file, Git, issues, chat, screenshots, build 
 | `BLOB_READ_WRITE_TOKEN` or integration-managed Blob credential | Secret | Vercel Blob/Vercel integration | Matching environment only; Production scope | Private document storage | Alpha administrator |
 | `BLOB_STORE_ID` | Identifier, not secret | Vercel Blob | Matching environment only | Vercel integration | Alpha administrator |
 | `BLOB_WEBHOOK_PUBLIC_KEY` | Public verification material | Vercel Blob | Matching environment only | Vercel integration | Vercel/integration owner |
+| Vercel OIDC token | Ephemeral workload credential; never configured manually | Vercel request/build context | Matching team, project, and environment; maximum provider-controlled lifetime | Google Workload Identity Federation | Vercel/Google |
 | `OPENAI_API_KEY` | Secret; currently expected unset | OpenAI/Vercel | Server-side only; add separately only after AI approval | Personal-statement AI route | Alpha administrator |
 | GitHub, Vercel, Google, Supabase, and OpenAI administrator sessions/MFA | Privileged account secret | Each provider | Named administrators only; never application environment variables | Administrative access | Product owner |
 
-Configuration values such as `APP_ENV`, `DATA_ENVIRONMENT`, `RELEASE_ID`, `AUTH_URL`, `AUTH_CANONICAL_HOST`, `PRIVACY_CONTACT_EMAIL`, `OPENAI_MODEL`, `DEBRIEF_UPLOADS_ENABLED`, `DEBRIEF_AI_GENERATION_ENABLED`, `DEBRIEF_AI_POLICY_VERSION`, `DEBRIEF_AI_DAILY_USER_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_LIMIT`, and `DEBRIEF_REGISTRATIONS_ENABLED` are not secrets. They still require environment review because incorrect values can weaken isolation or availability.
+Configuration values such as `APP_ENV`, `DATA_ENVIRONMENT`, `RELEASE_ID`, `AUTH_URL`, `AUTH_CANONICAL_HOST`, `PRIVACY_CONTACT_EMAIL`, `OPENAI_MODEL`, `DOCUMENT_STORAGE_PROVIDER`, `GCS_AUTH_MODE`, `GCS_BUCKET`, `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`, `DEBRIEF_UPLOADS_ENABLED`, `DEBRIEF_AI_GENERATION_ENABLED`, `DEBRIEF_AI_POLICY_VERSION`, `DEBRIEF_AI_DAILY_USER_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_LIMIT`, and `DEBRIEF_REGISTRATIONS_ENABLED` are not secrets. They still require environment review because incorrect values can weaken isolation or availability.
 
 ## Required inventory review
 
@@ -67,6 +68,10 @@ Create or rotate the credential in the matching Google Cloud project, update onl
 ### Private Blob credential
 
 Rotate or reconnect it through the matching Vercel Blob integration, update only the intended project/environment, redeploy, then upload, issue a short-lived download, download, and delete a fictional file. Do not delete a Blob store as a token-rotation shortcut.
+
+### Google Cloud workload identity
+
+No persistent Google service-account private key is permitted. To revoke access, pause uploads, remove or restrict the matching Workload Identity Provider binding or service-account impersonation grant, inspect Google and Vercel activity, correct the trust condition, and redeploy before a fictional upload/download/delete smoke check. Treat changes to the Vercel team/project/environment subject, Google pool/provider, service account, bucket IAM, or OIDC issuer mode as a credential-boundary change. Follow `docs/google-cloud-storage.md`; keep the prior object provider available for verified deletion until migration reconciliation is complete.
 
 ### Future OpenAI key
 

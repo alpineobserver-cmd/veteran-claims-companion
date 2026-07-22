@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { ActiveStorageDeletionError, deleteStoredObjectsAndVerify } from "../lib/account-deletion";
+import { ActiveStorageDeletionError, deleteStoredObjectReferencesAndVerify, deleteStoredObjectsAndVerify } from "../lib/account-deletion";
 import { deleteObjectAndVerify, reconciliationErrorCode, reconciliationFingerprint } from "../lib/storage-reconciliation";
 import type { StorageProvider, StoredFile } from "../lib/storage";
 
@@ -28,19 +28,29 @@ test("multi-object deletion attempts every key and reports only unresolved objec
   assert.equal(provider.objects.has("one"),false);assert.equal(provider.objects.has("three"),false);
 });
 
+test("multi-provider deletion routes each object through its recorded provider",async()=>{
+  const vercel=storage(["legacy"]);const google=storage(["new"]);
+  const count=await deleteStoredObjectReferencesAndVerify(provider=>provider==="google-cloud-storage"?google:vercel,[{storageKey:"legacy",storageProvider:"vercel-private-blob"},{storageKey:"new",storageProvider:"google-cloud-storage"}]);
+  assert.equal(count,2);assert.equal(vercel.objects.size,0);assert.equal(google.objects.size,0);
+});
+
 test("task fingerprints are deterministic, scoped, and reveal no storage identifiers",()=>{
-  const input={userId:"fictional-user-a",operation:"DELETE_OBJECT" as const,scope:"upload-rollback",entityId:"claim-a",storageKey:"private/user-a/file.pdf"};
+  const input={userId:"fictional-user-a",operation:"DELETE_OBJECT" as const,scope:"upload-rollback",entityId:"claim-a",storageKey:"private/user-a/file.pdf",storageProvider:"google-cloud-storage"};
   const fingerprint=reconciliationFingerprint(input,secret);
   assert.equal(fingerprint,reconciliationFingerprint(input,secret));
   assert.notEqual(fingerprint,reconciliationFingerprint({...input,storageKey:"private/user-a/other.pdf"},secret));
+  assert.notEqual(fingerprint,reconciliationFingerprint({...input,storageProvider:"vercel-private-blob"},secret));
   assert.match(fingerprint,/^[a-f0-9]{64}$/);assert.doesNotMatch(fingerprint,/user-a|file\.pdf/);
   assert.equal(reconciliationErrorCode(Object.assign(new Error("private detail"),{name:"BlobDeleteError"})),"BlobDeleteError");
 });
 
-test("durable reconciliation records are indexed, retryable, and privacy-safe in logs",async()=>{
-  const [schema,migration,implementation,eventContract]=await Promise.all([read("prisma/schema.prisma"),read("prisma/migrations/20260721203000_storage_reconciliation/migration.sql"),read("lib/storage-reconciliation.ts"),read("lib/security-events.ts")]);
+test("durable reconciliation records are indexed, provider-routed, retryable, and privacy-safe in logs",async()=>{
+  const [schema,migration,providerMigration,implementation,eventContract]=await Promise.all([read("prisma/schema.prisma"),read("prisma/migrations/20260721203000_storage_reconciliation/migration.sql"),read("prisma/migrations/20260722190000_storage_provider_routing/migration.sql"),read("lib/storage-reconciliation.ts"),read("lib/security-events.ts")]);
   assert.match(schema,/model StorageReconciliationTask/);assert.match(schema,/fingerprint String @unique/);assert.match(schema,/@@index\(\[principalHash, status\]\)/);
   assert.match(migration,/CREATE TABLE "StorageReconciliationTask"/);
+  assert.match(providerMigration,/ADD COLUMN "storageProvider" TEXT/);
+  assert.match(providerMigration,/SET "storageProvider" = 'vercel-private-blob'/);
+  assert.match(implementation,/storageProvider:input\.storageProvider/);
   assert.match(implementation,/storageReconciliationTask\.upsert/);assert.match(implementation,/retryUploadRollbackTasks/);assert.match(implementation,/emitSecurityEvent\("storage_reconciliation_pending"/);
   assert.match(implementation,/from "@\/lib\/security-events"/);
   assert.doesNotMatch(eventContract,/type SecurityEventDetails=\{[\s\S]*?(?:storageKey|entityId|userId|principalHash)[\s\S]*?\};/);

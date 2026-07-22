@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { DOCUMENT_DOWNLOAD_TTL_MS, issueDocumentDownloadTicket, verifyDocumentDownloadTicket } from "../lib/document-download-ticket";
+import { configuredDocumentStorageName, documentStorage, StorageConfigurationError, storageProviderNames } from "../lib/storage";
 
 const root=process.cwd();
 const read=(relative:string)=>readFile(path.join(root,relative),"utf8");
@@ -47,11 +48,35 @@ test("private document delivery requires a same-origin authenticated ticket hand
 });
 
 test("storage adapters prohibit public object access and list responses omit storage keys",async()=>{
-  const [storage,documentsRoute]=await Promise.all([read("lib/storage.ts"),read("app/api/documents/route.ts")]);
+  const [storage,documentsRoute,contentRoute,deleteRoute]=await Promise.all([read("lib/storage.ts"),read("app/api/documents/route.ts"),read("app/api/documents/[id]/content/route.ts"),read("app/api/documents/[id]/route.ts")]);
   assert.match(storage,/putBlob\(key,file,\{access:"private"/);
   assert.match(storage,/getBlob\(key,\{access:"private"/);
+  assert.match(storage,/class GoogleCloudStorageProvider/);
+  assert.match(storage,/preconditionOpts:\{ifGenerationMatch:0\}/);
+  assert.match(storage,/validation:"crc32c"/);
+  assert.match(storage,/getVercelOidcToken/);
+  assert.doesNotMatch(storage,/private_key|GCP_PRIVATE_KEY|GOOGLE_APPLICATION_CREDENTIALS/);
   assert.doesNotMatch(storage,/access:\s*["']public["']/);
+  assert.match(contentRoute,/documentStorage\(document\.provider\)/);
+  assert.match(deleteRoute,/documentStorage\(document\.provider\)/);
   const publicSelect=documentsRoute.match(/const documentSelect=\{([^;]+)\} as const;/)?.[1]||"";
   assert.ok(publicSelect.length>0);
   assert.doesNotMatch(publicSelect,/storageKey/);
+});
+
+test("storage selection is explicit, backward compatible, and fail closed",()=>{
+  const priorProvider=process.env.DOCUMENT_STORAGE_PROVIDER;
+  const priorNodeEnv=process.env.NODE_ENV;
+  try{
+    process.env.DOCUMENT_STORAGE_PROVIDER="gcs";
+    assert.equal(configuredDocumentStorageName(),storageProviderNames.google);
+    assert.equal(documentStorage(storageProviderNames.google).name,storageProviderNames.google);
+    process.env.DOCUMENT_STORAGE_PROVIDER="unsupported";
+    assert.throws(()=>configuredDocumentStorageName(),StorageConfigurationError);
+    Reflect.set(process.env,"NODE_ENV","production");
+    assert.throws(()=>documentStorage(storageProviderNames.local),/prohibited/);
+  }finally{
+    if(priorProvider===undefined)delete process.env.DOCUMENT_STORAGE_PROVIDER;else process.env.DOCUMENT_STORAGE_PROVIDER=priorProvider;
+    if(priorNodeEnv===undefined)Reflect.deleteProperty(process.env,"NODE_ENV");else Reflect.set(process.env,"NODE_ENV",priorNodeEnv);
+  }
 });

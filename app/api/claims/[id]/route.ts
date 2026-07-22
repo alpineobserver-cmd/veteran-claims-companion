@@ -64,21 +64,18 @@ export async function DELETE(request: Request, context: Context) {
   const { id } = await context.params;
   const principalHash=rateLimitPrincipalHash(`user:${session.user.id}`);
   const [documents,orphanedUploads]=await Promise.all([
-    prisma.document.findMany({ where: { claimId: id, userId: session.user.id }, select: { storageKey: true } }),
-    prisma.storageReconciliationTask.findMany({where:{principalHash,operation:"DELETE_OBJECT",entityId:id,status:"PENDING",storageKey:{not:null}},select:{storageKey:true}})
+    prisma.document.findMany({ where: { claimId: id, userId: session.user.id }, select: { storageKey: true, provider: true } }),
+    prisma.storageReconciliationTask.findMany({where:{principalHash,operation:"DELETE_OBJECT",entityId:id,status:"PENDING",storageKey:{not:null}},select:{storageKey:true,storageProvider:true}})
   ]);
-  const storageObjects=[...documents,...orphanedUploads].filter((item):item is {storageKey:string}=>Boolean(item.storageKey));
+  const storageObjects=[
+    ...documents.map(item=>({storageKey:item.storageKey,storageProvider:item.provider})),
+    ...orphanedUploads.map(item=>({storageKey:item.storageKey,storageProvider:item.storageProvider})),
+  ].filter((item):item is {storageKey:string;storageProvider:string|null}=>Boolean(item.storageKey));
   if (storageObjects.length) {
-    let storage;
-    try{storage=documentStorage()}
-    catch(reason){
-      await Promise.all(storageObjects.map(({storageKey})=>recordStorageReconciliation({userId:session.user.id,operation:"DELETE_OBJECT",scope:"claim-delete",entityId:id,storageKey,reason})));
-      return NextResponse.json({error:"Private storage is unavailable, so the workspace was kept."},{status:503});
-    }
-    const outcomes=await Promise.allSettled(storageObjects.map(document=>deleteObjectAndVerify(storage,document.storageKey)));
-    const failures=outcomes.flatMap((outcome,index)=>outcome.status==="rejected"?[{reason:outcome.reason,storageKey:storageObjects[index].storageKey}]:[]);
+    const outcomes=await Promise.allSettled(storageObjects.map(document=>deleteObjectAndVerify(documentStorage(document.storageProvider),document.storageKey)));
+    const failures=outcomes.flatMap((outcome,index)=>outcome.status==="rejected"?[{reason:outcome.reason,...storageObjects[index]}]:[]);
     if(failures.length){
-      await Promise.all(failures.map(failure=>recordStorageReconciliation({userId:session.user.id,operation:"DELETE_OBJECT",scope:"claim-delete",entityId:id,storageKey:failure.storageKey,reason:failure.reason})));
+      await Promise.all(failures.map(failure=>recordStorageReconciliation({userId:session.user.id,operation:"DELETE_OBJECT",scope:"claim-delete",entityId:id,storageKey:failure.storageKey,storageProvider:failure.storageProvider||undefined,reason:failure.reason})));
       await recordStorageReconciliation({userId:session.user.id,operation:"DELETE_DATABASE_RECORD",scope:"claim-delete",entityId:id,reason:new Error("ObjectDeletionPending")});
       emitSecurityEvent("claim_object_cleanup_failed",{operation:"DELETE_OBJECT",scope:"claim-delete",code:"ObjectDeletionPending"},"error");
       return NextResponse.json({ error: "Stored documents could not be deleted. The workspace was kept so you can try again." }, { status: 503 });

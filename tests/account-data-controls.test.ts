@@ -41,7 +41,8 @@ test("account deletion covers current and legacy objects and verifies database r
   assert.match(route,/rejectCrossOriginMutation\(request\)/);
   assert.match(route,/prisma\.document\.findMany\(\{where:\{userId:session\.user\.id\}/);
   assert.match(route,/prisma\.upload\.findMany\(\{where:\{userId:session\.user\.id\}/);
-  assert.match(route,/deleteStoredObjectsAndVerify/);
+  assert.match(route,/deleteStoredObjectReferencesAndVerify/);
+  assert.match(route,/provider=>documentStorage\(provider\)/);
   assert.match(route,/transaction\.rateLimitBucket\.deleteMany/);
   assert.match(route,/transaction\.user\.deleteMany/);
   assert.match(route,/prisma\.user\.findUnique/);

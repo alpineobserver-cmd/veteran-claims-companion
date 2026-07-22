@@ -62,6 +62,7 @@ This inventory describes the code currently deployed for the fictional-data Alph
 | `StorageReconciliationTask.operation`, `StorageReconciliationTask.scope`, `StorageReconciliationTask.status`, `StorageReconciliationTask.attempts`, `StorageReconciliationTask.lastErrorCode` | Privacy-minimized cleanup state | Exported to owner; safe fields may be logged |
 | `StorageReconciliationTask.entityId` | Internal cleanup subject | Exported to owner; never logged |
 | `StorageReconciliationTask.storageKey` | Private object locator required for retry | Never exported or logged; removed with task |
+| `StorageReconciliationTask.storageProvider` | Private-object provider routing metadata | Exported to owner; never combined with an object key in logs; removed with task |
 | `StorageReconciliationTask.lastAttemptAt`, `StorageReconciliationTask.resolvedAt`, `StorageReconciliationTask.createdAt`, `StorageReconciliationTask.updatedAt` | Cleanup lifecycle metadata | Exported to owner; removed with task |
 | `Claim.id`, `Claim.userId` | Workspace identity and authorization key | Exported; deleted with workspace/account |
 | `Claim.title`, `Claim.branch`, `Claim.mosRate`, `Claim.symptomStart`, `Claim.deploymentHistory`, `Claim.exposures`, `Claim.treatment` | Restricted claim and service information | Exported; deleted with workspace/account |
@@ -118,6 +119,7 @@ This inventory describes the code currently deployed for the fictional-data Alph
 | Vercel application runtime | Requests, server-rendered pages, API bodies in memory, environment variables, privacy-minimized runtime events | Request bodies are not intentionally logged; API responses use no-store where private | Runtime/build log retention, staff access, region, drain/access configuration |
 | Supabase PostgreSQL | All Prisma models above via a server-only direct connection | RLS enabled and public Data API grants revoked; no browser Supabase client | Project region, SSL enforcement evidence, encryption/key ownership, administrator access, backups, contracts, restoration test |
 | Vercel private Blob | Fictional PDF/JPEG/PNG object bytes under random private keys | Server-only credentials; short-lived owner-bound application tickets; private delivery | Region, encryption/key ownership, administrator access, object/version retention and contractual evidence |
+| Google Cloud Storage (supported; not activated) | Fictional PDF/JPEG/PNG object bytes under random private keys after environment activation | Server-only, private bucket adapter; keyless Vercel OIDC federation; existing application tickets and owner checks remain authoritative | Separate resources, IAM condition evidence, region, encryption/key ownership, audit logs, retention/backups, administrator access, contracts, migration and Staging smoke test |
 | Google OAuth | Authorization request, account identity, consent, and transient authorization codes | Separate clients by environment; application stores identity and provider tokens in PostgreSQL | Approved scopes, retention, administrator/MFA evidence, OAuth Production review |
 | Vercel/GitHub build systems | Source, dependency metadata, release commit, non-secret build output | Persistent credentials are excluded from Preview; repository has protected release branches | Administrator/access review and provider retention evidence |
 | Support email provider | Reporter address and the minimum details a reporter chooses to send from `/support` | Page instructs reporters not to include claims, health data, credentials, or private screenshots | Named monitored mailbox, access list, retention, secure deletion, and incident escalation evidence |
@@ -134,6 +136,7 @@ flowchart LR
   R -->|"Owner-scoped records"| P
   U -->|"Confirmed fictional file"| R
   R -->|"Validated private object"| B["Vercel private Blob"]
+  R -. "Supported after reviewed activation" .-> C["Google Cloud Storage"]
   R -->|"Metadata and audit record"| P
   R -->|"Privacy-minimized security event"| L["Vercel runtime logs"]
   U -->|"mailto; minimum report details"| S["Support mailbox"]
@@ -147,7 +150,7 @@ flowchart LR
 - `/api/auth/[...nextauth]` crosses the Google/Auth.js/PostgreSQL boundary.
 - `/api/claims`, `/api/workspaces`, `/api/documents`, and `/api/account` require a database session and reapply `session.user.id` to owner-scoped queries.
 - Mutation routes enforce same-origin checks and durable rate limits.
-- `/api/documents/[id]/download-link` issues a 60-second owner/document-bound ticket; `/content` rechecks the session, ticket, and owner before reading Blob.
+- `/api/documents/[id]/download-link` issues a 60-second owner/document-bound ticket; `/content` rechecks the session, ticket, owner, and recorded provider before reading the private object.
 - `/api/claim-package` accepts a size-bounded fictional draft and creates a PDF in memory; it does not persist the PDF.
 - `/api/ai/personal-statement` uses the deterministic local template unless the AI gate, authentication, key, and limits are all active.
 
@@ -160,3 +163,6 @@ Update this document and its inventory regression whenever the Prisma schema, br
 - [Supabase data security](https://supabase.com/docs/guides/database/secure-data)
 - [Supabase database backups](https://supabase.com/docs/guides/platform/backups)
 - [Vercel runtime logs](https://vercel.com/docs/logs)
+- [Vercel OIDC federation for Google Cloud](https://vercel.com/docs/oidc/gcp)
+- [Google Cloud Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation)
+- [Google Cloud Storage access control](https://cloud.google.com/storage/docs/access-control)
