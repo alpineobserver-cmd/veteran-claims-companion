@@ -9,6 +9,12 @@
 
 No monitoring request reads authenticated claim content, submits credentials, records email/IP/document/condition data, or copies response bodies into logs.
 
+## Staging verification
+
+On July 22, 2026, the checker passed against the stable Debrief Staging origin for the public entry, login, liveness, Auth.js provider configuration, and anonymous session routes. All five returned HTTP 200 and remained below the five-second threshold.
+
+GitHub does not permit manual or scheduled dispatch of a newly added workflow until that workflow exists on the repository's default branch. The Staging repository variable is configured, but the Action will become dispatchable only through a separately approved Staging-to-Production promotion. This limitation does not affect direct checker use and is not a reason to bypass the protected release process.
+
 ## Operator response
 
 For a failure, confirm the route and environment, inspect privacy-safe Vercel runtime events for the same period, classify severity using the incident runbook, and use the applicable kill switch or rollback. Do not paste raw user requests, OAuth tokens, cookies, questionnaire data, filenames, or provider credentials into GitHub logs or issues.
