@@ -80,6 +80,18 @@ test("security events are fixed-schema, redacted, and contain no caller-supplied
   }
 });
 
+test("AI budget alerts expose only a fixed threshold and non-sensitive scope",()=>{
+  const record=securityEventRecord("ai_budget_threshold_reached",{
+    scope:"ai-spend-reservation-global-day-cents",
+    thresholdPercent:80,
+    userId:"fictional-user",
+    prompt:"fictional medical detail"
+  } as never,new Date("2026-07-22T00:00:00.000Z"));
+  assert.equal(record.thresholdPercent,80);
+  assert.equal(record.scope,"ai-spend-reservation-global-day-cents");
+  assert.doesNotMatch(JSON.stringify(record),/fictional-user|medical detail/);
+});
+
 test("security-relevant runtime output is routed through the single event formatter",async()=>{
   const files=[
     "auth.ts","lib/auth-audit.ts","lib/rate-limit.ts","lib/storage-reconciliation.ts",

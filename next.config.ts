@@ -3,6 +3,7 @@ import { contentSecurityPolicy } from "./lib/content-security-policy";
 const isDevelopment=process.env.NODE_ENV!=="production";
 const csp=contentSecurityPolicy(isDevelopment);
 const nextConfig: NextConfig = {
+  outputFileTracingRoot:process.cwd(),
   serverExternalPackages: ["@vercel/blob"],
   poweredByHeader:false,
   async headers(){return [{source:"/:path*",headers:[

@@ -40,13 +40,29 @@ function boundedLimit(name:string,fallback:number,max:number){
 
 export function aiUserDailyPolicy():RateLimitPolicy{return{scope:"ai-generation-user-day",limit:boundedLimit("DEBRIEF_AI_DAILY_USER_LIMIT",30,500),windowMs:DAY}}
 export function aiGlobalDailyPolicy():RateLimitPolicy{return{scope:"ai-generation-global-day",limit:boundedLimit("DEBRIEF_AI_DAILY_GLOBAL_LIMIT",200,5_000),windowMs:DAY}}
+export function aiUserDailyTokenPolicy():RateLimitPolicy{return{scope:"ai-token-user-day",limit:boundedLimit("DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT",300_000,10_000_000),windowMs:DAY}}
+export function aiGlobalDailyTokenPolicy():RateLimitPolicy{return{scope:"ai-token-global-day",limit:boundedLimit("DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT",2_000_000,100_000_000),windowMs:DAY}}
+export function aiDailySpendPolicy():RateLimitPolicy{return{scope:"ai-spend-reservation-global-day-cents",limit:boundedLimit("DEBRIEF_AI_DAILY_SPEND_CAP_CENTS",500,100_000),windowMs:DAY}}
+export function aiMaxRequestCostCents(){return boundedLimit("DEBRIEF_AI_MAX_REQUEST_COST_CENTS",5,10_000)}
+export function aiMaxOutputTokens(){return boundedLimit("DEBRIEF_AI_MAX_OUTPUT_TOKENS",2_000,8_000)}
 
-export async function consumeRateLimits(principal:string,policies:readonly RateLimitPolicy[],now=Date.now()):Promise<RateLimitResult>{
+function emitBudgetThreshold(policy:RateLimitPolicy,remaining:number,units:number){
+  const used=policy.limit-remaining;
+  for(const thresholdPercent of [80,95]){
+    const threshold=Math.ceil(policy.limit*thresholdPercent/100);
+    if(used>=threshold&&used-units<threshold)emitSecurityEvent("ai_budget_threshold_reached",{scope:policy.scope,thresholdPercent},"warn");
+  }
+}
+
+export async function consumeUsageLimits(principal:string,policies:readonly RateLimitPolicy[],units=1,now=Date.now()):Promise<RateLimitResult>{
+  if(!Number.isSafeInteger(units)||units<1)throw new RateLimitConfigurationError("Usage-limit units must be a positive whole number.");
   const principalHash=rateLimitPrincipalHash(principal);
   const results=await Promise.all(policies.map(async policy=>{
     const window=rateLimitWindow(policy,now);
-    const bucket=await prisma.rateLimitBucket.upsert({where:{scope_principalHash_windowStart:{scope:policy.scope,principalHash,windowStart:window.windowStart}},create:{scope:policy.scope,principalHash,windowStart:window.windowStart,windowEndsAt:window.windowEndsAt,count:1},update:{count:{increment:1},windowEndsAt:window.windowEndsAt},select:{count:true}});
-    return{allowed:bucket.count<=policy.limit,limit:policy.limit,remaining:Math.max(0,policy.limit-bucket.count),retryAfterSeconds:window.retryAfterSeconds,scope:policy.scope};
+    const bucket=await prisma.rateLimitBucket.upsert({where:{scope_principalHash_windowStart:{scope:policy.scope,principalHash,windowStart:window.windowStart}},create:{scope:policy.scope,principalHash,windowStart:window.windowStart,windowEndsAt:window.windowEndsAt,count:units},update:{count:{increment:units},windowEndsAt:window.windowEndsAt},select:{count:true}});
+    const result={allowed:bucket.count<=policy.limit,limit:policy.limit,remaining:Math.max(0,policy.limit-bucket.count),retryAfterSeconds:window.retryAfterSeconds,scope:policy.scope};
+    if(result.allowed&&(policy.scope.startsWith("ai-token-")||policy.scope.startsWith("ai-spend-")))emitBudgetThreshold(policy,result.remaining,units);
+    return result;
   }));
   if(now-lastCleanupAt>HOUR){lastCleanupAt=now;await prisma.rateLimitBucket.deleteMany({where:{windowEndsAt:{lt:new Date(now-RETENTION_MS)}}}).catch(reason=>emitSecurityEvent("rate_limit_cleanup_failed",{code:securityEventErrorCode(reason)},"error"))}
   const blocked=results.filter(result=>!result.allowed).sort((a,b)=>b.retryAfterSeconds-a.retryAfterSeconds)[0];
@@ -54,9 +70,15 @@ export async function consumeRateLimits(principal:string,policies:readonly RateL
   return results.sort((a,b)=>a.remaining-b.remaining)[0]??{allowed:true,limit:0,remaining:0,retryAfterSeconds:0,scope:"none"};
 }
 
+export async function consumeRateLimits(principal:string,policies:readonly RateLimitPolicy[],now=Date.now()):Promise<RateLimitResult>{return consumeUsageLimits(principal,policies,1,now)}
+
 export async function enforceAccountRateLimit(userId:string,policies:readonly RateLimitPolicy[],message="Too many requests. Please wait and try again."){
+  return enforceAccountUsageLimit(userId,policies,1,message);
+}
+
+export async function enforceAccountUsageLimit(userId:string,policies:readonly RateLimitPolicy[],units:number,message="The configured usage limit has been reached. Please try again after the limit resets."){
   try{
-    const result=await consumeRateLimits(`user:${userId}`,policies);if(result.allowed)return null;
+    const result=await consumeUsageLimits(`user:${userId}`,policies,units);if(result.allowed)return null;
     return NextResponse.json({error:message},{status:429,headers:{"Cache-Control":"private, no-store","Retry-After":String(result.retryAfterSeconds),"X-RateLimit-Limit":String(result.limit),"X-RateLimit-Remaining":"0"}});
   }catch(reason){
     emitSecurityEvent("rate_limit_backend_failed",{code:securityEventErrorCode(reason)},"error");

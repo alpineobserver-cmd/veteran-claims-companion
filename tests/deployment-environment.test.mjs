@@ -36,12 +36,26 @@ test("deployment rejects unsafe AI cost ceilings",()=>{
     {DEBRIEF_AI_DAILY_USER_LIMIT:"0"},
     {DEBRIEF_AI_DAILY_USER_LIMIT:"1.5"},
     {DEBRIEF_AI_DAILY_GLOBAL_LIMIT:"5001"},
+    {DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT:"10000001"},
+    {DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT:"100000001"},
+    {DEBRIEF_AI_DAILY_SPEND_CAP_CENTS:"100001"},
+    {DEBRIEF_AI_MAX_REQUEST_COST_CENTS:"10001"},
+    {DEBRIEF_AI_MAX_OUTPUT_TOKENS:"8001"},
   ]){
     const result=validate(overrides);
     assert.notEqual(result.status,0);
-    assert.match(result.stderr,/DEBRIEF_AI_DAILY_(USER|GLOBAL)_LIMIT/);
+    assert.match(result.stderr,/DEBRIEF_AI_/);
   }
-  const safe=validate({DEBRIEF_AI_DAILY_USER_LIMIT:"30",DEBRIEF_AI_DAILY_GLOBAL_LIMIT:"200"});
+  const missingCostBoundary=validate({DEBRIEF_AI_GENERATION_ENABLED:"true",OPENAI_API_KEY:"fictional",DEBRIEF_AI_DAILY_SPEND_CAP_CENTS:"500"});
+  assert.notEqual(missingCostBoundary.status,0);
+  assert.match(missingCostBoundary.stderr,/DEBRIEF_AI_MAX_REQUEST_COST_CENTS/);
+  const implicitEnabledMissingBoundaries=validate({OPENAI_API_KEY:"fictional"});
+  assert.notEqual(implicitEnabledMissingBoundaries.status,0);
+  assert.match(implicitEnabledMissingBoundaries.stderr,/Paid AI generation requires/);
+  const invertedCostBoundary=validate({DEBRIEF_AI_GENERATION_ENABLED:"true",OPENAI_API_KEY:"fictional",DEBRIEF_AI_DAILY_SPEND_CAP_CENTS:"2",DEBRIEF_AI_MAX_REQUEST_COST_CENTS:"3"});
+  assert.notEqual(invertedCostBoundary.status,0);
+  assert.match(invertedCostBoundary.stderr,/cannot exceed/);
+  const safe=validate({DEBRIEF_AI_DAILY_USER_LIMIT:"30",DEBRIEF_AI_DAILY_GLOBAL_LIMIT:"200",DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT:"300000",DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT:"2000000",DEBRIEF_AI_DAILY_SPEND_CAP_CENTS:"500",DEBRIEF_AI_MAX_REQUEST_COST_CENTS:"5",DEBRIEF_AI_MAX_OUTPUT_TOKENS:"2000"});
   assert.equal(safe.status,0,safe.stderr);
 });
 

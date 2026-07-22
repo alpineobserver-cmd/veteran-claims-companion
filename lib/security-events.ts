@@ -1,6 +1,6 @@
 export const securityEventNames=[
   "sign_in_started","sign_in_succeeded","sign_out_succeeded","sign_in_blocked","auth_error","auth_warning",
-  "rate_limit_exceeded","rate_limit_cleanup_failed","rate_limit_backend_failed",
+  "rate_limit_exceeded","rate_limit_cleanup_failed","rate_limit_backend_failed","ai_budget_threshold_reached",
   "storage_reconciliation_pending","storage_reconciliation_record_failed","storage_reconciliation_resolution_failed","storage_reconciliation_retry_query_failed","storage_reconciliation_retry_failed",
   "account_object_deletion_failed","account_database_deletion_failed","claim_object_cleanup_failed","claim_database_cleanup_failed",
   "document_download_failed","document_ticket_failed","document_object_deletion_failed","document_database_deletion_failed","document_upload_failed",
@@ -16,6 +16,7 @@ export type SecurityEventDetails={
   operation?:unknown;
   scope?:unknown;
   retryAfterSeconds?:unknown;
+  thresholdPercent?:unknown;
 };
 
 const safeTokenPattern=/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
@@ -43,6 +44,7 @@ export function securityEventRecord(event:SecurityEventName,details:SecurityEven
   if(details.operation!==undefined)record.operation=securityEventToken(details.operation);
   if(details.scope!==undefined)record.scope=securityEventToken(details.scope);
   if(typeof details.retryAfterSeconds==="number"&&Number.isSafeInteger(details.retryAfterSeconds)&&details.retryAfterSeconds>=0&&details.retryAfterSeconds<=604_800)record.retryAfterSeconds=details.retryAfterSeconds;
+  if(typeof details.thresholdPercent==="number"&&[80,95].includes(details.thresholdPercent))record.thresholdPercent=details.thresholdPercent;
   return record;
 }
 

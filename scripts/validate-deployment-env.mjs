@@ -6,7 +6,7 @@ const dataEnvironment=process.env.DATA_ENVIRONMENT?.trim().toLowerCase();
 const problems=[];
 const operationalControls=["DEBRIEF_UPLOADS_ENABLED","DEBRIEF_AI_GENERATION_ENABLED","DEBRIEF_REGISTRATIONS_ENABLED"];
 const operationalValues=new Set(["0","1","false","true","off","on","disabled","enabled","pause","paused"]);
-const boundedIntegerControls=[["DEBRIEF_AI_DAILY_USER_LIMIT",500],["DEBRIEF_AI_DAILY_GLOBAL_LIMIT",5000]];
+const boundedIntegerControls=[["DEBRIEF_AI_DAILY_USER_LIMIT",500],["DEBRIEF_AI_DAILY_GLOBAL_LIMIT",5000],["DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT",10_000_000],["DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT",100_000_000],["DEBRIEF_AI_DAILY_SPEND_CAP_CENTS",100_000],["DEBRIEF_AI_MAX_REQUEST_COST_CENTS",10_000],["DEBRIEF_AI_MAX_OUTPUT_TOKENS",8_000]];
 const aiPolicyVersions=new Set(["personal-statement-v0","personal-statement-v1"]);
 const storageProviders=new Set(["gcs","google-cloud-storage","vercel","blob","vercel-private-blob","local","local-synthetic"]);
 const storageProvider=process.env.DOCUMENT_STORAGE_PROVIDER?.trim().toLowerCase();
@@ -49,6 +49,16 @@ for(const [key,max] of boundedIntegerControls){
   if(!raw)continue;
   const value=Number(raw);
   if(!Number.isSafeInteger(value)||value<1||value>max)problems.push(`${key} must be a whole number from 1 through ${max}.`);
+}
+const aiControl=process.env.DEBRIEF_AI_GENERATION_ENABLED?.trim().toLowerCase()||"";
+const aiEnabled=!["0","false","off","disabled","pause","paused"].includes(aiControl);
+if(aiEnabled&&process.env.OPENAI_API_KEY){
+  for(const key of ["DEBRIEF_AI_DAILY_SPEND_CAP_CENTS","DEBRIEF_AI_MAX_REQUEST_COST_CENTS"]){
+    if(!process.env[key]?.trim())problems.push(`Paid AI generation requires an explicit ${key} cost boundary.`);
+  }
+  const dailyCap=Number(process.env.DEBRIEF_AI_DAILY_SPEND_CAP_CENTS);
+  const requestCap=Number(process.env.DEBRIEF_AI_MAX_REQUEST_COST_CENTS);
+  if(Number.isSafeInteger(dailyCap)&&Number.isSafeInteger(requestCap)&&requestCap>dailyCap)problems.push("DEBRIEF_AI_MAX_REQUEST_COST_CENTS cannot exceed DEBRIEF_AI_DAILY_SPEND_CAP_CENTS.");
 }
 if(process.env.DEBRIEF_AI_POLICY_VERSION&&!aiPolicyVersions.has(process.env.DEBRIEF_AI_POLICY_VERSION.trim()))problems.push("DEBRIEF_AI_POLICY_VERSION must identify an evaluated policy version.");
 
