@@ -1,6 +1,21 @@
 # Google Cloud Storage activation and migration
 
-Status: Application adapter implemented for fictional Staging validation. Google Cloud resources are not created or activated by this code change. Real medical or claimant information remains prohibited.
+Status: Application adapter and isolated Staging resources are configured for fictional validation. Staging uploads remain paused until the end-to-end upload, download, and verified-delete smoke test is completed. Real medical or claimant information remains prohibited.
+
+## Staging resource record
+
+Created July 22, 2026:
+
+- Google Cloud project: `debrief-staging-storage` (`928631666085`)
+- Regional bucket: `debrief-staging-documents-928631666085` in `us-east4`
+- Bucket controls: uniform bucket-level access and public-access prevention enforced; Google-managed encryption; seven-day soft delete; no retention lock
+- Runtime service account: `debrief-storage-runtime@debrief-staging-storage.iam.gserviceaccount.com`
+- Workload identity pool/provider: `vercel-staging` / `vercel`
+- Trusted subject: only `owner:veteran-claims:project:debrief-staging:environment:production`
+- Runtime access: `roles/storage.objectUser` on this bucket only; no project-wide role and no user-managed service-account key
+- Vercel project: `veteran-claims/debrief-staging`, Production environment only
+
+The Staging Vercel variables are present and `DOCUMENT_STORAGE_PROVIDER=gcs`. `DEBRIEF_UPLOADS_ENABLED=false` is the current safety state pending the fictional smoke test. These resources do not authorize Production or real records.
 
 ## Architecture
 
