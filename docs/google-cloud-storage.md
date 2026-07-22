@@ -1,6 +1,6 @@
 # Google Cloud Storage activation and migration
 
-Status: Application adapter and isolated Staging resources are configured for fictional validation. Staging uploads remain paused until the end-to-end upload, download, and verified-delete smoke test is completed. Real medical or claimant information remains prohibited.
+Status: Application adapter and isolated Staging resources are configured for fictional validation. The single-user upload, download, and verified-delete smoke test passed on July 22, 2026. Staging uploads remain paused until the separate live second-user isolation test is completed. Real medical or claimant information remains prohibited.
 
 ## Staging resource record
 
@@ -15,7 +15,19 @@ Created July 22, 2026:
 - Runtime access: `roles/storage.objectUser` on this bucket only; no project-wide role and no user-managed service-account key
 - Vercel project: `veteran-claims/debrief-staging`, Production environment only
 
-The Staging Vercel variables are present and `DOCUMENT_STORAGE_PROVIDER=gcs`. `DEBRIEF_UPLOADS_ENABLED=false` is the current safety state pending the fictional smoke test. These resources do not authorize Production or real records.
+The Staging Vercel variables are present and `DOCUMENT_STORAGE_PROVIDER=gcs`. `DEBRIEF_UPLOADS_ENABLED=false` is the current safety state pending the second-user isolation test. These resources do not authorize Production or real records.
+
+## Staging smoke-test evidence
+
+On July 22, 2026, a structurally valid 1.7 KB fictional PDF containing no real person information was exercised through the signed-in Debrief interface:
+
+1. The file passed PDF inspection and was uploaded through the owner-scoped workspace.
+2. The object appeared only under the private `synthetic-intake/` bucket prefix.
+3. The owner-only application download completed successfully.
+4. User-confirmed deletion removed the active Cloud Storage object; no active objects remained under the test prefix.
+5. Google Cloud retained only the expected soft-deleted generation, scheduled for automatic hard deletion on July 29, 2026 at 20:53:04 UTC.
+
+This proves the single-user application-to-Google write, read, and delete path. It does not replace the pending live second-user cross-account isolation test or authorize real records.
 
 ## Architecture
 
