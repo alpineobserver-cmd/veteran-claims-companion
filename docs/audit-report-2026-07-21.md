@@ -41,7 +41,7 @@ Production was not changed during this audit.
 ## Residual risks and follow-up
 
 - Supabase reports informational `rls_enabled_no_policy` notices. This is expected: Debrief intentionally exposes no application rows through the Supabase Data API and uses owner-scoped server routes instead.
-- Supabase reports 13 foreign-key index suggestions. Review them against real query plans before adding indexes; tracked as `OPS-014`.
+- The 13 Supabase foreign-key index suggestions were resolved July 22 under `OPS-014`: each index was tied to an application path, deployed through Prisma, verified against privacy-safe eligibility plans, and cleared from the performance advisor. New-index usage will be reviewed again after representative Alpha traffic.
 - Managed provider-owned default privileges could not be altered by the application owner. Current objects and PostgreSQL-owned future Prisma objects are denied to Data API roles. Recheck grants after provider-driven schema changes.
 - Auth.js remains on a monitored v5 beta release. Continue the monthly release-channel and security-advisory review under `OPS-011`.
 - The live two-user test requires disposable database fixtures and is therefore not automatically run in uncredentialed pull-request jobs. The static authorization suite remains mandatory in CI, and the live harness is required before an Alpha release involving owner-scope changes.

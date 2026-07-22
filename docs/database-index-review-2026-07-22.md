@@ -40,4 +40,17 @@ Plans were captured against Staging using `EXPLAIN` without `ANALYZE` and the fa
 
 The Alpha tables are deliberately tiny, so PostgreSQL may continue to choose a sequential scan after indexes are present. That is expected and not a failure. Post-deployment verification must confirm the 13 advisor notices disappear, inspect index definitions, and record new plans; forcing the planner is permitted only to demonstrate index eligibility, not to claim production speedup.
 
+## After deployment
+
+The migration deployed successfully to Debrief Staging with merge commit `c9f97c4` on July 22, 2026. A fresh Supabase performance-advisor run reported zero `unindexed_foreign_keys` findings, clearing all 13 recommendations in scope.
+
+Eligibility plans were then captured in a transaction with `SET LOCAL enable_seqscan = off`, using the same fabricated identifier and `EXPLAIN` without `ANALYZE`. This does not read claimant content or claim a real-world speed improvement; it confirms that PostgreSQL can use each representative index when the data volume makes doing so worthwhile.
+
+- Claim dashboard lookup used `Claim_userId_status_updatedAt_idx`, estimated total cost `2.36` (before: `13.46`).
+- Statement account export used `Statement_userId_createdAt_idx`, estimated total cost `3.41` (before: `14.27`).
+- Upload account deletion/export used `Upload_userId_createdAt_idx`, estimated total cost `3.41` (before: `13.77`).
+- Evidence collection/type join used `Evidence_claimId_createdAt_idx` plus the evidence-type primary key, estimated total cost `7.12` (before: `18.53`).
+
+The advisor now reports the 13 new indexes as informational `unused_index` findings. That is expected immediately after creation on small Alpha tables. Removing them before representative usage would discard the query and relationship support documented above; their actual use and write/storage cost should be reviewed again after the application has a meaningful, fictional-data workload.
+
 Supabase remediation reference: https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys
