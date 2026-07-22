@@ -44,9 +44,9 @@ Authentication logs contain only timestamps, event names, error codes, provider 
 
 ## Personal statement drafting
 
-The last step of the claim builder can turn a veteran's questionnaire answers into an editable personal-statement draft. Set `OPENAI_API_KEY` in the server environment to enable AI-assisted drafting. `OPENAI_MODEL` is optional and defaults to `gpt-5.4-mini`.
+The last step of the claim builder can turn a veteran's questionnaire answers into an editable personal-statement draft. AI-assisted drafting requires `OPENAI_API_KEY` plus the explicit cost boundaries documented in `.env.example` and `docs/durable-rate-limits.md`. `OPENAI_MODEL` is optional and defaults to `gpt-5.4-mini`.
 
-The API key must remain server-side. Statement requests use the OpenAI Responses API with storage disabled. The optional display name is added by the application and is not included in the source material sent to the model. If no API key is configured, the same interface creates a clearly labeled guided narrative directly from the answers using fixed, non-AI rules so the MVP remains reviewable.
+The API key must remain server-side. Statement requests use the OpenAI Responses API with storage disabled. Per-user/global request and token limits plus an atomic daily spend reservation are checked before each provider request. The optional display name is added by the application and is not included in the source material sent to the model. If no API key is configured, the same interface creates a clearly labeled guided narrative directly from the answers using fixed, non-AI rules so the MVP remains reviewable.
 
 The claim builder also works without AI. It branches by claim path, provides condition-aware prompts, builds a chronology, links facts to supporting information, and checks for common preparation gaps. Users confirm each statement section before downloading a PDF review package. The package is an independent preparation attachment, not a completed VA form and not evidence that anything was submitted to VA.
 

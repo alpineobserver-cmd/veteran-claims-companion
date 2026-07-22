@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { aiGlobalDailyPolicy, aiUserDailyPolicy, rateLimitPolicies, rateLimitPrincipalHash, rateLimitWindow } from "../lib/rate-limit";
+import { aiDailySpendPolicy, aiGlobalDailyPolicy, aiGlobalDailyTokenPolicy, aiMaxOutputTokens, aiMaxRequestCostCents, aiUserDailyPolicy, aiUserDailyTokenPolicy, rateLimitPolicies, rateLimitPrincipalHash, rateLimitWindow } from "../lib/rate-limit";
 
 const root=process.cwd();
 const read=(relative:string)=>readFile(path.join(root,relative),"utf8");
@@ -25,18 +25,21 @@ test("principal keys are deterministic HMACs and do not retain account identifie
 });
 
 test("AI cost ceilings use safe defaults and bounded explicit overrides",()=>{
-  const originalUser=process.env.DEBRIEF_AI_DAILY_USER_LIMIT;
-  const originalGlobal=process.env.DEBRIEF_AI_DAILY_GLOBAL_LIMIT;
+  const keys=["DEBRIEF_AI_DAILY_USER_LIMIT","DEBRIEF_AI_DAILY_GLOBAL_LIMIT","DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT","DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT","DEBRIEF_AI_DAILY_SPEND_CAP_CENTS","DEBRIEF_AI_MAX_REQUEST_COST_CENTS","DEBRIEF_AI_MAX_OUTPUT_TOKENS"] as const;
+  const original=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
   try{
-    delete process.env.DEBRIEF_AI_DAILY_USER_LIMIT;delete process.env.DEBRIEF_AI_DAILY_GLOBAL_LIMIT;
+    for(const key of keys)delete process.env[key];
     assert.equal(aiUserDailyPolicy().limit,30);assert.equal(aiGlobalDailyPolicy().limit,200);
-    process.env.DEBRIEF_AI_DAILY_USER_LIMIT="12";process.env.DEBRIEF_AI_DAILY_GLOBAL_LIMIT="90";
+    assert.equal(aiUserDailyTokenPolicy().limit,300_000);assert.equal(aiGlobalDailyTokenPolicy().limit,2_000_000);
+    assert.equal(aiDailySpendPolicy().limit,500);assert.equal(aiMaxRequestCostCents(),5);assert.equal(aiMaxOutputTokens(),2_000);
+    process.env.DEBRIEF_AI_DAILY_USER_LIMIT="12";process.env.DEBRIEF_AI_DAILY_GLOBAL_LIMIT="90";process.env.DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT="120000";process.env.DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT="900000";process.env.DEBRIEF_AI_DAILY_SPEND_CAP_CENTS="250";process.env.DEBRIEF_AI_MAX_REQUEST_COST_CENTS="3";process.env.DEBRIEF_AI_MAX_OUTPUT_TOKENS="1500";
     assert.equal(aiUserDailyPolicy().limit,12);assert.equal(aiGlobalDailyPolicy().limit,90);
+    assert.equal(aiUserDailyTokenPolicy().limit,120_000);assert.equal(aiGlobalDailyTokenPolicy().limit,900_000);
+    assert.equal(aiDailySpendPolicy().limit,250);assert.equal(aiMaxRequestCostCents(),3);assert.equal(aiMaxOutputTokens(),1_500);
     process.env.DEBRIEF_AI_DAILY_USER_LIMIT="0";process.env.DEBRIEF_AI_DAILY_GLOBAL_LIMIT="9000";
     assert.equal(aiUserDailyPolicy().limit,30);assert.equal(aiGlobalDailyPolicy().limit,200);
   }finally{
-    if(originalUser===undefined)delete process.env.DEBRIEF_AI_DAILY_USER_LIMIT;else process.env.DEBRIEF_AI_DAILY_USER_LIMIT=originalUser;
-    if(originalGlobal===undefined)delete process.env.DEBRIEF_AI_DAILY_GLOBAL_LIMIT;else process.env.DEBRIEF_AI_DAILY_GLOBAL_LIMIT=originalGlobal;
+    for(const key of keys){const value=original[key];if(value===undefined)delete process.env[key];else process.env[key]=value}
   }
 });
 
@@ -46,7 +49,8 @@ test("durable buckets are migration-backed, atomic, expiring, and privacy minimi
   assert.match(schema,/@@unique\(\[scope, principalHash, windowStart\]\)/);
   assert.match(migration,/CREATE UNIQUE INDEX "RateLimitBucket_scope_principalHash_windowStart_key"/);
   assert.match(implementation,/rateLimitBucket\.upsert/);
-  assert.match(implementation,/count:\{increment:1\}/);
+  assert.match(implementation,/count:\{increment:units\}/);
+  assert.match(implementation,/Number\.isSafeInteger\(units\)/);
   assert.match(implementation,/rateLimitBucket\.deleteMany/);
   assert.match(implementation,/emitSecurityEvent\("rate_limit_exceeded"/);
   assert.doesNotMatch(implementation,/email|documentName|conditionName/);
@@ -64,6 +68,11 @@ test("high-risk authenticated routes enforce limits and paid AI has user and glo
   assert.match(ai,/rateLimitPolicies\.aiBurst/);
   assert.match(ai,/aiUserDailyPolicy\(\)/);
   assert.match(ai,/aiGlobalDailyPolicy\(\)/);
+  assert.match(ai,/aiUserDailyTokenPolicy\(\)/);
+  assert.match(ai,/aiGlobalDailyTokenPolicy\(\)/);
+  assert.match(ai,/aiDailySpendPolicy\(\)/);
+  assert.match(ai,/Buffer\.byteLength/);
+  assert.match(ai,/max_output_tokens:maxOutputTokens/);
   assert.doesNotMatch(ai,/new Map/);
   assert.equal(rateLimitPolicies.documentUploadHour.limit,10);
   assert.equal(rateLimitPolicies.documentUploadDay.limit,25);

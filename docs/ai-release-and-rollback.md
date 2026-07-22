@@ -12,6 +12,7 @@ Every fixture and every scored dimension must pass at 95 or higher. A future mod
 - `personal-statement-v0` is the retained rollback policy.
 - `DEBRIEF_AI_POLICY_VERSION` chooses one of those exact values. An unknown value fails deployment validation and fails closed to the local template if encountered at runtime.
 - `DEBRIEF_AI_GENERATION_ENABLED=false` immediately stops external model calls while preserving saved work and the free guided draft.
+- External generation also fails closed behind per-user request/token ceilings, a global request/token ceiling, a maximum response-token allowance, and an atomic daily spend reservation. The deployment validator requires explicit per-request and daily cost boundaries when an API key and generation are enabled; see `docs/durable-rate-limits.md`.
 
 The API response reports the policy version used. Change the version only in Staging, run the release suite, perform fictional drafting review, and record the decision before Production promotion.
 

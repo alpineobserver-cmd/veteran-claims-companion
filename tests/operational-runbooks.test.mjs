@@ -15,7 +15,7 @@ test("secret inventory covers every application secret and separates environment
   const [inventory,example]=await Promise.all([read("docs/secret-inventory-and-rotation.md"),read(".env.example")]);
   const keys=[...example.matchAll(/^([A-Z][A-Z0-9_]+)=/gm)].map(match=>match[1]);
   for(const key of ["DATABASE_URL","AUTH_SECRET","AUTH_GOOGLE_ID","AUTH_GOOGLE_SECRET","BLOB_READ_WRITE_TOKEN","OPENAI_API_KEY"])assert.match(inventory,new RegExp(`\\b${key}\\b`),key);
-  for(const key of keys)assert.ok(inventory.includes(key)||["RELEASE_ID","OPENAI_MODEL","DEBRIEF_AI_DAILY_USER_LIMIT","DEBRIEF_AI_DAILY_GLOBAL_LIMIT"].includes(key),`Inventory must classify ${key} or explicitly exempt it in this test.`);
+  for(const key of keys)assert.ok(inventory.includes(key)||["RELEASE_ID","OPENAI_MODEL"].includes(key),`Inventory must classify ${key} or explicitly exempt it in this test.`);
   assert.match(inventory,/Never use one `AUTH_SECRET`.*across Staging and Production/);
 });
 
