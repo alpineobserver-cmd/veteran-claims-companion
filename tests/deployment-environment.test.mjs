@@ -45,6 +45,21 @@ test("deployment rejects unsafe AI cost ceilings",()=>{
   assert.equal(safe.status,0,safe.stderr);
 });
 
+test("hosted Google Cloud Storage requires keyless workload identity configuration",()=>{
+  const incomplete=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DOCUMENT_STORAGE_PROVIDER:"gcs"});
+  assert.notEqual(incomplete.status,0);
+  assert.match(incomplete.stderr,/GCS_BUCKET/);
+  assert.match(incomplete.stderr,/GCS_AUTH_MODE=vercel-oidc/);
+  const complete=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DOCUMENT_STORAGE_PROVIDER:"gcs",GCS_AUTH_MODE:"vercel-oidc",GCS_BUCKET:"fictional-staging",GCP_PROJECT_ID:"fictional-project",GCP_PROJECT_NUMBER:"123456789",GCP_SERVICE_ACCOUNT_EMAIL:"debrief-staging@fictional-project.iam.gserviceaccount.com",GCP_WORKLOAD_IDENTITY_POOL_ID:"vercel-staging",GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:"vercel"});
+  assert.equal(complete.status,0,complete.stderr);
+});
+
+test("hosted environments prohibit ephemeral local document storage",()=>{
+  const result=validate({APP_ENV:"production",DATA_ENVIRONMENT:"production",DOCUMENT_STORAGE_PROVIDER:"local"});
+  assert.notEqual(result.status,0);
+  assert.match(result.stderr,/cannot use local document storage/);
+});
+
 test("the root layout includes a server-rendered non-production banner",async()=>{
   const [layout,banner]=await Promise.all([
     readFile(path.join(root,"app/layout.tsx"),"utf8"),

@@ -134,6 +134,7 @@ model StorageReconciliationTask {
   scope String
   entityId String?
   storageKey String?
+  storageProvider String?
   status String @default("PENDING")
   attempts Int @default(1)
   lastErrorCode String

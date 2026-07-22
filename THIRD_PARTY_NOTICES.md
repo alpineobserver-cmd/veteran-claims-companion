@@ -10,6 +10,8 @@ Reviewed against `package-lock.json` on July 22, 2026. Run `npm run licenses:che
 | Auth.js / next-auth | Google sign-in and database sessions | ISC | https://authjs.dev |
 | Prisma | Database client and migration tooling | Apache-2.0 | https://www.prisma.io |
 | Vercel Blob SDK | Private object-storage client | Apache-2.0 | https://vercel.com/storage/blob |
+| Google Cloud Storage and Google Auth libraries | Optional private object-storage client and keyless workload federation | Apache-2.0 | https://cloud.google.com/storage and https://github.com/googleapis/google-auth-library-nodejs |
+| Vercel OIDC SDK | Short-lived Vercel workload identity retrieval | Apache-2.0 | https://vercel.com/docs/oidc |
 | Zod | Request validation | MIT | https://zod.dev |
 | Lucide | Interface icons; Lucide contributors | ISC | https://lucide.dev |
 | Sharp | Next.js image processing dependency | Apache-2.0 | https://sharp.pixelplumbing.com |

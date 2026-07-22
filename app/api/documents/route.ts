@@ -51,7 +51,7 @@ export async function POST(request:Request){
     });
     return NextResponse.json({document},{status:201});
   }catch(reason){
-    if(storedKey)try{await deleteObjectAndVerify(storage,storedKey)}catch(cleanupReason){await recordStorageReconciliation({userId:session.user.id,operation:"DELETE_OBJECT",scope:"upload-rollback",entityId:claimId,storageKey:storedKey,reason:cleanupReason})}
+    if(storedKey)try{await deleteObjectAndVerify(storage,storedKey)}catch(cleanupReason){await recordStorageReconciliation({userId:session.user.id,operation:"DELETE_OBJECT",scope:"upload-rollback",entityId:claimId,storageKey:storedKey,storageProvider:storage.name,reason:cleanupReason})}
     emitSecurityEvent("document_upload_failed",{operation:"PUT_OBJECT",scope:"document-upload",code:securityEventErrorCode(reason)},"error");return NextResponse.json({error:"The test document could not be stored."},{status:500})
   }
 }

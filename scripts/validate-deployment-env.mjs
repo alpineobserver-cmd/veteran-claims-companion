@@ -8,6 +8,8 @@ const operationalControls=["DEBRIEF_UPLOADS_ENABLED","DEBRIEF_AI_GENERATION_ENAB
 const operationalValues=new Set(["0","1","false","true","off","on","disabled","enabled","pause","paused"]);
 const boundedIntegerControls=[["DEBRIEF_AI_DAILY_USER_LIMIT",500],["DEBRIEF_AI_DAILY_GLOBAL_LIMIT",5000]];
 const aiPolicyVersions=new Set(["personal-statement-v0","personal-statement-v1"]);
+const storageProviders=new Set(["gcs","google-cloud-storage","vercel","blob","vercel-private-blob","local","local-synthetic"]);
+const storageProvider=process.env.DOCUMENT_STORAGE_PROVIDER?.trim().toLowerCase();
 
 if(!allowed.has(appEnvironment))problems.push("APP_ENV must be development, preview, staging, or production.");
 if(dataEnvironment&&!allowed.has(dataEnvironment))problems.push("DATA_ENVIRONMENT must be development, preview, staging, or production.");
@@ -26,6 +28,15 @@ if(appEnvironment==="staging"){
 
 if(appEnvironment==="production"&&dataEnvironment&&dataEnvironment!=="production"){
   problems.push("Production must use DATA_ENVIRONMENT=production.");
+}
+
+if(storageProvider&&!storageProviders.has(storageProvider))problems.push("DOCUMENT_STORAGE_PROVIDER must be gcs, vercel, or local.");
+if(["staging","production"].includes(appEnvironment)&&["local","local-synthetic"].includes(storageProvider||""))problems.push("Hosted environments cannot use local document storage.");
+if(["gcs","google-cloud-storage"].includes(storageProvider||"")){
+  for(const key of ["GCS_BUCKET","GCP_PROJECT_ID","GCP_PROJECT_NUMBER","GCP_SERVICE_ACCOUNT_EMAIL","GCP_WORKLOAD_IDENTITY_POOL_ID","GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID"]){
+    if(!process.env[key]?.trim())problems.push(`Google Cloud Storage requires ${key}.`);
+  }
+  if(["staging","production"].includes(appEnvironment)&&process.env.GCS_AUTH_MODE?.trim().toLowerCase()!=="vercel-oidc")problems.push("Hosted Google Cloud Storage requires GCS_AUTH_MODE=vercel-oidc.");
 }
 
 for(const key of operationalControls){

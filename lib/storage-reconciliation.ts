@@ -4,7 +4,7 @@ import type { StorageProvider } from "@/lib/storage";
 import { emitSecurityEvent } from "@/lib/security-events";
 
 export type ReconciliationOperation="DELETE_OBJECT"|"DELETE_DATABASE_RECORD";
-export type ReconciliationInput={userId:string;operation:ReconciliationOperation;scope:string;entityId?:string;storageKey?:string;reason:unknown};
+export type ReconciliationInput={userId:string;operation:ReconciliationOperation;scope:string;entityId?:string;storageKey?:string;storageProvider?:string;reason:unknown};
 
 function principalHash(userId:string){return rateLimitPrincipalHash(`user:${userId}`)}
 export function reconciliationErrorCode(reason:unknown){
@@ -12,14 +12,14 @@ export function reconciliationErrorCode(reason:unknown){
   return /^[A-Za-z0-9_.-]{1,80}$/.test(raw)?raw:"UnknownError";
 }
 export function reconciliationFingerprint(input:Omit<ReconciliationInput,"reason">,secret?:string){
-  return rateLimitPrincipalHash(`storage-reconciliation:${input.operation}:${input.scope}:${input.entityId||"none"}:${input.storageKey||"none"}`,secret);
+  return rateLimitPrincipalHash(`storage-reconciliation:${input.operation}:${input.scope}:${input.entityId||"none"}:${input.storageProvider||"none"}:${input.storageKey||"none"}`,secret);
 }
 export async function recordStorageReconciliation(input:ReconciliationInput){
   const lastErrorCode=reconciliationErrorCode(input.reason);const fingerprint=reconciliationFingerprint(input);
   try{
     await prisma.storageReconciliationTask.upsert({
       where:{fingerprint},
-      create:{fingerprint,principalHash:principalHash(input.userId),operation:input.operation,scope:input.scope,entityId:input.entityId,storageKey:input.storageKey,lastErrorCode},
+      create:{fingerprint,principalHash:principalHash(input.userId),operation:input.operation,scope:input.scope,entityId:input.entityId,storageKey:input.storageKey,storageProvider:input.storageProvider,lastErrorCode},
       update:{status:"PENDING",attempts:{increment:1},lastErrorCode,lastAttemptAt:new Date(),resolvedAt:null}
     });
     emitSecurityEvent("storage_reconciliation_pending",{operation:input.operation,scope:input.scope,code:lastErrorCode},"error");
@@ -44,7 +44,7 @@ export async function deleteObjectAndVerify(storage:StorageProvider,storageKey:s
 export async function retryUploadRollbackTasks(userId:string,storage:StorageProvider){
   let tasks;
   try{
-    tasks=await prisma.storageReconciliationTask.findMany({where:{principalHash:principalHash(userId),operation:"DELETE_OBJECT",scope:"upload-rollback",status:"PENDING",storageKey:{not:null}},orderBy:{createdAt:"asc"},take:10,select:{id:true,storageKey:true}});
+    tasks=await prisma.storageReconciliationTask.findMany({where:{principalHash:principalHash(userId),operation:"DELETE_OBJECT",scope:"upload-rollback",status:"PENDING",storageKey:{not:null},OR:[{storageProvider:storage.name},{storageProvider:null}]},orderBy:{createdAt:"asc"},take:10,select:{id:true,storageKey:true}});
   }catch(reason){
     emitSecurityEvent("storage_reconciliation_retry_query_failed",{operation:"DELETE_OBJECT",scope:"upload-rollback",code:reconciliationErrorCode(reason)},"error");
     return 0;
