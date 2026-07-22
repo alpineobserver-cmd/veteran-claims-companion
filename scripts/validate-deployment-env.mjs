@@ -7,6 +7,7 @@ const problems=[];
 const operationalControls=["DEBRIEF_UPLOADS_ENABLED","DEBRIEF_AI_GENERATION_ENABLED","DEBRIEF_REGISTRATIONS_ENABLED"];
 const operationalValues=new Set(["0","1","false","true","off","on","disabled","enabled","pause","paused"]);
 const boundedIntegerControls=[["DEBRIEF_AI_DAILY_USER_LIMIT",500],["DEBRIEF_AI_DAILY_GLOBAL_LIMIT",5000]];
+const aiPolicyVersions=new Set(["personal-statement-v0","personal-statement-v1"]);
 
 if(!allowed.has(appEnvironment))problems.push("APP_ENV must be development, preview, staging, or production.");
 if(dataEnvironment&&!allowed.has(dataEnvironment))problems.push("DATA_ENVIRONMENT must be development, preview, staging, or production.");
@@ -38,6 +39,7 @@ for(const [key,max] of boundedIntegerControls){
   const value=Number(raw);
   if(!Number.isSafeInteger(value)||value<1||value>max)problems.push(`${key} must be a whole number from 1 through ${max}.`);
 }
+if(process.env.DEBRIEF_AI_POLICY_VERSION&&!aiPolicyVersions.has(process.env.DEBRIEF_AI_POLICY_VERSION.trim()))problems.push("DEBRIEF_AI_POLICY_VERSION must identify an evaluated policy version.");
 
 if(problems.length){
   console.error("Deployment environment validation failed:");

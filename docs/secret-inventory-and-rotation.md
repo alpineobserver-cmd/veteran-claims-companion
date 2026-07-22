@@ -20,7 +20,7 @@ Never record a secret value in this file, Git, issues, chat, screenshots, build 
 | `OPENAI_API_KEY` | Secret; currently expected unset | OpenAI/Vercel | Server-side only; add separately only after AI approval | Personal-statement AI route | Alpha administrator |
 | GitHub, Vercel, Google, Supabase, and OpenAI administrator sessions/MFA | Privileged account secret | Each provider | Named administrators only; never application environment variables | Administrative access | Product owner |
 
-Configuration values such as `APP_ENV`, `DATA_ENVIRONMENT`, `RELEASE_ID`, `AUTH_URL`, `AUTH_CANONICAL_HOST`, `PRIVACY_CONTACT_EMAIL`, `OPENAI_MODEL`, `DEBRIEF_UPLOADS_ENABLED`, `DEBRIEF_AI_GENERATION_ENABLED`, `DEBRIEF_AI_DAILY_USER_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_LIMIT`, and `DEBRIEF_REGISTRATIONS_ENABLED` are not secrets. They still require environment review because incorrect values can weaken isolation or availability.
+Configuration values such as `APP_ENV`, `DATA_ENVIRONMENT`, `RELEASE_ID`, `AUTH_URL`, `AUTH_CANONICAL_HOST`, `PRIVACY_CONTACT_EMAIL`, `OPENAI_MODEL`, `DEBRIEF_UPLOADS_ENABLED`, `DEBRIEF_AI_GENERATION_ENABLED`, `DEBRIEF_AI_POLICY_VERSION`, `DEBRIEF_AI_DAILY_USER_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_LIMIT`, and `DEBRIEF_REGISTRATIONS_ENABLED` are not secrets. They still require environment review because incorrect values can weaken isolation or availability.
 
 ## Required inventory review
 
