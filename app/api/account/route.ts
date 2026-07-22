@@ -7,6 +7,7 @@ import { documentStorage } from "@/lib/storage";
 import { NextResponse } from "next/server";
 import { enforceAccountRateLimit, rateLimitPolicies, rateLimitPrincipalHash } from "@/lib/rate-limit";
 import { recordStorageReconciliation } from "@/lib/storage-reconciliation";
+import { emitSecurityEvent, securityEventErrorCode } from "@/lib/security-events";
 
 export async function DELETE(request:Request){
   const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
@@ -22,7 +23,7 @@ export async function DELETE(request:Request){
       const failedKeys=reason instanceof ActiveStorageDeletionError?reason.failedKeys:objectKeys;
       await Promise.all(failedKeys.map(storageKey=>recordStorageReconciliation({userId:session.user.id,operation:"DELETE_OBJECT",scope:"account-delete",entityId:"account",storageKey,reason})));
       await recordStorageReconciliation({userId:session.user.id,operation:"DELETE_DATABASE_RECORD",scope:"account-delete",entityId:"account",reason:new Error("ObjectDeletionPending")});
-      console.error("Account object cleanup failed",reason instanceof Error?reason.name:"UnknownError");return NextResponse.json({error:"Stored files could not be deleted, so the account was kept. Try again or contact the alpha administrator."},{status:503})
+      emitSecurityEvent("account_object_deletion_failed",{operation:"DELETE_OBJECT",scope:"account-delete",code:securityEventErrorCode(reason)},"error");return NextResponse.json({error:"Stored files could not be deleted, so the account was kept. Try again or contact the alpha administrator."},{status:503})
     }
   }
   try{
@@ -32,6 +33,6 @@ export async function DELETE(request:Request){
       return transaction.user.deleteMany({where:{id:session.user.id}});
     });if(deleted.count!==1)throw new Error("AccountDeleteCountMismatch");
     const remaining=await prisma.user.findUnique({where:{id:session.user.id},select:{id:true}});if(remaining)throw new Error("AccountDeletionNotVerified");
-  }catch(reason){await recordStorageReconciliation({userId:session.user.id,operation:"DELETE_DATABASE_RECORD",scope:"account-delete",entityId:"account",reason});console.error("Account deletion failed",reason instanceof Error?reason.name:"UnknownError");return NextResponse.json({error:"The account could not be deleted after its stored files were removed. Contact the alpha administrator."},{status:500})}
+  }catch(reason){await recordStorageReconciliation({userId:session.user.id,operation:"DELETE_DATABASE_RECORD",scope:"account-delete",entityId:"account",reason});emitSecurityEvent("account_database_deletion_failed",{operation:"DELETE_DATABASE_RECORD",scope:"account-delete",code:securityEventErrorCode(reason)},"error");return NextResponse.json({error:"The account could not be deleted after its stored files were removed. Contact the alpha administrator."},{status:500})}
   return NextResponse.json({status:"deleted",receipt:{receiptId:randomUUID(),deletedAt:new Date().toISOString(),activeDatabaseDeletion:"verified",activeObjectDeletion:"verified",deletedObjects,backupNotice:"Provider backups and security logs may remain until their configured retention periods expire."}},{headers:{"Cache-Control":"private, no-store","Clear-Site-Data":"\"cache\", \"cookies\", \"storage\"","X-Content-Type-Options":"nosniff"}});
 }

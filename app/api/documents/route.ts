@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { hasAcceptableContentLength, MAX_DOCUMENT_REQUEST_BYTES, MAX_DOCUMENTS_PER_USER, MAX_DOCUMENTS_PER_WORKSPACE, rejectCrossOriginMutation } from "@/lib/request-security";
 import { enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 import { deleteObjectAndVerify, recordStorageReconciliation, retryUploadRollbackTasks } from "@/lib/storage-reconciliation";
+import { emitSecurityEvent, securityEventErrorCode } from "@/lib/security-events";
 
 export const runtime="nodejs";
 
@@ -51,6 +52,6 @@ export async function POST(request:Request){
     return NextResponse.json({document},{status:201});
   }catch(reason){
     if(storedKey)try{await deleteObjectAndVerify(storage,storedKey)}catch(cleanupReason){await recordStorageReconciliation({userId:session.user.id,operation:"DELETE_OBJECT",scope:"upload-rollback",entityId:claimId,storageKey:storedKey,reason:cleanupReason})}
-    console.error("Synthetic document upload failed",reason instanceof Error?reason.name:"UnknownError");return NextResponse.json({error:"The test document could not be stored."},{status:500})
+    emitSecurityEvent("document_upload_failed",{operation:"PUT_OBJECT",scope:"document-upload",code:securityEventErrorCode(reason)},"error");return NextResponse.json({error:"The test document could not be stored."},{status:500})
   }
 }

@@ -38,12 +38,12 @@ test("task fingerprints are deterministic, scoped, and reveal no storage identif
 });
 
 test("durable reconciliation records are indexed, retryable, and privacy-safe in logs",async()=>{
-  const [schema,migration,implementation]=await Promise.all([read("prisma/schema.prisma"),read("prisma/migrations/20260721203000_storage_reconciliation/migration.sql"),read("lib/storage-reconciliation.ts")]);
+  const [schema,migration,implementation,eventContract]=await Promise.all([read("prisma/schema.prisma"),read("prisma/migrations/20260721203000_storage_reconciliation/migration.sql"),read("lib/storage-reconciliation.ts"),read("lib/security-events.ts")]);
   assert.match(schema,/model StorageReconciliationTask/);assert.match(schema,/fingerprint String @unique/);assert.match(schema,/@@index\(\[principalHash, status\]\)/);
   assert.match(migration,/CREATE TABLE "StorageReconciliationTask"/);
-  assert.match(implementation,/storageReconciliationTask\.upsert/);assert.match(implementation,/retryUploadRollbackTasks/);assert.match(implementation,/storage_reconciliation_pending/);
-  const eventLine=implementation.match(/function securityEvent[^\n]+/)?.[0]||"";
-  assert.doesNotMatch(eventLine,/storageKey|entityId|userId|principalHash/);
+  assert.match(implementation,/storageReconciliationTask\.upsert/);assert.match(implementation,/retryUploadRollbackTasks/);assert.match(implementation,/emitSecurityEvent\("storage_reconciliation_pending"/);
+  assert.match(implementation,/from "@\/lib\/security-events"/);
+  assert.doesNotMatch(eventContract,/type SecurityEventDetails=\{[\s\S]*?(?:storageKey|entityId|userId|principalHash)[\s\S]*?\};/);
 });
 
 test("upload, document, workspace, and account deletion paths record and resolve partial failures",async()=>{

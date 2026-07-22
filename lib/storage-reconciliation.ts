@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { rateLimitPrincipalHash } from "@/lib/rate-limit";
 import type { StorageProvider } from "@/lib/storage";
+import { emitSecurityEvent } from "@/lib/security-events";
 
 export type ReconciliationOperation="DELETE_OBJECT"|"DELETE_DATABASE_RECORD";
 export type ReconciliationInput={userId:string;operation:ReconciliationOperation;scope:string;entityId?:string;storageKey?:string;reason:unknown};
@@ -13,8 +14,6 @@ export function reconciliationErrorCode(reason:unknown){
 export function reconciliationFingerprint(input:Omit<ReconciliationInput,"reason">,secret?:string){
   return rateLimitPrincipalHash(`storage-reconciliation:${input.operation}:${input.scope}:${input.entityId||"none"}:${input.storageKey||"none"}`,secret);
 }
-function securityEvent(event:string,details:Record<string,string>){console.error(`[security-event] ${JSON.stringify({timestamp:new Date().toISOString(),event,...details})}`)}
-
 export async function recordStorageReconciliation(input:ReconciliationInput){
   const lastErrorCode=reconciliationErrorCode(input.reason);const fingerprint=reconciliationFingerprint(input);
   try{
@@ -23,10 +22,10 @@ export async function recordStorageReconciliation(input:ReconciliationInput){
       create:{fingerprint,principalHash:principalHash(input.userId),operation:input.operation,scope:input.scope,entityId:input.entityId,storageKey:input.storageKey,lastErrorCode},
       update:{status:"PENDING",attempts:{increment:1},lastErrorCode,lastAttemptAt:new Date(),resolvedAt:null}
     });
-    securityEvent("storage_reconciliation_pending",{operation:input.operation,scope:input.scope,reasonCode:lastErrorCode});
+    emitSecurityEvent("storage_reconciliation_pending",{operation:input.operation,scope:input.scope,code:lastErrorCode},"error");
     return true;
   }catch(reason){
-    securityEvent("storage_reconciliation_record_failed",{operation:input.operation,scope:input.scope,reasonCode:reconciliationErrorCode(reason)});
+    emitSecurityEvent("storage_reconciliation_record_failed",{operation:input.operation,scope:input.scope,code:reconciliationErrorCode(reason)},"error");
     return false;
   }
 }
@@ -34,7 +33,7 @@ export async function recordStorageReconciliation(input:ReconciliationInput){
 export async function resolveStorageReconciliation(userId:string,scope:string,entityId:string){
   try{
     await prisma.storageReconciliationTask.updateMany({where:{principalHash:principalHash(userId),scope,entityId,status:"PENDING"},data:{status:"RESOLVED",resolvedAt:new Date(),lastAttemptAt:new Date()}});
-  }catch(reason){securityEvent("storage_reconciliation_resolution_failed",{operation:"RESOLVE",scope,reasonCode:reconciliationErrorCode(reason)})}
+  }catch(reason){emitSecurityEvent("storage_reconciliation_resolution_failed",{operation:"RESOLVE",scope,code:reconciliationErrorCode(reason)},"error")}
 }
 
 export async function deleteObjectAndVerify(storage:StorageProvider,storageKey:string){
@@ -47,7 +46,7 @@ export async function retryUploadRollbackTasks(userId:string,storage:StorageProv
   try{
     tasks=await prisma.storageReconciliationTask.findMany({where:{principalHash:principalHash(userId),operation:"DELETE_OBJECT",scope:"upload-rollback",status:"PENDING",storageKey:{not:null}},orderBy:{createdAt:"asc"},take:10,select:{id:true,storageKey:true}});
   }catch(reason){
-    securityEvent("storage_reconciliation_retry_query_failed",{operation:"DELETE_OBJECT",scope:"upload-rollback",reasonCode:reconciliationErrorCode(reason)});
+    emitSecurityEvent("storage_reconciliation_retry_query_failed",{operation:"DELETE_OBJECT",scope:"upload-rollback",code:reconciliationErrorCode(reason)},"error");
     return 0;
   }
   for(const task of tasks){
@@ -57,7 +56,7 @@ export async function retryUploadRollbackTasks(userId:string,storage:StorageProv
     }catch(reason){
       const lastErrorCode=reconciliationErrorCode(reason);
       await prisma.storageReconciliationTask.update({where:{id:task.id},data:{attempts:{increment:1},lastErrorCode,lastAttemptAt:new Date()}}).catch(()=>{});
-      securityEvent("storage_reconciliation_retry_failed",{operation:"DELETE_OBJECT",scope:"upload-rollback",reasonCode:lastErrorCode});
+      emitSecurityEvent("storage_reconciliation_retry_failed",{operation:"DELETE_OBJECT",scope:"upload-rollback",code:lastErrorCode},"error");
     }
   }
   return tasks.length;

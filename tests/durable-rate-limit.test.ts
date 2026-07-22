@@ -48,7 +48,7 @@ test("durable buckets are migration-backed, atomic, expiring, and privacy minimi
   assert.match(implementation,/rateLimitBucket\.upsert/);
   assert.match(implementation,/count:\{increment:1\}/);
   assert.match(implementation,/rateLimitBucket\.deleteMany/);
-  assert.match(implementation,/event:"rate_limit_exceeded"/);
+  assert.match(implementation,/emitSecurityEvent\("rate_limit_exceeded"/);
   assert.doesNotMatch(implementation,/email|documentName|conditionName/);
 });
 

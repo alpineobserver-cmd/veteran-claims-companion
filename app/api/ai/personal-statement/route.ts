@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { hasAcceptableContentLength, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
 import { aiGenerationEnabled } from "@/lib/operational-controls";
 import { aiGlobalDailyPolicy, aiUserDailyPolicy, enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
+import { emitSecurityEvent, securityEventErrorCode } from "@/lib/security-events";
 
 export const runtime = "nodejs";
 
@@ -109,7 +110,7 @@ export async function POST(request:NextRequest){
     const statement=`${statementHeading(input)}\n\n${result.data.statement.trim()}`;
     return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"ai"});
   }catch(error){
-    console.error("Personal statement generation failed",error instanceof Error?error.name:"UnknownError");
+    emitSecurityEvent("ai_generation_failed",{operation:"personal-statement",code:securityEventErrorCode(error)},"error");
     return NextResponse.json({error:"The AI draft could not be generated right now. Your answers are still saved on this device."},{status:502});
   }finally{clearTimeout(timeout)}
 }
