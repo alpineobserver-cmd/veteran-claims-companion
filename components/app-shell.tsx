@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { signOut } from "next-auth/react";
 import {
   Bell, BookOpen, ClipboardList, Files, FolderOpen, PackageCheck,
-  History, LayoutDashboard, LifeBuoy, Menu, Search, ShieldCheck, User, X
+  History, LayoutDashboard, LifeBuoy, LogOut, Menu, Search, ShieldCheck, User, X
 } from "lucide-react";
 import { conditions } from "@/lib/conditions";
 import { getFormLabel, vaForms } from "@/lib/va-forms";
@@ -33,6 +34,8 @@ export function AppShell({ children, current = "home", user }: { children: React
   const [query, setQuery] = useState("");
   const [fetchedAccount,setFetchedAccount]=useState<ShellUser|undefined>();
   const [mobileLayout,setMobileLayout]=useState(false);
+  const [signingOut,setSigningOut]=useState(false);
+  const [signOutError,setSignOutError]=useState("");
   const openMenuRef=useRef<HTMLButtonElement>(null);
   const closeMenuRef=useRef<HTMLButtonElement>(null);
   const results = useMemo(() => {
@@ -69,6 +72,17 @@ export function AppShell({ children, current = "home", user }: { children: React
 
   const account=user??fetchedAccount;
   const initials=account?.name?.split(/\s+/).map(part=>part[0]).join("").slice(0,2).toUpperCase()||account?.email?.slice(0,2).toUpperCase()||"SIGN IN";
+  async function endSession(){
+    if(signingOut)return;
+    setSigningOut(true);
+    setSignOutError("");
+    try{
+      await signOut({redirectTo:"/"});
+    }catch{
+      setSigningOut(false);
+      setSignOutError("Sign out did not complete. Open Account & data and try again.");
+    }
+  }
 
   return <div className={`shell ${menuOpen ? "menu-open" : ""}`}>
     {menuOpen && <button className="sidebar-scrim" aria-label="Close menu" onClick={()=>{setMenuOpen(false);window.requestAnimationFrame(()=>openMenuRef.current?.focus())}}/>}
@@ -86,7 +100,7 @@ export function AppShell({ children, current = "home", user }: { children: React
       </nav>
       <div className="sidebar-rule"/>
       <nav className="nav utility-nav" aria-label="Account navigation">
-        {account?<a className={current==="account"?"active":""} href="/account"><User size={18}/><span>Account &amp; data</span></a>:<a href="/login?redirectTo=/dashboard"><User size={18}/><span>Sign in</span></a>}
+        {account?<><a className={current==="account"?"active":""} href="/account"><User size={18}/><span>Account &amp; data</span></a><button type="button" className="nav-signout" onClick={endSession} disabled={signingOut}><LogOut size={18}/><span>{signingOut?"Signing out…":"Sign out"}</span></button>{signOutError&&<p className="nav-signout-error" role="alert">{signOutError} <a href="/account#sign-out">Open Account &amp; data</a></p>}</>:<a href="/login?redirectTo=/dashboard"><User size={18}/><span>Sign in</span></a>}
       </nav>
       <div className="sidebar-legal"><a href="/status">Status</a><a href="/support">Support</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/sources">Sources</a><a href="/licenses">Licenses</a></div>
       <p className="sidebar-disclosure">Independent educational software—not VA or a VA-accredited representative. No legal or medical advice.</p>
@@ -105,7 +119,7 @@ export function AppShell({ children, current = "home", user }: { children: React
           <div className="notifications-wrap"><button className="iconbtn" aria-label="Notifications" aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(open=>!open)}><Bell size={18}/></button>
             {notificationsOpen && <div className="notifications-panel" role="status"><strong>You’re all caught up</strong><p>Future claim-package reminders will appear here. Notifications are not enabled in this alpha.</p></div>}
           </div>
-          <a className={`avatar ${account?"":"signed-out"}`} href={account?"/dashboard":"/login?redirectTo=/dashboard"} aria-label={account?`Account for ${account.name||account.email||"signed-in user"}`:"Sign in"}>{initials}</a>
+          <a className={`avatar ${account?"":"signed-out"}`} href={account?"/account":"/login?redirectTo=/dashboard"} aria-label={account?`Open account for ${account.name||account.email||"signed-in user"}`:"Sign in"}>{initials}</a>
         </div>
       </header>
       {children}
