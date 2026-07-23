@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import {
   Bell, BookOpen, ClipboardList, Files, FolderOpen, PackageCheck,
-  History, LayoutDashboard, LifeBuoy, LogOut, Menu, Radar, Search, ShieldCheck, User, X
+  History, LayoutDashboard, LifeBuoy, LogOut, Menu, PanelLeftClose, PanelLeftOpen,
+  Radar, Search, ShieldCheck, User, X
 } from "lucide-react";
 import { conditions } from "@/lib/conditions";
 import { getFormLabel, vaForms } from "@/lib/va-forms";
@@ -28,9 +29,11 @@ const searchItems = [
 ];
 
 type ShellUser={id:string;name?:string|null;email?:string|null;image?:string|null};
+const sidebarPreferenceKey="debrief.workspaceSidebarCollapsed";
 
 export function AppShell({ children, current = "home", user }: { children: React.ReactNode; current?: string; user?:ShellUser }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [fetchedAccount,setFetchedAccount]=useState<ShellUser|undefined>();
@@ -49,6 +52,10 @@ export function AppShell({ children, current = "home", user }: { children: React
     const media=window.matchMedia("(max-width: 620px)");
     const update=()=>{setMobileLayout(media.matches);if(!media.matches)setMenuOpen(false)};
     update();media.addEventListener("change",update);return()=>media.removeEventListener("change",update);
+  },[]);
+
+  useEffect(()=>{
+    try{setSidebarCollapsed(window.localStorage.getItem(sidebarPreferenceKey)==="true")}catch{}
   },[]);
 
   useEffect(() => {
@@ -85,7 +92,15 @@ export function AppShell({ children, current = "home", user }: { children: React
     }
   }
 
-  return <div className={`shell ${menuOpen ? "menu-open" : ""}`}>
+  function toggleSidebar(){
+    setSidebarCollapsed(collapsed=>{
+      const next=!collapsed;
+      try{window.localStorage.setItem(sidebarPreferenceKey,String(next))}catch{}
+      return next;
+    });
+  }
+
+  return <div className={`shell ${menuOpen ? "menu-open" : ""} ${sidebarCollapsed?"sidebar-collapsed":""}`}>
     {menuOpen && <button className="sidebar-scrim" aria-label="Close menu" onClick={()=>{setMenuOpen(false);window.requestAnimationFrame(()=>openMenuRef.current?.focus())}}/>}
     <aside id="app-sidebar" className="sidebar" aria-label="Companion navigation" aria-hidden={mobileLayout&&!menuOpen?true:undefined} inert={mobileLayout&&!menuOpen?true:undefined}>
       <div className="mobile-sidebar-head"><span>Menu</span><button ref={closeMenuRef} className="iconbtn" aria-label="Close menu" onClick={()=>{setMenuOpen(false);window.requestAnimationFrame(()=>openMenuRef.current?.focus())}}><X size={18}/></button></div>
@@ -93,19 +108,32 @@ export function AppShell({ children, current = "home", user }: { children: React
         <span className="brandmark"><ShieldCheck size={22}/></span>
         <span className="brandcopy"><strong>Debrief</strong><small>Claim preparation</small></span>
       </a>
-      <p className="nav-label">Your workspace</p>
+      <div className="nav-label-row">
+        <p className="nav-label">Your workspace</p>
+        <button
+          type="button"
+          className="sidebar-collapse-button"
+          aria-label={sidebarCollapsed?"Expand workspace column":"Collapse workspace column"}
+          aria-controls="app-sidebar"
+          aria-expanded={!sidebarCollapsed}
+          title={sidebarCollapsed?"Expand workspace column":"Collapse workspace column"}
+          onClick={toggleSidebar}
+        >
+          {sidebarCollapsed?<PanelLeftOpen size={16}/>:<PanelLeftClose size={16}/>}
+        </button>
+      </div>
       <nav className="nav" aria-label="Primary navigation">
         {links.map(([key, label, href, Icon, ready]) => ready
-          ? <a className={current === key ? "active" : ""} href={href} key={key} onClick={()=>setMenuOpen(false)}><Icon size={18}/><span>{label}</span></a>
+          ? <a className={current === key ? "active" : ""} href={href} key={key} title={label} onClick={()=>setMenuOpen(false)}><Icon size={18}/><span>{label}</span></a>
           : <span className="nav-disabled" aria-disabled="true" key={key}><Icon size={18}/><span>{label}</span><small>Soon</small></span>)}
       </nav>
       <div className="sidebar-rule"/>
       <nav className="nav utility-nav" aria-label="Account navigation">
-        {account?<><a className={current==="account"?"active":""} href="/account"><User size={18}/><span>Account &amp; data</span></a><button type="button" className="nav-signout" onClick={endSession} disabled={signingOut}><LogOut size={18}/><span>{signingOut?"Signing out…":"Sign out"}</span></button>{signOutError&&<p className="nav-signout-error" role="alert">{signOutError} <a href="/account#sign-out">Open Account &amp; data</a></p>}</>:<a href="/login?redirectTo=/dashboard"><User size={18}/><span>Sign in</span></a>}
+        {account?<><a className={current==="account"?"active":""} href="/account" aria-label="Account and data" title="Account and data"><User size={18}/><span>Account &amp; data</span></a><button type="button" className="nav-signout" aria-label={signingOut?"Signing out":"Sign out"} title={signingOut?"Signing out":"Sign out"} onClick={endSession} disabled={signingOut}><LogOut size={18}/><span>{signingOut?"Signing out…":"Sign out"}</span></button>{signOutError&&<p className="nav-signout-error" role="alert">{signOutError} <a href="/account#sign-out">Open Account &amp; data</a></p>}</>:<a href="/login?redirectTo=/dashboard" aria-label="Sign in" title="Sign in"><User size={18}/><span>Sign in</span></a>}
       </nav>
       <div className="sidebar-legal"><a href="/status">Status</a><a href="/support">Support</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/sources">Sources</a><a href="/licenses">Licenses</a></div>
       <p className="sidebar-disclosure">Independent educational software—not VA or a VA-accredited representative. No legal or medical advice.</p>
-      <a className="side-help" href="https://www.va.gov/get-help-from-accredited-representative/" target="_blank" rel="noreferrer" onClick={()=>setMenuOpen(false)}><LifeBuoy size={19}/><span><strong>Need claim help?</strong><small>Find a VA-accredited representative</small></span></a>
+      <a className="side-help" href="https://www.va.gov/get-help-from-accredited-representative/" target="_blank" rel="noreferrer" aria-label="Find a VA-accredited representative" title="Find a VA-accredited representative" onClick={()=>setMenuOpen(false)}><LifeBuoy size={19}/><span><strong>Need claim help?</strong><small>Find a VA-accredited representative</small></span></a>
     </aside>
     <main className="main" aria-hidden={menuOpen?true:undefined} inert={menuOpen?true:undefined}>
       <header className="topbar">

@@ -48,6 +48,21 @@ test("mobile application chrome does not force horizontal overflow",async()=>{
   assert.match(banner,/@media\(max-width:620px\).*font-size:10px/s);
 });
 
+test("desktop workspace navigation has a persistent accessible compact mode",async()=>{
+  const [shell,css]=await Promise.all([
+    read("components/app-shell.tsx"),
+    read("app/shell.css")
+  ]);
+  assert.match(shell,/aria-label=\{sidebarCollapsed\?"Expand workspace column":"Collapse workspace column"\}/);
+  assert.match(shell,/aria-controls="app-sidebar"/);
+  assert.match(shell,/aria-label="Account and data"/);
+  assert.match(shell,/aria-label="Find a VA-accredited representative"/);
+  assert.match(shell,/window\.localStorage\.setItem\(sidebarPreferenceKey,String\(next\)\)/);
+  assert.match(css,/\.shell\.sidebar-collapsed\{grid-template-columns:76px minmax\(0,1fr\)\}/);
+  assert.match(css,/@media\(min-width:1001px\)/);
+  assert.match(css,/@media\(max-width:1000px\)\{\.sidebar-collapse-button\{display:none\}/);
+});
+
 test("primary routes provide distinct titles without duplicating the Debrief suffix",async()=>{
   const routes=["dashboard","intake","claim-builder","claim-package","exposure-record-check","conditions","forms","changelog","buddy-statement","account","login","support","status"];
   for(const route of routes){
