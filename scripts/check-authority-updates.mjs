@@ -6,7 +6,7 @@ const timeoutMs=10000;
 const userAgent="Debrief-Authority-Monitor/1.0";
 
 function approvedGovernmentUrl(raw){
-  const url=new URL(raw);return url.protocol==="https:"&&(url.hostname==="va.gov"||url.hostname.endsWith(".va.gov")||url.hostname==="ecfr.gov"||url.hostname.endsWith(".ecfr.gov"));
+  const url=new URL(raw);return url.protocol==="https:"&&(url.hostname==="va.gov"||url.hostname.endsWith(".va.gov")||url.hostname==="ecfr.gov"||url.hostname.endsWith(".ecfr.gov")||url.hostname==="esd.whs.mil"||url.hostname.endsWith(".esd.whs.mil"));
 }
 
 async function request(url,options={}){
@@ -26,6 +26,10 @@ try{
 
 for(const form of manifest.forms){
   for(const [route,url] of [["information",form.informationUrl],["download",form.downloadUrl]]){
+    if(route==="information"&&form.informationCheck==="manual"){
+      console.log(JSON.stringify({source:"debrief-authority-monitor",authority:`official-form-${form.number}`,route,result:"manual-review",reason:"authority-blocks-automated-requests"}));
+      continue;
+    }
     try{
       if(!approvedGovernmentUrl(url))throw new Error("UnapprovedAuthorityHost");
       let response=await request(url,{method:"HEAD"});
@@ -36,10 +40,10 @@ for(const form of manifest.forms){
         const type=response.headers.get("content-type")||"";
         if(!type.toLowerCase().includes("pdf"))throw new Error("UnexpectedContentType");
         const modified=response.headers.get("last-modified");
-        if(modified){const observed=new Date(modified);const reviewed=new Date(`${manifest.formsVerifiedThrough}T23:59:59Z`);if(Number.isFinite(observed.getTime())&&observed>reviewed)findings.push({authority:`va-form-${form.number}`,route,result:"review-required",reason:"modified-after-review",observed:observed.toISOString(),reviewedThrough:manifest.formsVerifiedThrough});}
+        if(modified){const observed=new Date(modified);const verifiedThrough=form.verifiedThrough||manifest.formsVerifiedThrough;const reviewed=new Date(`${verifiedThrough}T23:59:59Z`);if(Number.isFinite(observed.getTime())&&observed>reviewed)findings.push({authority:`official-form-${form.number}`,route,result:"review-required",reason:"modified-after-review",observed:observed.toISOString(),reviewedThrough:verifiedThrough});}
       }
-      console.log(JSON.stringify({source:"debrief-authority-monitor",authority:`va-form-${form.number}`,route,result:"reachable",status:response.status}));
-    }catch(error){findings.push({authority:`va-form-${form.number}`,route,result:"unavailable",reason:error instanceof Error?error.name:"UnknownError"})}
+      console.log(JSON.stringify({source:"debrief-authority-monitor",authority:`official-form-${form.number}`,route,result:"reachable",status:response.status}));
+    }catch(error){findings.push({authority:`official-form-${form.number}`,route,result:"unavailable",reason:error instanceof Error?error.name:"UnknownError"})}
   }
 }
 

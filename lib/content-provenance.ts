@@ -2,9 +2,9 @@ import { createHash } from "node:crypto";
 import { conditions, getCondition } from "./conditions";
 import { CATALOG_VERIFIED_THROUGH, codesForCondition } from "./diagnostic-codes";
 import { schemesForCondition } from "./rating-schemes";
-import { getVAForm, getVAFormDownload, vaForms, VA_FORM_DOWNLOADS_VERIFIED } from "./va-forms";
+import { getFormAuthorityLabel, getFormLabel, getVAForm, getVAFormDownload, vaForms, VA_FORM_DOWNLOADS_VERIFIED } from "./va-forms";
 
-export type ContentProvenanceRecord={id:string;kind:"condition-guide"|"va-form-guide";title:string;contentVersion:string;lastVerified:string;authorityLabel:string;authorityUrl:string;localRecordSha256:string;hashScope:string};
+export type ContentProvenanceRecord={id:string;kind:"condition-guide"|"form-guide";title:string;contentVersion:string;lastVerified:string;authorityLabel:string;authorityUrl:string;localRecordSha256:string;hashScope:string};
 
 function stable(value:unknown):string{
   if(Array.isArray(value))return`[${value.map(stable).join(",")}]`;
@@ -21,7 +21,7 @@ export function conditionProvenance(slug:string):ContentProvenanceRecord|undefin
 
 export function formProvenance(slug:string):ContentProvenanceRecord|undefined{
   const form=getVAForm(slug);if(!form)return;const download=getVAFormDownload(slug);
-  return{id:`form:${slug}`,kind:"va-form-guide",title:`VA Form ${form.number}`,contentVersion:"va-forms-library-2026.07.18",lastVerified:download?.verified||VA_FORM_DOWNLOADS_VERIFIED,authorityLabel:"Official VA form information",authorityUrl:form.officialUrl,localRecordSha256:contentSha256({form,download}),hashScope:"Debrief form summary, revision/status label, official information URL, and download destination in this release"};
+  return{id:`form:${slug}`,kind:"form-guide",title:getFormLabel(form),contentVersion:"forms-library-2026.07.23",lastVerified:download?.verified||VA_FORM_DOWNLOADS_VERIFIED,authorityLabel:getFormAuthorityLabel(form),authorityUrl:form.officialUrl,localRecordSha256:contentSha256({form,download}),hashScope:"Debrief form summary, agency, revision/status label, official information URL, and download destination in this release"};
 }
 
 export const contentProvenanceRecords:ContentProvenanceRecord[]=[...conditions.map(condition=>conditionProvenance(condition.slug)!),...vaForms.map(form=>formProvenance(form.slug)!)];

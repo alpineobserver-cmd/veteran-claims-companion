@@ -6,7 +6,7 @@ import {
   History, LayoutDashboard, LifeBuoy, Menu, Search, ShieldCheck, User, X
 } from "lucide-react";
 import { conditions } from "@/lib/conditions";
-import { vaForms } from "@/lib/va-forms";
+import { getFormLabel, vaForms } from "@/lib/va-forms";
 import { diagnosticCodes } from "@/lib/diagnostic-codes";
 
 const links = [
@@ -15,14 +15,14 @@ const links = [
   ["builder", "Build a claim", "/claim-builder", ClipboardList, true],
   ["package", "Claim package", "/claim-package", PackageCheck, true],
   ["conditions", "Conditions", "/conditions", BookOpen, true],
-  ["forms", "VA forms", "/forms", Files, true],
+  ["forms", "Forms", "/forms", Files, true],
   ["changelog", "Change log", "/changelog", History, true]
 ] as const;
 
 const searchItems = [
   ...conditions.map(item => ({ label:item.name, detail:item.category, href:`/conditions/${item.slug}`, type:"Condition" })),
   ...diagnosticCodes.map(item => ({ label:`DC ${item.code} — ${item.name}`, detail:item.section, href:item.conditionSlugs[0]?`/conditions/${item.conditionSlugs[0]}`:"/conditions", type:"Diagnostic code" })),
-  ...vaForms.map(item => ({ label:`VA Form ${item.number}`, detail:item.name, href:`/forms/${item.slug}`, type:"Form" }))
+  ...vaForms.map(item => ({ label:getFormLabel(item), detail:item.name, href:`/forms/${item.slug}`, type:"Form" }))
 ];
 
 type ShellUser={id:string;name?:string|null;email?:string|null;image?:string|null};
@@ -96,7 +96,7 @@ export function AppShell({ children, current = "home", user }: { children: React
       <header className="topbar">
         <button ref={openMenuRef} className="iconbtn mobile-menu" aria-label="Open menu" aria-controls="app-sidebar" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}><Menu size={19}/></button>
         <div className="search-wrap">
-          <label className="search"><Search size={18}/><input aria-label="Search conditions and VA forms" placeholder="Search conditions and VA forms…" value={query} onChange={event=>setQuery(event.target.value)} autoComplete="off"/></label>
+          <label className="search"><Search size={18}/><input aria-label="Search conditions and forms" placeholder="Search conditions and forms…" value={query} onChange={event=>setQuery(event.target.value)} autoComplete="off"/></label>
           {query && <div className="search-results" role="listbox" aria-label="Search results">
             {results.length ? results.map(item => <a href={item.href} key={item.href} role="option" aria-selected="false"><span><strong>{item.label}</strong><small>{item.detail}</small></span><em>{item.type}</em></a>) : <p>No matching conditions or forms found.</p>}
           </div>}
