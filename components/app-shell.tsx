@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import {
   Bell, BookOpen, ClipboardList, Files, FolderOpen, PackageCheck,
-  History, LayoutDashboard, LifeBuoy, LogOut, Menu, Search, ShieldCheck, User, X
+  History, LayoutDashboard, LifeBuoy, LogOut, Menu, Radar, Search, ShieldCheck, User, X
 } from "lucide-react";
 import { conditions } from "@/lib/conditions";
 import { getFormLabel, vaForms } from "@/lib/va-forms";
@@ -14,6 +14,7 @@ const links = [
   ["home", "Dashboard", "/dashboard", LayoutDashboard, true],
   ["intake", "Document intake", "/intake", FolderOpen, true],
   ["builder", "Build a claim", "/claim-builder", ClipboardList, true],
+  ["exposures", "Exposure record", "/exposure-record-check", Radar, true],
   ["package", "Claim package", "/claim-package", PackageCheck, true],
   ["conditions", "Conditions", "/conditions", BookOpen, true],
   ["forms", "Forms", "/forms", Files, true],

@@ -49,7 +49,7 @@ test("mobile application chrome does not force horizontal overflow",async()=>{
 });
 
 test("primary routes provide distinct titles without duplicating the Debrief suffix",async()=>{
-  const routes=["dashboard","intake","claim-builder","claim-package","conditions","forms","changelog","buddy-statement","account","login","support","status"];
+  const routes=["dashboard","intake","claim-builder","claim-package","exposure-record-check","conditions","forms","changelog","buddy-statement","account","login","support","status"];
   for(const route of routes){
     const source=await read(`app/${route}/page.tsx`);
     assert.match(source,/export const metadata:Metadata=\{[\s\S]*?title:"[^"]+"/,route);
