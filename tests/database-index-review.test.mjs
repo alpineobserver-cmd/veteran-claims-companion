@@ -22,3 +22,18 @@ test("Supabase Data API hardening is portable across managed PostgreSQL owner ro
   for(const role of ["anon","authenticated","service_role"])assert.match(migration,new RegExp(`'${role}'`));
   assert.match(migration,/IF EXISTS \(SELECT 1 FROM pg_roles WHERE rolname = api_role\)/);
 });
+
+test("deployment repairs only the exact known unfinished migration before applying migrations",async()=>{
+  const [packageJson,recovery]=await Promise.all([
+    readFile(path.join(process.cwd(),"package.json"),"utf8"),
+    readFile(path.join(process.cwd(),"scripts/recover-known-migration.mjs"),"utf8")
+  ]);
+  const scripts=JSON.parse(packageJson).scripts;
+  assert.match(scripts["vercel-build"],/db:recover-known.*prisma migrate deploy/);
+  assert.equal(scripts["db:recover-known"],"node scripts/recover-known-migration.mjs");
+  assert.match(recovery,/20260721233000_lock_down_supabase_data_api/);
+  assert.match(recovery,/"finished_at" IS NULL/);
+  assert.match(recovery,/"rolled_back_at" IS NULL/);
+  assert.match(recovery,/\[prismaCli,"migrate","resolve","--rolled-back",migrationName\]/);
+  assert.doesNotMatch(recovery,/\|\|\s*true/);
+});
