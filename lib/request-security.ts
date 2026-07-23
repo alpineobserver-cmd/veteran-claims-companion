@@ -7,8 +7,9 @@ export const MAX_DOCUMENTS_PER_WORKSPACE=10;
 export const MAX_DOCUMENTS_PER_USER=25;
 
 export function hasAcceptableContentLength(request:Request,maxBytes:number){
+  if(request.headers.has("transfer-encoding"))return false;
   const raw=request.headers.get("content-length");
-  if(!raw)return true;
+  if(!raw)return false;
   const length=Number(raw);
   return Number.isFinite(length)&&length>=0&&length<=maxBytes;
 }

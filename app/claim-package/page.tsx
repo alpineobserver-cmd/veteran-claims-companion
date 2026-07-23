@@ -10,8 +10,11 @@ import { PackageStatusControl } from "@/components/package-status-control";
 import { statementProvenanceSummary, type StatementProvenance } from "@/lib/statement-provenance";
 import { AlertTriangle, ArrowRight, Check, ClipboardCheck, FileText, Files, FolderOpen, Link2, Plus, Users } from "lucide-react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import "./claim-package.css";
 import "./statement-provenance.css";
+
+export const metadata:Metadata={title:"Claim package",description:"Review fictional condition statements, supporting items, and preparation next steps together."};
 
 type PackageClaim={
   id:string;

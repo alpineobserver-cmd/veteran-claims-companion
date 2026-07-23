@@ -4,6 +4,9 @@ import { CurrentDate } from "@/components/current-date";
 import { DeleteClaimButton } from "@/components/delete-claim-button";
 import { prisma } from "@/lib/prisma";
 import { ArrowRight, BookOpen, Check, Cloud, FileText, Files, Info, PackageCheck, Plus, Upload } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata:Metadata={title:"Dashboard",description:"Open, continue, and organize fictional Debrief claim workspaces."};
 
 export default async function Dashboard() {
   const session=await auth();

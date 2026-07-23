@@ -3,6 +3,9 @@ import { ArrowLeft, Fingerprint } from "lucide-react";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { logAuthEvent } from "@/lib/auth-audit";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata:Metadata={title:"Sign in",description:"Sign in with Google to open a private Debrief Alpha workspace."};
 
 export default async function Login({searchParams}:{searchParams:Promise<{redirectTo?:string;retry?:string}>}){
   const params=await searchParams;

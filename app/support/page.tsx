@@ -5,7 +5,7 @@ import "../legal.css";
 import "./support.css";
 
 export const metadata:Metadata={
-  title:"Support and corrections | Debrief",
+  title:"Support and corrections",
   description:"Privacy-safe ways to request help or report a security, accessibility, privacy, or content issue in the Debrief Alpha."
 };
 

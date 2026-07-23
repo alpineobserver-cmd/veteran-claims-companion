@@ -22,11 +22,13 @@ test("mobile navigation traps background interaction and restores focus",async()
 });
 
 test("questionnaire exposes progress and descriptive step names",async()=>{
-  const questionnaire=await read("components/claim-questionnaire.tsx");
+  const [questionnaire,css]=await Promise.all([read("components/claim-questionnaire.tsx"),read("app/claim-builder/claim-builder.css")]);
   assert.match(questionnaire,/role="progressbar"/);
   assert.match(questionnaire,/aria-valuenow=\{progress\}/);
   assert.match(questionnaire,/aria-current=\{i===step\?"step":undefined\}/);
   assert.match(questionnaire,/aria-label=\{`Step \$\{i\+1\} of \$\{steps\.length\}: \$\{label\}/);
+  assert.match(questionnaire,/Scroll sideways to see every step/);
+  assert.match(css,/@media\(max-width:900px\).*\.step-list-hint\{display:flex/s);
   assert.match(questionnaire,/prefers-reduced-motion: reduce/);
 });
 
@@ -43,4 +45,13 @@ test("mobile application chrome does not force horizontal overflow",async()=>{
   assert.match(shell,/\.search-wrap\{min-width:0\}/);
   assert.match(shell,/@media\(max-width:620px\).*\.notifications-wrap\{display:none\}/s);
   assert.match(banner,/@media\(max-width:620px\).*font-size:10px/s);
+});
+
+test("primary routes provide distinct titles without duplicating the Debrief suffix",async()=>{
+  const routes=["dashboard","intake","claim-builder","claim-package","conditions","forms","changelog","buddy-statement","account","login","support","status"];
+  for(const route of routes){
+    const source=await read(`app/${route}/page.tsx`);
+    assert.match(source,/export const metadata:Metadata=\{[\s\S]*?title:"[^"]+"/,route);
+    assert.doesNotMatch(source,/title:"[^"]+\| Debrief"/,route);
+  }
 });

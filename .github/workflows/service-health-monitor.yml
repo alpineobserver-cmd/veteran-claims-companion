@@ -22,8 +22,8 @@ jobs:
       HEALTHCHECK_BASE_URL: ${{ inputs.target || 'https://veteran-claims-companion.vercel.app' }}
       HEALTHCHECK_MAX_MS: "5000"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
       - name: Check public, authentication, and session health
@@ -37,8 +37,8 @@ jobs:
       HEALTHCHECK_BASE_URL: ${{ vars.STAGING_HEALTH_URL }}
       HEALTHCHECK_MAX_MS: "5000"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
       - name: Check isolated Staging health

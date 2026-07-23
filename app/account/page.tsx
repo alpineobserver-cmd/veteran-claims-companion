@@ -4,7 +4,10 @@ import { AppShell } from "@/components/app-shell";
 import { DeleteAccountButton, ExportIcon, SignOutIcon } from "@/components/account-controls";
 import { prisma } from "@/lib/prisma";
 import { Cloud, FileText, Info, ShieldCheck } from "lucide-react";
+import type { Metadata } from "next";
 import "./account.css";
+
+export const metadata:Metadata={title:"Account and data",description:"Review, export, or delete the fictional Alpha data connected to your Debrief account."};
 
 export default async function AccountPage(){
   const session=await auth();if(!session?.user?.id)redirect("/login?redirectTo=/account");

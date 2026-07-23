@@ -2,8 +2,11 @@ import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { DocumentIntake } from "@/components/document-intake";
 import { prisma } from "@/lib/prisma";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import "./intake.css";
+
+export const metadata:Metadata={title:"Document upload",description:"Add and organize fictional Alpha test documents in a private Debrief workspace."};
 
 export default async function IntakePage(){
   const session=await auth();if(!session?.user?.id)redirect("/login?redirectTo=/intake");
