@@ -50,8 +50,10 @@ export function verifyDocumentDownloadTicket(token:string,documentId:string,user
     const expected=signature(encoded,signingSecret(options.secret));
     const providedBytes=Buffer.from(provided,"base64url");
     const expectedBytes=Buffer.from(expected,"base64url");
+    const payloadBytes=Buffer.from(encoded,"base64url");
+    if(provided!==providedBytes.toString("base64url")||encoded!==payloadBytes.toString("base64url"))return false;
     if(providedBytes.length!==expectedBytes.length||!timingSafeEqual(providedBytes,expectedBytes))return false;
-    const payload:unknown=JSON.parse(Buffer.from(encoded,"base64url").toString("utf8"));
+    const payload:unknown=JSON.parse(payloadBytes.toString("utf8"));
     if(!isPayload(payload))return false;
     const now=options.now??Date.now();
     return payload.documentId===documentId&&payload.userId===userId&&payload.issuedAt<=now+CLOCK_SKEW_MS&&payload.expiresAt>now&&payload.expiresAt-payload.issuedAt===DOCUMENT_DOWNLOAD_TTL_MS&&payload.expiresAt<=now+DOCUMENT_DOWNLOAD_TTL_MS+CLOCK_SKEW_MS;
