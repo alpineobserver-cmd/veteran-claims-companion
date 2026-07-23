@@ -26,7 +26,7 @@ test("the evaluator rejects invented conclusions and cross-claim leakage",()=>{
 });
 
 test("missing essential facts produce focused questions before any drafting path",async()=>{
-  const gaps=statementGaps({...initialAnswers,condition:"Migraines or other headaches",claimType:"Original or new claim"});
+  const gaps=statementGaps({...initialAnswers,claimType:"Original or new claim"});
   assert.ok(gaps.length>0);
   assert.ok(gaps.length<=4);
   assert.ok(gaps.every(item=>item.field&&item.question&&item.reason));
