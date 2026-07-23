@@ -27,6 +27,8 @@ test("authority monitor is read-only and governance is documented",async()=>{
     readFile(path.join(root,"docs/backup-restore-and-disaster-recovery.md"),"utf8")
   ]);
   assert.doesNotMatch(script,/writeFile|appendFile|unlink|rmSync|fetch\([^)]*method:\s*["'](?:POST|PUT|PATCH|DELETE)/);
+  assert.match(script,/informationCheck==="manual"/);
+  assert.match(script,/authority-blocks-automated-requests/);
   for(const phrase of ["review trigger","never as an automated publishing system","content-reviewed","public changelog"])assert.match(record,new RegExp(phrase,"i"));
   assert.match(workflow,/schedule:/);assert.match(workflow,/Automated publication is prohibited/);
   for(const phrase of ["fictional Alpha data only","restoration to a new isolated project","Vercel Blob","SHA-256","completed, dated isolated restore drill"])assert.match(runbook,new RegExp(phrase,"i"));

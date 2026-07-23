@@ -29,7 +29,7 @@
     "test:api-security": "node --import tsx --test tests/api-isolation-security.test.ts",
     "test:isolation-e2e": "node --import tsx --test tests/database-two-user-isolation.test.ts",
     "test:legal": "node --test tests/legal-boundaries.test.mjs tests/third-party-licenses.test.mjs && npm run licenses:check",
-    "test:content": "node --import tsx --test tests/content-provenance.test.ts tests/content-governance.test.mjs",
+    "test:content": "node --import tsx --test tests/content-provenance.test.ts tests/content-governance.test.mjs tests/forms-library.test.ts",
     "test:runbooks": "node --test tests/operational-runbooks.test.mjs tests/service-health.test.mjs",
     "test:claim-process": "node --import tsx --test tests/claim-process.test.mjs tests/claim-package-workflow.test.ts",
     "test:usability": "node --import tsx --test tests/usability-simulation.test.ts",
