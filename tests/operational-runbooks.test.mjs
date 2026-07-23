@@ -44,3 +44,14 @@ test("disaster recovery separates database, object, configuration, and approval 
   assert.match(runbook,/does not restore Blob bytes/i);
   assert.match(runbook,/Do not record credentials, object keys, filenames, emails, claim facts, or document contents/i);
 });
+
+test("the first Production promotion has a complete privacy-safe release record",async()=>{
+  const record=await read("docs/releases/2026-07-23-production-promotion.md");
+  for(const phrase of ["alpha-2026.07.23","9f2aaf03830aa3abd72078a97a5af3dc546fdc3f","Production approver","Database migration required","Previous healthy rollback target","Staging smoke result","Production smoke result","Known risks and deferred items"]){
+    assert.match(record,new RegExp(phrase,"i"),phrase);
+  }
+  assert.match(record,/run 30044808091/);
+  assert.match(record,/run 30047789747/);
+  assert.doesNotMatch(record,/postgres(?:ql)?:\/\/[^\s`]+:[^\s`]+@/i);
+  assert.doesNotMatch(record,/sk-[A-Za-z0-9_-]{16,}/);
+});

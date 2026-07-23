@@ -32,6 +32,15 @@ test("questionnaire exposes progress and descriptive step names",async()=>{
   assert.match(questionnaire,/prefers-reduced-motion: reduce/);
 });
 
+test("questionnaire moves visible focus to newly displayed step content",async()=>{
+  const [questionnaire,css]=await Promise.all([read("components/claim-questionnaire.tsx"),read("app/claim-builder/claim-builder.css")]);
+  assert.match(questionnaire,/const questionCardRef=useRef<HTMLElement>\(null\)/);
+  assert.match(questionnaire,/questionCardRef\.current\?\.focus\(\)/);
+  assert.match(questionnaire,/tabIndex=\{-1\}/);
+  assert.match(questionnaire,/aria-label=\{`Step \$\{step\+1\} of \$\{steps\.length\}: \$\{steps\[step\]\}`\}/);
+  assert.match(css,/\.question-card:focus\{outline:3px solid var\(--gold\)/);
+});
+
 test("global accessibility styles preserve focus, contrast, touch targets, and reduced motion",async()=>{
   const css=await read("app/accessibility.css");
   assert.match(css,/:focus-visible/);
