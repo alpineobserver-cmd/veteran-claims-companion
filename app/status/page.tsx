@@ -6,7 +6,7 @@ import "../legal.css";
 import "./status.css";
 
 export const metadata:Metadata={
-  title:"Service status | Debrief",
+  title:"Service status",
   description:"Privacy-safe current checks and operating information for the Debrief Alpha."
 };
 

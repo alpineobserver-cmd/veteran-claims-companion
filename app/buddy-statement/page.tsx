@@ -5,7 +5,10 @@ import { BuddyStatementBuilder } from "@/components/buddy-statement-builder";
 import { claimDraftSchema } from "@/lib/claim-drafts";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import type { Metadata } from "next";
 import "./buddy-statement.css";
+
+export const metadata:Metadata={title:"Buddy statement",description:"Prepare and save a fictional witness or buddy statement for a claim workspace."};
 
 export default async function BuddyStatementPage({searchParams}:{searchParams:Promise<{claim?:string}>}){
   const [session,params]=await Promise.all([auth(),searchParams]);if(!session?.user?.id)redirect("/login?redirectTo=/buddy-statement");

@@ -60,6 +60,14 @@ test("claim package exposes a complete statement workflow without the redundant 
   for(const source of [page,buddy,intake])assert.match(source,/Return to Claim Builder/);
 });
 
+test("claim verification gives signed-in and device-only users the correct next action",async()=>{
+  const questionnaire=await read("components/claim-questionnaire.tsx");
+  assert.match(questionnaire,/signedIn=\{Boolean\(user\)\}/);
+  assert.match(questionnaire,/Use “Add to claim package” below/);
+  assert.match(questionnaire,/Use “Save statement” below to keep this fictional draft on this device/);
+  assert.match(questionnaire,/Ready to save on this device/);
+});
+
 test("condition discovery hides empty systems and connects guides to code paths",async()=>{
   const [library,page]=await Promise.all([
     read("components/condition-library.tsx"),

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { rejectCrossOriginMutation } from "../lib/request-security";
+import { hasAcceptableContentLength, rejectCrossOriginMutation } from "../lib/request-security";
 import { rateLimitPrincipalHash } from "../lib/rate-limit";
 
 const root=process.cwd();const read=(relative:string)=>readFile(path.join(root,relative),"utf8");
@@ -11,6 +11,16 @@ test("cross-origin mutation protection accepts same-origin and rejects a foreign
   assert.equal(rejectCrossOriginMutation(new Request("https://debrief.test/api/claims",{method:"POST",headers:{origin:"https://debrief.test"}})),null);
   const rejected=rejectCrossOriginMutation(new Request("https://debrief.test/api/claims",{method:"POST",headers:{origin:"https://attacker.test"}}));
   assert.equal(rejected?.status,403);
+});
+
+test("request-size checks fail closed for missing, invalid, oversized, or chunked lengths",()=>{
+  const request=(headers:HeadersInit)=>new Request("https://debrief.test/api/claims",{method:"POST",headers});
+  assert.equal(hasAcceptableContentLength(request({"content-length":"799999"}),800_000),true);
+  assert.equal(hasAcceptableContentLength(request({"content-length":"800000"}),800_000),true);
+  assert.equal(hasAcceptableContentLength(request({"content-length":"800001"}),800_000),false);
+  assert.equal(hasAcceptableContentLength(request({"content-length":"invalid"}),800_000),false);
+  assert.equal(hasAcceptableContentLength(request({}),800_000),false);
+  assert.equal(hasAcceptableContentLength(request({"content-length":"10","transfer-encoding":"chunked"}),800_000),false);
 });
 
 test("two fictional users produce isolated security principals",()=>{
