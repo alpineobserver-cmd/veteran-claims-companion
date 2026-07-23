@@ -74,6 +74,7 @@ model AuditEvent {
 
   @@index([actorUserId, createdAt])
   @@index([claimId, createdAt])
+  @@index([documentId, createdAt])
 }
 
 model Account {
@@ -91,6 +92,7 @@ model Account {
   session_state String?
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -99,6 +101,8 @@ model Session {
   userId String
   expires DateTime
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -106,6 +110,41 @@ model VerificationToken {
   token String @unique
   expires DateTime
   @@unique([identifier, token])
+}
+
+model RateLimitBucket {
+  id String @id @default(cuid())
+  scope String
+  principalHash String
+  windowStart DateTime
+  windowEndsAt DateTime
+  count Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, principalHash, windowStart])
+  @@index([windowEndsAt])
+}
+
+model StorageReconciliationTask {
+  id String @id @default(cuid())
+  fingerprint String @unique
+  principalHash String
+  operation String
+  scope String
+  entityId String?
+  storageKey String?
+  storageProvider String?
+  status String @default("PENDING")
+  attempts Int @default(1)
+  lastErrorCode String
+  lastAttemptAt DateTime @default(now())
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([principalHash, status])
+  @@index([status, createdAt])
 }
 
 model Claim {
@@ -132,6 +171,8 @@ model Claim {
   auditEvents AuditEvent[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId, status, updatedAt])
 }
 
 model Condition {
@@ -156,6 +197,7 @@ model ClaimCondition {
   claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
   condition Condition @relation(fields: [conditionId], references: [id])
   @@id([claimId, conditionId])
+  @@index([conditionId])
 }
 
 model EvidenceType {
@@ -184,6 +226,9 @@ model Evidence {
   uploads Upload[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([claimId, createdAt])
+  @@index([evidenceTypeId])
 }
 
 model Upload {
@@ -198,6 +243,9 @@ model Upload {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   evidence Evidence? @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
+
+  @@index([evidenceId])
+  @@index([userId, createdAt])
 }
 
 model Template {
@@ -225,6 +273,10 @@ model Statement {
   template Template? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([claimId])
+  @@index([templateId])
+  @@index([userId, createdAt])
 }
 
 model VAForm {
@@ -263,6 +315,7 @@ model Answer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([claimId, questionId])
+  @@index([questionId])
 }
 
 model Progress {

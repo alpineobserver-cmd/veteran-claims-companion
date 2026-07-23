@@ -1,5 +1,6 @@
 import { evidenceStatusLabel, intentToFileLabel, type EvidenceMap, type IntentToFileStatus } from "./claim-builder-intelligence";
-type PackageInput={condition:string;claimType:string;intentToFileStatus:IntentToFileStatus;intentToFileDate:string;name:string;statement:string;timeline:{date:string;title:string;details:string;source:string;approximate:boolean}[];evidenceMap:EvidenceMap;selectedEvidence:string[];qualityFindings:{level:string;title:string;detail:string}[]};
+import type { StatementProvenance } from "./statement-provenance";
+type PackageInput={condition:string;claimType:string;intentToFileStatus:IntentToFileStatus;intentToFileDate:string;name:string;statement:string;statementProvenance:StatementProvenance;timeline:{date:string;title:string;details:string;source:string;approximate:boolean}[];evidenceMap:EvidenceMap;selectedEvidence:string[];linkedDocuments:{factId:string;documentName:string}[];qualityFindings:{level:string;title:string;detail:string}[]};
 const factLabels:Record<string,string>={current:"Current condition",onset:"Onset or worsening",service:"In-service event or circumstances",function:"Symptoms and functional effects",treatment:"Treatment history",worsening:"Change since prior decision",secondary:"Secondary relationship"};
 const clean=(value:string)=>value.normalize("NFKD").replace(/[^\x20-\x7E\n]/g,"-").replace(/\s+/g," ").trim();
 const escapePdf=(value:string)=>value.replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");
@@ -22,12 +23,28 @@ export function createClaimPackagePdf(input:PackageInput){
   line(`Condition: ${input.condition}`,{bold:true});line(`Claim path: ${input.claimType||"Not selected"}`);line(`Intent to file: ${intentToFileLabel(input.intentToFileStatus)}`);if(input.intentToFileDate)line(`Potential effective date recorded: ${input.intentToFileDate}`);if(input.name)line(`Name: ${input.name}`);line(`Generated: ${new Date().toISOString().slice(0,10)}`);paragraph("An intent to file may preserve a potential effective date, but VA determines the effective date and whether retroactive payments apply. Verify VA confirmation and the one-year filing deadline.",{size:8,gap:12});y-=4;
   heading("Personal statement");
   input.statement.split(/\n\s*\n/).filter(Boolean).forEach(value=>paragraph(value));
+  heading("Statement sources");
+  paragraph("This trace shows which saved answer or timeline entry each factual statement came from. A source link does not prove the fact or mean a document supports every word.",{size:8,gap:9});
+  if(input.statementProvenance.sentences.length)input.statementProvenance.sentences.forEach((sentence,index)=>{
+    ensure(56);paragraph(`${index+1}. ${sentence.text}`,{bold:true,gap:3});
+    if(sentence.origins.length)sentence.origins.forEach(origin=>{
+      paragraph(`From: ${origin.label} - ${origin.excerpt}`,{size:8,indent:10,gap:2});
+      if(origin.factId){
+        const evidence=input.evidenceMap[origin.factId];
+        const files=input.linkedDocuments.filter(document=>document.factId===origin.factId).map(document=>document.documentName);
+        if(evidence)paragraph(`Related support: ${evidenceStatusLabel(evidence.status)}${evidence.source?` - ${evidence.source}`:""}`,{size:8,indent:10,gap:2});
+        if(files.length)paragraph(`Uploaded files linked to this fact: ${[...new Set(files)].join(", ")}`,{size:8,indent:10,gap:2});
+      }
+    });
+    else paragraph("Source review needed - this wording is not clearly traceable to a saved answer or timeline event.",{size:8,indent:10,gap:4});
+  });else paragraph("No statement-source trace was available. Reopen and save the condition before relying on this package.");
   heading("Condition timeline");
   if(input.timeline.length)input.timeline.forEach(event=>{line(`${event.date||"Date not recorded"}${event.approximate?" (approximate)":""} - ${event.title||"Untitled event"}`,{bold:true});if(event.details)paragraph(event.details,{indent:10,gap:2});if(event.source)paragraph(`Source: ${event.source}`,{size:9,indent:10,gap:7})});else paragraph("No timeline events were entered.");
   heading("Evidence identified");
   if(input.selectedEvidence.length)input.selectedEvidence.forEach(bullet);else paragraph("No evidence types were selected.");
   y-=5;line("Fact-to-evidence links",{size:11,bold:true,leading:18});
   const links=Object.entries(input.evidenceMap);if(links.length)links.forEach(([fact,link])=>bullet(`${factLabels[fact]||fact}: ${evidenceStatusLabel(link.status)}${link.source?` - ${link.source}`:""}`));else paragraph("No support statuses were entered for the major facts.");
+  if(input.linkedDocuments.length){y-=5;line("Uploaded document links",{size:11,bold:true,leading:18});input.linkedDocuments.forEach(item=>bullet(`${factLabels[item.factId]||item.factId}: ${item.documentName}`))}else paragraph("No uploaded files were linked to a specific fact. This does not mean supporting information is absent.",{size:9});
   ensure(90);heading("Readiness checks");
   if(input.qualityFindings.length)input.qualityFindings.forEach(item=>{ensure(50);line(`[${item.level.toUpperCase()}] ${item.title}`,{bold:true});paragraph(item.detail,{indent:10})});else paragraph("No automated issues were identified. This does not replace review by the person making the statement or an accredited representative.");
   ensure(105);heading("Final review");

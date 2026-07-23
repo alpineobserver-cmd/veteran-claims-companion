@@ -1,0 +1,98 @@
+name: Service health monitor
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Public HTTPS origin to check
+        required: false
+        type: string
+  schedule:
+    - cron: "17,47 * * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  production-public-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HEALTHCHECK_BASE_URL: ${{ inputs.target || 'https://veteran-claims-companion.vercel.app' }}
+      HEALTHCHECK_MAX_MS: "5000"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Check public, authentication, and session health
+        run: node scripts/check-service-health.mjs
+
+  staging-public-health:
+    if: ${{ vars.STAGING_HEALTH_URL != '' && inputs.target == '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HEALTHCHECK_BASE_URL: ${{ vars.STAGING_HEALTH_URL }}
+      HEALTHCHECK_MAX_MS: "5000"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Check isolated Staging health
+        run: node scripts/check-service-health.mjs
+
+  publish-health-alert:
+    if: always()
+    needs: [production-public-health, staging-public-health]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PRODUCTION_RESULT: ${{ needs.production-public-health.result }}
+      STAGING_RESULT: ${{ needs.staging-public-health.result }}
+    steps:
+      - name: Open, update, or resolve the privacy-safe health alert
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "[Service health] Public checks need attention";
+            const productionOk = process.env.PRODUCTION_RESULT === "success";
+            const stagingOk = ["success", "skipped"].includes(process.env.STAGING_RESULT);
+            const healthy = productionOk && stagingOk;
+            const { owner, repo } = context.repo;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+            const existing = issues.find(issue => !issue.pull_request && issue.title === title);
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            if (!healthy) {
+              const body = [
+                "One or more privacy-safe public service checks failed.",
+                "",
+                `Observed: ${new Date().toISOString()}`,
+                `Workflow run: ${runUrl}`,
+                "",
+                "Inspect only the fixed-field health output and privacy-safe runtime events. Do not copy credentials, cookies, claim content, filenames, email addresses, or private screenshots into this issue. Follow the incident-response runbook if the failure repeats.",
+              ].join("\n");
+              if (existing) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body });
+              } else {
+                await github.rest.issues.create({ owner, repo, title, body });
+              }
+              core.setFailed("One or more public service checks failed.");
+              return;
+            }
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body: `Public checks recovered at ${new Date().toISOString()}. Workflow run: ${runUrl}`,
+              });
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: "closed", state_reason: "completed" });
+            }

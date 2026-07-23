@@ -1,7 +1,10 @@
 import {AppShell} from "@/components/app-shell";
 import {changeLog} from "@/lib/changelog";
 import {ExternalLink,History,Info} from "lucide-react";
+import type { Metadata } from "next";
 import "./changelog.css";
+
+export const metadata:Metadata={title:"Change log",description:"Review meaningful Debrief content, guidance, and platform changes."};
 
 export default function ChangeLogPage(){return <AppShell current="changelog"><div className="change-wrap">
   <header className="change-hero"><span className="kicker">Transparency and maintenance</span><h1>Change log</h1><p>Track meaningful updates to regulatory content, form links, guidance, and platform behavior.</p></header>

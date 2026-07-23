@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "ecfr": {
+    "label": "38 CFR Part 4 — Schedule for Rating Disabilities",
+    "url": "https://www.ecfr.gov/api/versioner/v1/versions/title-38.json?part=4",
+    "latestIssueDateReviewed": "2026-02-27"
+  },
+  "formsVerifiedThrough": "2026-07-18",
+  "forms": [
+    { "number": "21-526EZ", "informationUrl": "https://www.va.gov/forms/21-526ez/", "downloadUrl": "https://www.vba.va.gov/pubs/forms/VBA-21-526EZ-ARE.pdf", "kind": "pdf" },
+    { "number": "20-0995", "informationUrl": "https://www.va.gov/forms/20-0995/", "downloadUrl": "https://www.vba.va.gov/pubs/forms/VBA-20-0995-ARE.pdf", "kind": "pdf" },
+    { "number": "20-0996", "informationUrl": "https://www.va.gov/forms/20-0996/", "downloadUrl": "https://www.vba.va.gov/pubs/forms/VBA-20-0996-ARE.pdf", "kind": "pdf" },
+    { "number": "10182", "informationUrl": "https://www.va.gov/forms/10182/", "downloadUrl": "https://www.va.gov/vaforms/va/pdf/VA10182.pdf", "kind": "pdf" },
+    { "number": "21-4138", "informationUrl": "https://www.va.gov/forms/21-4138/", "downloadUrl": "https://www.vba.va.gov/pubs/forms/VBA-21-4138-ARE.pdf", "kind": "pdf" },
+    { "number": "21-4142", "informationUrl": "https://www.va.gov/forms/21-4142/", "downloadUrl": "https://www.vba.va.gov/pubs/forms/VBA-21-4142-ARE.pdf", "kind": "pdf" },
+    { "number": "21-4142a", "informationUrl": "https://www.va.gov/forms/21-4142a/", "downloadUrl": "https://www.vba.va.gov/pubs/forms/VBA-21-4142a-ARE.pdf", "kind": "pdf" },
+    { "number": "21-8940", "informationUrl": "https://www.va.gov/forms/21-8940/", "downloadUrl": "https://www.vba.va.gov/pubs/forms/VBA-21-8940-ARE.pdf", "kind": "pdf" },
+    { "number": "21-4192", "informationUrl": "https://www.va.gov/forms/21-4192/", "downloadUrl": "https://www.vba.va.gov/pubs/forms/VBA-21-4192-ARE.pdf", "kind": "pdf" },
+    { "number": "DD-2860", "informationUrl": "https://www.esd.whs.mil/Directives/forms/dd2500_2999/DD2860/", "informationCheck": "manual", "downloadUrl": "https://www.esd.whs.mil/Portals/54/Documents/DD/forms/dd/dd2860.pdf", "kind": "pdf", "verifiedThrough": "2026-07-23" },
+    { "number": "DBQs", "informationUrl": "https://www.benefits.va.gov/compensation/dbq_publicdbqs.asp", "downloadUrl": "https://www.benefits.va.gov/compensation/dbq_publicdbqs.asp", "kind": "directory" }
+  ]
+}
