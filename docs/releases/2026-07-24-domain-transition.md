@@ -13,7 +13,7 @@ Use `https://debriefclaims.com` as Debrief's sole public Production origin. Keep
 - Redeployed the existing Production commit so the environment changes took effect.
 - Added `www.debriefclaims.com` as a `308` redirect to the apex.
 - Updated application fallbacks, release checks, health monitoring, tester instructions, and operating documentation.
-- Retained the previous Google OAuth origin and callback temporarily as rollback-only transition entries.
+- Removed the previous Vercel origin and callback from the Production Google OAuth client after a successful custom-domain login.
 
 ## Verification
 
@@ -34,4 +34,4 @@ After DNS propagation, confirm Vercel reports `www.debriefclaims.com` as valid a
 
 ## Rollback
 
-If the apex domain or OAuth callback becomes unavailable, restore the prior Production canonical host variables and redeploy the last known-good Production commit. Do not rotate `AUTH_SECRET`, database credentials, storage credentials, or Google client secrets during a domain rollback.
+If the apex domain or OAuth callback becomes unavailable, re-add the prior origin and callback to the Production Google OAuth client, restore the prior Production canonical host variables, and redeploy the last known-good Production commit. Do not rotate `AUTH_SECRET`, database credentials, storage credentials, or Google client secrets during a domain rollback.
