@@ -10,6 +10,7 @@ import { guidedDraft } from "../lib/personal-statement-template";
 import { createClaimPackagePdf } from "../lib/claim-package-pdf";
 import { claimScenarios } from "../evals/claim-scenarios";
 import { compareStatementVersions } from "../lib/statement-version-comparison";
+import { POST as createClaimPackageResponse } from "../app/api/claim-package/route";
 
 const root=process.cwd();
 const read=(relative:string)=>readFile(path.join(root,relative),"utf8");
@@ -127,4 +128,50 @@ test("condition review PDF carries the statement source trace and related file n
   assert.match(pdf,/Health history - current symptoms/);
   assert.match(pdf,/fictional-treatment-record\.pdf/);
   assert.match(pdf,/A source link does not prove the fact/);
+});
+
+test("claim-package endpoint returns an observable private PDF download",async()=>{
+  const draft=completeDraft();
+  const statement=guidedDraft({...draft.answers,timeline:draft.timeline});
+  const body=JSON.stringify({
+    condition:draft.answers.condition,
+    claimType:draft.answers.claimType,
+    intentToFileStatus:draft.answers.intentToFileStatus,
+    intentToFileDate:draft.answers.intentToFileDate,
+    name:draft.answers.statementName,
+    statement,
+    statementProvenance:deriveStatementProvenance(statement,draft.answers,draft.timeline),
+    timeline:draft.timeline,
+    evidenceMap:draft.evidenceMap,
+    selectedEvidence:draft.answers.evidence,
+    linkedDocuments:[{factId:"treatment",documentName:"fictional-treatment-record.pdf"}],
+    qualityFindings:[]
+  });
+  const response=await createClaimPackageResponse(new Request("https://debrief.test/api/claim-package",{
+    method:"POST",
+    headers:{"content-type":"application/json","content-length":String(Buffer.byteLength(body)),"origin":"https://debrief.test"},
+    body
+  }));
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get("content-type"),"application/pdf");
+  assert.equal(response.headers.get("content-disposition"),"attachment; filename=personal-statement-review-package.pdf");
+  assert.equal(response.headers.get("cache-control"),"private, no-store");
+  const pdf=Buffer.from(await response.arrayBuffer());
+  assert.equal(pdf.subarray(0,8).toString("ascii"),"%PDF-1.4");
+  assert.match(pdf.toString("ascii"),/PERSONAL STATEMENT REVIEW PACKAGE/);
+  assert.match(pdf.toString("ascii"),/Migraines/);
+  assert.match(pdf.toString("ascii"),/fictional-treatment-record\.pdf/);
+  assert.match(pdf.toString("ascii"),/%%EOF$/);
+});
+
+test("browser download and step-change accessibility contracts remain observable",async()=>{
+  const [questionnaire,css]=await Promise.all([read("components/claim-questionnaire.tsx"),read("app/claim-builder/claim-builder.css")]);
+  assert.match(questionnaire,/document\.body\.appendChild\(link\)/);
+  assert.match(questionnaire,/window\.setTimeout\(\(\)=>URL\.revokeObjectURL\(url\),1_000\)/);
+  assert.match(questionnaire,/Condition review PDF downloaded/);
+  assert.match(questionnaire,/role="status" aria-live="polite"/);
+  assert.match(questionnaire,/questionCardRef\.current\?\.focus\(\)/);
+  assert.match(questionnaire,/tabIndex=\{-1\}/);
+  assert.match(questionnaire,/aria-label=\{`Step \$\{step\+1\} of \$\{steps\.length\}: \$\{steps\[step\]\}`\}/);
+  assert.match(css,/\.question-card:focus\{outline:3px solid var\(--gold\)/);
 });
