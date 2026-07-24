@@ -155,6 +155,23 @@ jobs:
       - name: Run authentication, authorization, abuse, and legal-boundary checks
         run: npm run test:security
 
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/debrief_ci
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install isolated Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run complete-claim, recovery, and large-workspace browser checks
+        run: npm run test:browser
+
   content-governance:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -176,7 +193,7 @@ jobs:
 
   verify:
     if: always()
-    needs: [lint, typecheck, build, unit, integration, migration, dependencies, security, content-governance]
+    needs: [lint, typecheck, build, unit, integration, migration, dependencies, security, browser, content-governance]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -190,4 +207,5 @@ jobs:
           test "${{ needs.migration.result }}" = "success"
           test "${{ needs.dependencies.result }}" = "success"
           test "${{ needs.security.result }}" = "success"
+          test "${{ needs.browser.result }}" = "success"
           test "${{ needs.content-governance.result }}" = "success"

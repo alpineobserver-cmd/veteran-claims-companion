@@ -92,6 +92,7 @@ export function ClaimQuestionnaire({user,initialClaimId,initialSection,fresh=fal
         localStorage.removeItem("vcc-claim-draft");
       }
       setArchives(storedArchives);
+      if(fresh)window.history.replaceState(null,"","/claim-builder");
       if(user&&initialClaimId){
         setCloudState("loading");
         try{
@@ -125,6 +126,13 @@ export function ClaimQuestionnaire({user,initialClaimId,initialSection,fresh=fal
   const draft=useMemo<StoredDraft>(()=>({answers,step,furthestStep,statement,statementMode,statementProvenance,timeline,evidenceMap,confirmations,documentLinks,documentCitations,statementVersions,generationAudit,packageStatus,packageStatusUpdatedAt:packageStatusUpdatedAt||undefined,packageExportedAt:packageExportedAt||undefined,packageSubmittedAt:packageSubmittedAt||undefined,buddyStatements}),[answers,step,furthestStep,statement,statementMode,statementProvenance,timeline,evidenceMap,confirmations,documentLinks,documentCitations,statementVersions,generationAudit,packageStatus,packageStatusUpdatedAt,packageExportedAt,packageSubmittedAt,buddyStatements]);
   const serializedDraft=useMemo(()=>JSON.stringify(draft),[draft]);
   useEffect(()=>{currentSnapshot.current=serializedDraft},[serializedDraft]);
+  useEffect(()=>{
+    if(!hydrated||user)return;
+    const timer=window.setTimeout(()=>{
+      try{window.localStorage.setItem("vcc-claim-draft",serializedDraft)}catch{}
+    },250);
+    return()=>window.clearTimeout(timer);
+  },[serializedDraft,hydrated,user]);
 
   function queueCloudSave(claimId:string,payload:StoredDraft,draftProgress:number){
     const serialized=JSON.stringify(payload);
@@ -315,7 +323,7 @@ function StatementStep({answers,condition,timeline,update,statement,setStatement
       if(data.status==="needs_information"){setModelQuestions((data.questions||[]).map(item=>({...item,originalValue:answers[item.field]})));setNotice(data.notice||"A few details are needed before a reliable statement can be drafted.");return}
       if(!data.statement)throw new Error(data.error||"The statement could not be generated.");
       setStatement(data.statement);setMode(data.mode||"ai");addVersion(data.statement,data.mode||"ai");setNotice(data.notice||"");
-    }catch(reason){if(!recorded)setGenerationAudit(current=>[...current,clientGenerationFailure(requestInput)].slice(-50));setError(reason instanceof Error?reason.message:"The statement could not be generated.")}
+    }catch(reason){if(!recorded)setGenerationAudit(current=>[...current,clientGenerationFailure(requestInput)].slice(-50));const message=reason instanceof Error&&!/failed to fetch|fetch failed|networkerror/i.test(reason.message)?reason.message:"The statement could not be generated. Your answers are still saved on this device.";setError(message)}
     finally{setGenerating(false)}
   }
   async function copy(){await navigator.clipboard.writeText(statement);setCopied(true);setTimeout(()=>setCopied(false),1800)}
