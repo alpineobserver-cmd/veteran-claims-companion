@@ -11,6 +11,7 @@ import { createClaimPackagePdf } from "../lib/claim-package-pdf";
 import { claimScenarios } from "../evals/claim-scenarios";
 import { compareStatementVersions } from "../lib/statement-version-comparison";
 import { POST as createClaimPackageResponse } from "../app/api/claim-package/route";
+import { recordCitationGaps, statementFactSourceKind } from "../lib/statement-source-labels";
 
 const root=process.cwd();
 const read=(relative:string)=>readFile(path.join(root,relative),"utf8");
@@ -21,7 +22,7 @@ function completeDraft(){
     step:10,furthestStep:10,statement:"Personal statement heading\n\nI experienced fictional migraine symptoms beginning in 2020.",statementMode:"edited" as const,
     timeline:[{id:"timeline-1",date:"2020",title:"Symptoms began",details:"Fictional symptoms began",source:"Personal recollection",approximate:true}],
     evidenceMap:{current:{status:"personal_recollection" as const,source:"Personal statement"},onset:{status:"personal_recollection" as const,source:"Personal statement"},service:{status:"personal_recollection" as const,source:"Personal statement"},function:{status:"personal_recollection" as const,source:"Personal statement"},treatment:{status:"record_available" as const,source:"VA treatment records"}},
-    confirmations:{"0":true,"1":true},documentLinks:{treatment:["fictional-document-1"]},statementVersions:[{id:"version-1",content:"Earlier fictional version",mode:"edited" as const,createdAt:"2026-07-20T10:00:00.000Z"}],packageStatus:"reviewed" as const,packageStatusUpdatedAt:"2026-07-20T10:00:00.000Z"
+    confirmations:{"0":true,"1":true},documentLinks:{treatment:["fictional-document-1"]},documentCitations:{treatment:{"fictional-document-1":"p. 4, assessment"}},statementVersions:[{id:"version-1",content:"Earlier fictional version",mode:"edited" as const,createdAt:"2026-07-20T10:00:00.000Z"}],packageStatus:"reviewed" as const,packageStatusUpdatedAt:"2026-07-20T10:00:00.000Z"
   };
 }
 
@@ -40,6 +41,23 @@ test("package validation blocks stale or unverified statements without predictin
   assert.ok(findings.some(item=>item.id==="statement-stale"&&item.level==="blocker"));
   assert.ok(findings.some(item=>item.id==="verification"&&item.level==="blocker"));
   assert.equal(findings.some(item=>/eligible|rating percentage|approval/i.test(item.detail)),false);
+});
+
+test("record-supported statement facts require a location for every linked upload",()=>{
+  const draft=completeDraft();
+  const statement=guidedDraft({...draft.answers,timeline:draft.timeline});
+  const provenance=deriveStatementProvenance(statement,draft.answers,draft.timeline);
+  assert.deepEqual(recordCitationGaps(provenance,draft.evidenceMap,draft.documentLinks,{}),[{factId:"treatment",documentId:"fictional-document-1"}]);
+  assert.deepEqual(recordCitationGaps(provenance,draft.evidenceMap,draft.documentLinks,draft.documentCitations),[]);
+  const missing={...draft,statement,statementProvenance:provenance,documentCitations:{}};
+  assert.ok(validatePackageClaim(missing,"Migraines").some(item=>item.id==="record-citations"&&item.level==="blocker"));
+});
+
+test("statement facts retain distinct veteran, witness, and record labels",()=>{
+  const answerOrigin={kind:"answer" as const,label:"Answer",excerpt:"Example",factId:"function"};
+  assert.equal(statementFactSourceKind(answerOrigin,{function:{status:"personal_recollection",source:""}}),"user");
+  assert.equal(statementFactSourceKind(answerOrigin,{function:{status:"witness_statement",source:"Buddy statement"}}),"witness");
+  assert.equal(statementFactSourceKind(answerOrigin,{function:{status:"record_available",source:"Treatment record"}}),"record");
 });
 
 test("package-wide validation catches duplicate uploads and stale form verification",()=>{
@@ -123,11 +141,14 @@ test("condition review PDF carries the statement source trace and related file n
   const answers=draft.answers;
   const statement=guidedDraft({...answers,timeline:draft.timeline});
   const statementProvenance=deriveStatementProvenance(statement,answers,draft.timeline);
-  const pdf=createClaimPackagePdf({condition:answers.condition,claimType:answers.claimType,intentToFileStatus:answers.intentToFileStatus,intentToFileDate:answers.intentToFileDate,name:answers.statementName,statement,statementProvenance,timeline:draft.timeline,evidenceMap:draft.evidenceMap,selectedEvidence:answers.evidence,linkedDocuments:[{factId:"treatment",documentName:"fictional-treatment-record.pdf"}],qualityFindings:[]}).toString("ascii");
+  const pdf=createClaimPackagePdf({condition:answers.condition,claimType:answers.claimType,intentToFileStatus:answers.intentToFileStatus,intentToFileDate:answers.intentToFileDate,name:answers.statementName,statement,statementMode:"template",statementProvenance,timeline:draft.timeline,evidenceMap:draft.evidenceMap,selectedEvidence:answers.evidence,linkedDocuments:[{factId:"treatment",documentId:"fictional-document-1",documentName:"fictional-treatment-record.pdf",pageReference:"p. 4, assessment"}],qualityFindings:[]}).toString("ascii");
   assert.match(pdf,/STATEMENT SOURCES/);
   assert.match(pdf,/Health history - current symptoms/);
   assert.match(pdf,/fictional-treatment-record\.pdf/);
-  assert.match(pdf,/A source link does not prove the fact/);
+  assert.match(pdf,/Guided-template wording/);
+  assert.match(pdf,/Record-derived fact/);
+  assert.match(pdf,/Record citation: fictional-treatment-record\.pdf - p\. 4, assessment/);
+  assert.match(pdf,/A citation helps locate a/);
 });
 
 test("claim-package endpoint returns an observable private PDF download",async()=>{
@@ -140,11 +161,12 @@ test("claim-package endpoint returns an observable private PDF download",async()
     intentToFileDate:draft.answers.intentToFileDate,
     name:draft.answers.statementName,
     statement,
+    statementMode:"template",
     statementProvenance:deriveStatementProvenance(statement,draft.answers,draft.timeline),
     timeline:draft.timeline,
     evidenceMap:draft.evidenceMap,
     selectedEvidence:draft.answers.evidence,
-    linkedDocuments:[{factId:"treatment",documentName:"fictional-treatment-record.pdf"}],
+    linkedDocuments:[{factId:"treatment",documentId:"fictional-document-1",documentName:"fictional-treatment-record.pdf",pageReference:"p. 4, assessment"}],
     qualityFindings:[]
   });
   const response=await createClaimPackageResponse(new Request("https://debrief.test/api/claim-package",{
@@ -164,11 +186,26 @@ test("claim-package endpoint returns an observable private PDF download",async()
   assert.match(pdf.toString("ascii"),/%%EOF$/);
 });
 
+test("claim-package endpoint rejects a relied-on uploaded record without a precise citation",async()=>{
+  const draft=completeDraft();
+  const statement=guidedDraft({...draft.answers,timeline:draft.timeline});
+  const body=JSON.stringify({
+    condition:draft.answers.condition,claimType:draft.answers.claimType,intentToFileStatus:draft.answers.intentToFileStatus,intentToFileDate:draft.answers.intentToFileDate,name:draft.answers.statementName,statement,statementMode:"template",
+    statementProvenance:deriveStatementProvenance(statement,draft.answers,draft.timeline),timeline:draft.timeline,evidenceMap:draft.evidenceMap,selectedEvidence:draft.answers.evidence,
+    linkedDocuments:[{factId:"treatment",documentId:"fictional-document-1",documentName:"fictional-treatment-record.pdf",pageReference:""}],qualityFindings:[]
+  });
+  const response=await createClaimPackageResponse(new Request("https://debrief.test/api/claim-package",{method:"POST",headers:{"content-type":"application/json","content-length":String(Buffer.byteLength(body)),"origin":"https://debrief.test"},body}));
+  assert.equal(response.status,400);
+  assert.match((await response.json() as {error:string}).error,/page or section reference/i);
+});
+
 test("browser download and step-change accessibility contracts remain observable",async()=>{
   const [questionnaire,css]=await Promise.all([read("components/claim-questionnaire.tsx"),read("app/claim-builder/claim-builder.css")]);
   assert.match(questionnaire,/document\.body\.appendChild\(link\)/);
   assert.match(questionnaire,/window\.setTimeout\(\(\)=>URL\.revokeObjectURL\(url\),1_000\)/);
   assert.match(questionnaire,/Condition review PDF downloaded/);
+  for(const label of ["Veteran-provided fact","Witness observation","Record-derived fact","AI-drafted wording"])assert.match(questionnaire,new RegExp(label));
+  assert.match(questionnaire,/Page or section reference/);
   assert.match(questionnaire,/role="status" aria-live="polite"/);
   assert.match(questionnaire,/questionCardRef\.current\?\.focus\(\)/);
   assert.match(questionnaire,/tabIndex=\{-1\}/);

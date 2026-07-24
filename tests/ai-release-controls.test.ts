@@ -43,5 +43,5 @@ test("drafting UI supports regenerate, edit, version, restore, and section verif
   for(const control of ["Rebuild guided narrative","Regenerate cohesive draft","Editable personal statement","Reject draft","Save version","Restore saved version","Review and confirm"])assert.match(questionnaire,new RegExp(control));
   assert.match(questionnaire,/setStatement\(event\.target\.value\);setMode\("edited"\)/);
   assert.match(questionnaire,/setStatement\(""\);setMode\(""\)/);
-  assert.match(questionnaire,/disabled=\{!allConfirmed\|\|downloading\}/);
+  assert.match(questionnaire,/disabled=\{!allConfirmed\|\|citationGaps\.length>0\|\|downloading\}/);
 });
