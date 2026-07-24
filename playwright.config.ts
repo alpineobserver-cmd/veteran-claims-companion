@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
+import { randomBytes } from "node:crypto";
 
 const port=3111;
 const baseURL=`http://localhost:${port}`;
+const browserTestAuthSecret=process.env.AUTH_SECRET??randomBytes(32).toString("base64url");
 
 export default defineConfig({
   testDir:"./e2e",
@@ -32,6 +34,7 @@ export default defineConfig({
       RELEASE_ID:"browser-test",
       AUTH_URL:baseURL,
       AUTH_CANONICAL_HOST:"localhost",
+      AUTH_SECRET:browserTestAuthSecret,
       DEBRIEF_AI_GENERATION_ENABLED:"false",
       DEBRIEF_UPLOADS_ENABLED:"false",
       NEXT_TELEMETRY_DISABLED:"1"
