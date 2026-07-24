@@ -7,4 +7,6 @@ node_modules
 uploads/*
 !uploads/.gitkeep
 .data/
+playwright-report/
+test-results/
 Initial Veteran Claims Companion MVP/

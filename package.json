@@ -34,6 +34,8 @@
     "test:claim-process": "node --import tsx --test tests/claim-process.test.mjs tests/claim-package-workflow.test.ts",
     "test:exposures": "node --import tsx --test tests/exposure-record-check.test.ts",
     "test:usability": "node --import tsx --test tests/usability-simulation.test.ts",
+    "test:browser": "playwright test --project=chromium",
+    "test:browser:update": "playwright test --project=chromium --grep @visual --update-snapshots",
     "test:unit": "npm run test:deployment && npm run test:links && npm run test:accessibility && npm run test:runbooks && npm run test:content && npm run test:claim-process && npm run test:exposures && npm run test:usability && npm run eval:claims && npm run eval:ai && npm run eval:alpha",
     "test:integration": "npm run test:storage && npm run test:data-controls && npm run test:reconciliation",
     "test:security": "npm run test:controls && npm run test:rate-limit && npm run test:security-readiness && npm run test:api-security && npm run test:isolation-e2e && npm run test:auth && npm run test:legal",
@@ -68,6 +70,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.3",
     "@types/react-dom": "^19.0.2",

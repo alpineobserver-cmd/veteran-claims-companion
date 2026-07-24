@@ -9,6 +9,7 @@ import { aiGenerationEnabled } from "@/lib/operational-controls";
 import { aiDailySpendPolicy, aiGlobalDailyPolicy, aiGlobalDailyTokenPolicy, aiMaxOutputTokens, aiMaxRequestCostCents, aiUserDailyPolicy, aiUserDailyTokenPolicy, enforceAccountRateLimit, enforceAccountUsageLimit, rateLimitPolicies } from "@/lib/rate-limit";
 import { emitSecurityEvent, securityEventErrorCode } from "@/lib/security-events";
 import { selectedAiGenerationPolicy } from "@/lib/ai-generation-policy";
+import { generationSourceReferences, type GenerationAuditMetadata } from "@/lib/generation-audit";
 
 export const runtime = "nodejs";
 
@@ -47,6 +48,10 @@ function responseText(data:OpenAIResponse){
   return data.output?.flatMap(item=>item.content||[]).filter(item=>item.type==="output_text"&&item.text).map(item=>item.text).join("\n").trim()||"";
 }
 
+function generationMetadata(input:Record<string,unknown>,startedAt:string,details:Pick<GenerationAuditMetadata,"mode"|"model"|"policyVersion"|"resultStatus">):GenerationAuditMetadata{
+  return {id:crypto.randomUUID(),feature:"personal_statement",sourceReferences:generationSourceReferences(input),createdAt:startedAt,completedAt:new Date().toISOString(),...details};
+}
+
 export function GET(){const policy=selectedAiGenerationPolicy();const configured=Boolean(process.env.OPENAI_API_KEY)&&aiGenerationEnabled()&&Boolean(policy);return NextResponse.json({configured,mode:configured?"ai":"template",policyVersion:policy?.version||"invalid"},{headers:{"Cache-Control":"no-store"}})}
 
 export async function POST(request:NextRequest){
@@ -57,14 +62,15 @@ export async function POST(request:NextRequest){
   const parsed=requestSchema.safeParse(body);
   if(!parsed.success)return NextResponse.json({error:"Please review the statement information and try again."},{status:400});
   const input=parsed.data;
+  const startedAt=new Date().toISOString();
   const gaps=statementGaps(input);
-  if(gaps.length)return NextResponse.json({status:"needs_information",questions:gaps.map(({field,question,reason})=>({field,question,reason})),notice:"Answer these focused questions before drafting. Debrief will not invent the missing facts."});
+  if(gaps.length)return NextResponse.json({status:"needs_information",questions:gaps.map(({field,question,reason})=>({field,question,reason})),notice:"Answer these focused questions before drafting. Debrief will not invent the missing facts.",generation:generationMetadata(input,startedAt,{mode:"preflight",model:"not-called",policyVersion:"statement-gaps-v1",resultStatus:"needs_information"})});
 
   const policy=selectedAiGenerationPolicy();
   if(!process.env.OPENAI_API_KEY||!aiGenerationEnabled()||!policy){
     const statement=guidedDraft(input);
     const notice=process.env.OPENAI_API_KEY?"AI-assisted drafting is temporarily paused or its policy selection is invalid. This draft uses fixed rules to organize your answers and was not sent to an AI provider.":"OpenAI is not connected. This draft uses fixed rules to organize your answers into a narrative; it has not been interpreted or verified by AI.";
-    return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"template",policyVersion:policy?.version||"disabled",notice});
+    return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"template",policyVersion:policy?.version||"disabled",notice,generation:generationMetadata(input,startedAt,{mode:"template",model:"guided-template",policyVersion:policy?.version||"disabled",resultStatus:"ready"})});
   }
   const session=await auth();
   if(!session?.user?.id)return NextResponse.json({error:"Sign in before sending questionnaire answers to the AI drafting service."},{status:401});
@@ -74,7 +80,8 @@ export async function POST(request:NextRequest){
   const modelInput=Object.fromEntries(Object.entries(input).filter(([key])=>key!=="statementName"));
   const modelInputSerialized=JSON.stringify(modelInput);
   const maxOutputTokens=aiMaxOutputTokens();
-  const providerPayload={model:process.env.OPENAI_MODEL||"gpt-5.4-mini",instructions:policy.instructions,input:modelInputSerialized,max_output_tokens:maxOutputTokens,store:false,text:{format:providerResponseFormat}};
+  const model=process.env.OPENAI_MODEL||"gpt-5.4-mini";
+  const providerPayload={model,instructions:policy.instructions,input:modelInputSerialized,max_output_tokens:maxOutputTokens,store:false,text:{format:providerResponseFormat}};
   // UTF-8 bytes are a deliberately conservative input-token reservation: a
   // provider token cannot represent less than one byte. The serialized payload
   // also reserves instruction/schema overhead. Unused reservations are not
@@ -96,12 +103,12 @@ export async function POST(request:NextRequest){
     if(!response.ok)throw new Error(data.error?.message||`OpenAI request failed with status ${response.status}`);
     const result=aiResultSchema.safeParse(JSON.parse(responseText(data)));
     if(!result.success)throw new Error("The model returned an invalid drafting result.");
-    if(result.data.status==="needs_information")return NextResponse.json({status:"needs_information",questions:result.data.questions,notice:"The drafting assistant needs a few factual details before it can continue without guessing."});
+    if(result.data.status==="needs_information")return NextResponse.json({status:"needs_information",questions:result.data.questions,notice:"The drafting assistant needs a few factual details before it can continue without guessing.",generation:generationMetadata(input,startedAt,{mode:"ai",model,policyVersion:policy.version,resultStatus:"needs_information"})});
     if(!result.data.statement.trim())throw new Error("The model returned an empty statement.");
     const statement=`${statementHeading(input)}\n\n${result.data.statement.trim()}`;
-    return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"ai",policyVersion:policy.version});
+    return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"ai",policyVersion:policy.version,generation:generationMetadata(input,startedAt,{mode:"ai",model,policyVersion:policy.version,resultStatus:"ready"})});
   }catch(error){
     emitSecurityEvent("ai_generation_failed",{operation:"personal-statement",code:securityEventErrorCode(error)},"error");
-    return NextResponse.json({error:"The AI draft could not be generated right now. Your answers are still saved on this device."},{status:502});
+    return NextResponse.json({error:"The AI draft could not be generated right now. Your answers are still saved on this device.",generation:generationMetadata(input,startedAt,{mode:"ai",model,policyVersion:policy.version,resultStatus:"failed"})},{status:502});
   }finally{clearTimeout(timeout)}
 }

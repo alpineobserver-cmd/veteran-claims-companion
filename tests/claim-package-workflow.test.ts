@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import { claimDraftSchema } from "../lib/claim-drafts";
 import { evidenceChecklist, packageReadiness, packageStatuses, validatePackageClaim, validatePackageEnvironment } from "../lib/claim-package-workflow";
-import { buddyStatementGaps, createBuddyStatement } from "../lib/buddy-statement";
+import { buddyStatementGaps, createBuddyStatement, deriveBuddyStatementProvenance } from "../lib/buddy-statement";
 import { deriveStatementProvenance, statementProvenanceSummary } from "../lib/statement-provenance";
 import { guidedDraft } from "../lib/personal-statement-template";
 import { createClaimPackagePdf } from "../lib/claim-package-pdf";
@@ -73,6 +73,13 @@ test("buddy drafting requires firsthand context and does not invent missing fact
   assert.match(statement,/personally observed/i);
   assert.match(statement,/true and correct to the best of my knowledge/i);
   assert.doesNotMatch(statement,/diagnos|service connect|rating|eligible/i);
+  const input={...incomplete,knownSince:"Since 2018",specificExample:"During a fictional event, I saw the veteran stop activity and rest."};
+  const provenance=deriveBuddyStatementProvenance("Migraines",input,statement);
+  assert.equal(provenance.paragraphs.some(paragraph=>paragraph.status==="unmapped"),false);
+  assert.ok(provenance.paragraphs.some(paragraph=>paragraph.fields.includes("observations")));
+  assert.ok(provenance.paragraphs.some(paragraph=>paragraph.status==="template"));
+  const edited=deriveBuddyStatementProvenance("Migraines",input,`${statement}\n\nThis unrelated sentence was manually added.`);
+  assert.equal(edited.paragraphs.at(-1)?.status,"unmapped");
 });
 
 test("package workspace exposes sources, lifecycle tracking, official submission links, and caveats",async()=>{
@@ -88,6 +95,8 @@ test("package workspace exposes sources, lifecycle tracking, official submission
   assert.match(pdf,/Uploaded document links/);
   assert.match(buddyPage,/The witness—not the veteran—must confirm/);
   assert.match(buddyRoute,/buddyStatementGaps/);
+  assert.match(buddyRoute,/deriveBuddyStatementProvenance/);
+  assert.match(await read("components/buddy-statement-builder.tsx"),/Where this witness draft came from/);
   for(const action of ["archive","restore","duplicate","package_status"])assert.match(actions,new RegExp(`"${action}"`));
 });
 
