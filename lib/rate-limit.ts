@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { securitySubkey } from "@/lib/key-derivation";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { emitSecurityEvent, securityEventErrorCode } from "@/lib/security-events";
@@ -17,18 +18,14 @@ export const rateLimitPolicies={
   documentAccess:{scope:"document-access-10m",limit:60,windowMs:10*MINUTE},
   accountExport:{scope:"account-export-hour",limit:5,windowMs:HOUR},
   accountDelete:{scope:"account-delete-hour",limit:3,windowMs:HOUR},
-  aiBurst:{scope:"ai-generation-10m",limit:8,windowMs:10*MINUTE}
+  aiBurst:{scope:"ai-generation-10m",limit:8,windowMs:10*MINUTE},
+  anonymousTemplateDraft:{scope:"anonymous-template-draft-10m",limit:12,windowMs:10*MINUTE},
+  anonymousPackagePdf:{scope:"anonymous-package-pdf-10m",limit:8,windowMs:10*MINUTE}
 } as const satisfies Record<string,RateLimitPolicy>;
 
 export class RateLimitConfigurationError extends Error {}
 
-function signingSecret(explicit?:string){
-  const secret=explicit??process.env.AUTH_SECRET??process.env.NEXTAUTH_SECRET;
-  if(!secret||secret.length<32)throw new RateLimitConfigurationError("A permanent authentication secret is required for privacy-safe rate limiting.");
-  return secret;
-}
-
-export function rateLimitPrincipalHash(principal:string,secret?:string){return createHmac("sha256",signingSecret(secret)).update(`debrief-rate-limit-v1:${principal}`).digest("hex")}
+export function rateLimitPrincipalHash(principal:string,secret?:string){return createHmac("sha256",securitySubkey("rate-limit-principal",secret)).update(`debrief-rate-limit-v1:${principal}`).digest("hex")}
 export function rateLimitWindow(policy:RateLimitPolicy,now=Date.now()){
   const start=Math.floor(now/policy.windowMs)*policy.windowMs;
   return{windowStart:new Date(start),windowEndsAt:new Date(start+policy.windowMs),retryAfterSeconds:Math.max(1,Math.ceil((start+policy.windowMs-now)/1_000))};
@@ -79,6 +76,25 @@ export async function enforceAccountRateLimit(userId:string,policies:readonly Ra
 export async function enforceAccountUsageLimit(userId:string,policies:readonly RateLimitPolicy[],units:number,message="The configured usage limit has been reached. Please try again after the limit resets."){
   try{
     const result=await consumeUsageLimits(`user:${userId}`,policies,units);if(result.allowed)return null;
+    return NextResponse.json({error:message},{status:429,headers:{"Cache-Control":"private, no-store","Retry-After":String(result.retryAfterSeconds),"X-RateLimit-Limit":String(result.limit),"X-RateLimit-Remaining":"0"}});
+  }catch(reason){
+    emitSecurityEvent("rate_limit_backend_failed",{code:securityEventErrorCode(reason)},"error");
+    return NextResponse.json({error:"The request could not be safely processed right now."},{status:503,headers:{"Cache-Control":"private, no-store"}});
+  }
+}
+
+function anonymousPrincipal(request:Request){
+  const forwarded=request.headers.get("x-vercel-forwarded-for")||request.headers.get("x-forwarded-for")||"";
+  const address=forwarded.split(",")[0]?.trim();
+  return `ip:${address&&address.length<=128?address:"unknown"}`;
+}
+
+export async function enforceAnonymousRateLimit(request:Request,policies:readonly RateLimitPolicy[],message="Too many requests. Please wait before trying again."){
+  // Local development has no durable service boundary and must not impersonate
+  // a hosted rate-limit backend. Staging and Production always use the durable path.
+  if(process.env.APP_ENV==="development")return null;
+  try{
+    const result=await consumeRateLimits(anonymousPrincipal(request),policies);if(result.allowed)return null;
     return NextResponse.json({error:message},{status:429,headers:{"Cache-Control":"private, no-store","Retry-After":String(result.retryAfterSeconds),"X-RateLimit-Limit":String(result.limit),"X-RateLimit-Remaining":"0"}});
   }catch(reason){
     emitSecurityEvent("rate_limit_backend_failed",{code:securityEventErrorCode(reason)},"error");

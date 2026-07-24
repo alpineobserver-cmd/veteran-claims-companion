@@ -6,7 +6,7 @@ import { deriveStatementProvenance } from "@/lib/statement-provenance";
 import { auth } from "@/auth";
 import { hasAcceptableContentLength, MAX_JSON_REQUEST_BYTES, rejectCrossOriginMutation } from "@/lib/request-security";
 import { aiGenerationEnabled } from "@/lib/operational-controls";
-import { aiDailySpendPolicy, aiGlobalDailyPolicy, aiGlobalDailyTokenPolicy, aiMaxOutputTokens, aiMaxRequestCostCents, aiUserDailyPolicy, aiUserDailyTokenPolicy, enforceAccountRateLimit, enforceAccountUsageLimit, rateLimitPolicies } from "@/lib/rate-limit";
+import { aiDailySpendPolicy, aiGlobalDailyPolicy, aiGlobalDailyTokenPolicy, aiMaxOutputTokens, aiMaxRequestCostCents, aiUserDailyPolicy, aiUserDailyTokenPolicy, enforceAccountRateLimit, enforceAccountUsageLimit, enforceAnonymousRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 import { emitSecurityEvent, securityEventErrorCode } from "@/lib/security-events";
 import { selectedAiGenerationPolicy } from "@/lib/ai-generation-policy";
 import { generationSourceReferences, type GenerationAuditMetadata } from "@/lib/generation-audit";
@@ -57,11 +57,14 @@ export function GET(){const policy=selectedAiGenerationPolicy();const configured
 export async function POST(request:NextRequest){
   const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
   if(!hasAcceptableContentLength(request,MAX_JSON_REQUEST_BYTES))return NextResponse.json({error:"The drafting request is too large."},{status:413});
+  const session=await auth();
   let body:unknown;
   try{body=await request.json()}catch{return NextResponse.json({error:"The request could not be read."},{status:400})}
   const parsed=requestSchema.safeParse(body);
   if(!parsed.success)return NextResponse.json({error:"Please review the statement information and try again."},{status:400});
   const input=parsed.data;
+  const templateLimited=session?.user?.id?await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.anonymousTemplateDraft],"Too many guided drafts were requested. Please wait before trying again."):await enforceAnonymousRateLimit(request,[rateLimitPolicies.anonymousTemplateDraft],"Too many guided drafts were requested. Please wait before trying again.");
+  if(templateLimited)return templateLimited;
   const startedAt=new Date().toISOString();
   const gaps=statementGaps(input);
   if(gaps.length)return NextResponse.json({status:"needs_information",questions:gaps.map(({field,question,reason})=>({field,question,reason})),notice:"Answer these focused questions before drafting. Debrief will not invent the missing facts.",generation:generationMetadata(input,startedAt,{mode:"preflight",model:"not-called",policyVersion:"statement-gaps-v1",resultStatus:"needs_information"})});
@@ -72,7 +75,6 @@ export async function POST(request:NextRequest){
     const notice=process.env.OPENAI_API_KEY?"AI-assisted drafting is temporarily paused or its policy selection is invalid. This draft uses fixed rules to organize your answers and was not sent to an AI provider.":"OpenAI is not connected. This draft uses fixed rules to organize your answers into a narrative; it has not been interpreted or verified by AI.";
     return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"template",policyVersion:policy?.version||"disabled",notice,generation:generationMetadata(input,startedAt,{mode:"template",model:"guided-template",policyVersion:policy?.version||"disabled",resultStatus:"ready"})});
   }
-  const session=await auth();
   if(!session?.user?.id)return NextResponse.json({error:"Sign in before sending questionnaire answers to the AI drafting service."},{status:401});
   const userLimited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.aiBurst,aiUserDailyPolicy()],"AI drafting limit reached. Please wait before trying again.");if(userLimited)return userLimited;
   const globalLimited=await enforceAccountRateLimit("global-ai-generation",[aiGlobalDailyPolicy()],"AI drafting is temporarily unavailable because the Alpha daily safety limit was reached.");if(globalLimited)return globalLimited;

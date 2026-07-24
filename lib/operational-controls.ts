@@ -4,7 +4,7 @@ const trueValues=new Set(["1","true","on","enabled"]);
 export const operationalControlNames=["DEBRIEF_UPLOADS_ENABLED","DEBRIEF_AI_GENERATION_ENABLED","DEBRIEF_REGISTRATIONS_ENABLED"] as const;
 export type OperationalControlName=(typeof operationalControlNames)[number];
 
-export function parseOperationalControl(value:string|undefined,defaultValue=true){
+export function parseOperationalControl(value:string|undefined,defaultValue=process.env.APP_ENV!=="production"){
   if(value===undefined||!value.trim())return defaultValue;
   const normalized=value.trim().toLowerCase();
   if(trueValues.has(normalized))return true;

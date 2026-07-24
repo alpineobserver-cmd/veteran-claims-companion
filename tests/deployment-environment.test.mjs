@@ -21,7 +21,7 @@ test("staging cannot deploy without an explicit staging data boundary",()=>{
 });
 
 test("staging accepts its own data and authentication boundary",()=>{
-  const result=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test"});
+  const result=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"false",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"true"});
   assert.equal(result.status,0,result.stderr);
 });
 
@@ -64,7 +64,7 @@ test("hosted Google Cloud Storage requires keyless workload identity configurati
   assert.notEqual(incomplete.status,0);
   assert.match(incomplete.stderr,/GCS_BUCKET/);
   assert.match(incomplete.stderr,/GCS_AUTH_MODE=vercel-oidc/);
-  const complete=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DOCUMENT_STORAGE_PROVIDER:"gcs",GCS_AUTH_MODE:"vercel-oidc",GCS_BUCKET:"fictional-staging",GCP_PROJECT_ID:"fictional-project",GCP_PROJECT_NUMBER:"123456789",GCP_SERVICE_ACCOUNT_EMAIL:"debrief-staging@fictional-project.iam.gserviceaccount.com",GCP_WORKLOAD_IDENTITY_POOL_ID:"vercel-staging",GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:"vercel"});
+  const complete=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"true",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"true",DOCUMENT_STORAGE_PROVIDER:"gcs",GCS_AUTH_MODE:"vercel-oidc",GCS_BUCKET:"fictional-staging",GCP_PROJECT_ID:"fictional-project",GCP_PROJECT_NUMBER:"123456789",GCP_SERVICE_ACCOUNT_EMAIL:"debrief-staging@fictional-project.iam.gserviceaccount.com",GCP_WORKLOAD_IDENTITY_POOL_ID:"vercel-staging",GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:"vercel"});
   assert.equal(complete.status,0,complete.stderr);
 });
 
