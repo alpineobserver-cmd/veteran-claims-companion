@@ -6,6 +6,7 @@ import "./claim-builder.css";
 import "./questionnaire-status.css";
 import "./personal-statement.css";
 import "./statement-provenance.css";
+import "./source-citations.css";
 import "./statement-comparison.css";
 import "./smart-builder.css";
 import "./intent-to-file.css";
