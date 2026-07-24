@@ -41,6 +41,7 @@ if(["gcs","google-cloud-storage"].includes(storageProvider||"")){
 
 for(const key of operationalControls){
   const value=process.env[key]?.trim().toLowerCase();
+  if(["staging","production"].includes(appEnvironment)&&!value)problems.push(`${key} must be explicitly set for hosted deployments.`);
   if(value&&!operationalValues.has(value))problems.push(`${key} must use an explicit enabled or disabled value.`);
 }
 

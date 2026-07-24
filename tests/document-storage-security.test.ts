@@ -27,7 +27,7 @@ test("document download tickets reject tampering, malformed input, and the wrong
   assert.equal(verifyDocumentDownloadTicket("not-a-ticket","document-a","user-a",{now,secret}),false);
 });
 
-test("private document delivery requires a same-origin authenticated ticket handshake",async()=>{
+test("private document delivery keeps tickets out of URLs and requires an authenticated same-origin handshake",async()=>{
   const [issueRoute,contentRoute,intake]=await Promise.all([
     read("app/api/documents/[id]/download-link/route.ts"),
     read("app/api/documents/[id]/content/route.ts"),
@@ -37,6 +37,8 @@ test("private document delivery requires a same-origin authenticated ticket hand
   assert.match(issueRoute,/await auth\(\)/);
   assert.match(issueRoute,/findFirst\(\{where:\{id,userId:session\.user\.id\}/);
   assert.match(issueRoute,/issueDocumentDownloadTicket\(document\.id,session\.user\.id\)/);
+  assert.match(contentRoute,/export async function POST/);
+  assert.match(contentRoute,/authorization/);
   assert.match(contentRoute,/verifyDocumentDownloadTicket\(token,id,session\.user\.id\)/);
   assert.ok(contentRoute.indexOf("verifyDocumentDownloadTicket")<contentRoute.indexOf("storageKey:true"));
   assert.match(contentRoute,/"Cache-Control":"private, no-store"/);
@@ -44,6 +46,8 @@ test("private document delivery requires a same-origin authenticated ticket hand
   assert.match(contentRoute,/"X-Content-Type-Options":"nosniff"/);
   assert.match(intake,/method:"POST"/);
   assert.match(intake,/\/download-link/);
+  assert.match(intake,/Authorization:`Bearer \$\{ticket\.token\}`/);
+  assert.doesNotMatch(issueRoute,/content\?token/);
   assert.doesNotMatch(intake,/<a href=\{`\/api\/documents\/\$\{document\.id\}\/content`\}/);
 });
 

@@ -16,6 +16,9 @@ export function hasAcceptableContentLength(request:Request,maxBytes:number){
 
 export function rejectCrossOriginMutation(request:Request){
   const origin=request.headers.get("origin");
+  const fetchSite=request.headers.get("sec-fetch-site");
+  if(fetchSite&&fetchSite!=="same-origin")return NextResponse.json({error:"Cross-site requests are not accepted."},{status:403});
+  if(!origin&&!fetchSite)return NextResponse.json({error:"The request origin could not be verified."},{status:403});
   if(!origin)return null;
   let expected:string;
   try{expected=new URL(request.url).origin}catch{return NextResponse.json({error:"The request origin could not be verified."},{status:403})}

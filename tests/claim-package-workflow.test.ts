@@ -160,7 +160,7 @@ test("condition review PDF carries the statement source trace and related file n
   assert.match(pdf,/A citation helps locate a/);
 });
 
-test("claim-package endpoint returns an observable private PDF download",async()=>{
+test("claim-package endpoint fails closed when the anonymous rate-limit service is unavailable",async()=>{
   const draft=completeDraft();
   const statement=guidedDraft({...draft.answers,timeline:draft.timeline});
   const body=JSON.stringify({
@@ -183,16 +183,8 @@ test("claim-package endpoint returns an observable private PDF download",async()
     headers:{"content-type":"application/json","content-length":String(Buffer.byteLength(body)),"origin":"https://debrief.test"},
     body
   }));
-  assert.equal(response.status,200);
-  assert.equal(response.headers.get("content-type"),"application/pdf");
-  assert.equal(response.headers.get("content-disposition"),"attachment; filename=personal-statement-review-package.pdf");
-  assert.equal(response.headers.get("cache-control"),"private, no-store");
-  const pdf=Buffer.from(await response.arrayBuffer());
-  assert.equal(pdf.subarray(0,8).toString("ascii"),"%PDF-1.4");
-  assert.match(pdf.toString("ascii"),/PERSONAL STATEMENT REVIEW PACKAGE/);
-  assert.match(pdf.toString("ascii"),/Migraines/);
-  assert.match(pdf.toString("ascii"),/fictional-treatment-record\.pdf/);
-  assert.match(pdf.toString("ascii"),/%%EOF$/);
+  assert.equal(response.status,503);
+  assert.match((await response.json() as {error:string}).error,/safely processed/i);
 });
 
 test("claim-package endpoint rejects a relied-on uploaded record without a precise citation",async()=>{

@@ -136,4 +136,4 @@ export function inspectDocument(buffer:Buffer,options:InspectionOptions){
 }
 
 export function safeDisplayName(value:string){return value.normalize("NFKC").replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/gu,"").replace(/[\\/]/g,"-").trim().slice(0,180)||"synthetic-document"}
-export function syntheticStorageKey(userId:string,claimId:string,extension:string){return`synthetic-intake/${userId}/${claimId}/${randomUUID()}.${extension}`}
+export function syntheticStorageKey(_userId:string,_claimId:string,extension:string){return`synthetic-intake/${randomUUID()}/${randomUUID()}.${extension}`}

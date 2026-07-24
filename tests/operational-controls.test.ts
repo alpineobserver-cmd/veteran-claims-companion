@@ -7,8 +7,13 @@ import { isOperationalControlValue, parseOperationalControl } from "../lib/opera
 const root=process.cwd();
 const read=(relative:string)=>readFile(path.join(root,relative),"utf8");
 
-test("operational controls default on, accept explicit states, and fail closed on typos",()=>{
+test("operational controls default off in production, accept explicit states, and fail closed on typos",()=>{
+  const prior=process.env.APP_ENV;
+  process.env.APP_ENV="production";
+  assert.equal(parseOperationalControl(undefined),false);
+  process.env.APP_ENV="staging";
   assert.equal(parseOperationalControl(undefined),true);
+  if(prior===undefined)delete process.env.APP_ENV;else process.env.APP_ENV=prior;
   for(const value of ["true","1","on","enabled"," TRUE "])assert.equal(parseOperationalControl(value),true,value);
   for(const value of ["false","0","off","disabled","pause","paused","typo"])assert.equal(parseOperationalControl(value),false,value);
   assert.equal(isOperationalControlValue("enabled"),true);
