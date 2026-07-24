@@ -2,7 +2,9 @@
 
 Scope: fictional-data closed Alpha only
 
-Canonical address: `https://veteran-claims-companion.vercel.app`
+Current canonical address: `https://debriefclaims.com`
+
+Original test address retired during the July 24 domain transition.
 
 Repository baseline inspected: `f03b0fb`
 

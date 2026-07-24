@@ -8,9 +8,9 @@ You are invited to review **Debrief**, an early educational tool designed to hel
 
 Use this address only:
 
-**https://veteran-claims-companion.vercel.app**
+**https://debriefclaims.com**
 
-Please do not use a link containing `git-main`, a random deployment identifier, or additional Vercel project text. Those are protected development addresses and are not the public Alpha.
+Please do not use a link containing `git-main`, a random deployment identifier, or Vercel project text. Those are infrastructure or protected development addresses and are not the public Alpha.
 
 ## Important testing boundary
 

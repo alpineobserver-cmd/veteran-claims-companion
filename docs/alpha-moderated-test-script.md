@@ -7,7 +7,7 @@ Required data boundary: fictional scenario and fictional documents only
 
 - Assign neutral codes: one `T-###` tester code and one `AS-####` session code.
 - Confirm the tester's exact Google email is allowlisted in Google OAuth Testing. Keep that address out of project files and observation notes.
-- Send only `https://veteran-claims-companion.vercel.app`.
+- Send only `https://debriefclaims.com`.
 - Prepare a fictional scenario and optional fictional files. Never ask a tester to adapt their real history.
 - Open the scorecard fields in `docs/alpha-success-measures.md` and the feedback register.
 - Confirm there are no open Blocker or Critical items affecting the planned test.
