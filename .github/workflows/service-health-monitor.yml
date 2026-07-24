@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      HEALTHCHECK_BASE_URL: ${{ inputs.target || 'https://veteran-claims-companion.vercel.app' }}
+      HEALTHCHECK_BASE_URL: ${{ inputs.target || 'https://debriefclaims.com' }}
       HEALTHCHECK_MAX_MS: "5000"
     steps:
       - uses: actions/checkout@v5

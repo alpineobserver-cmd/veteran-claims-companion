@@ -35,7 +35,7 @@ This file is the working source of truth for product tasks. Update the checkbox 
 - [x] **FOUND-006** — The deterministic claim workflow passes 40 fictional scenarios, including contradiction and unsupported-causation checks.
 - [x] **FOUND-007** — A non-AI guided statement generator remains available without paid generation.
 - [x] **FOUND-008** — Privacy Notice, Terms, Security Policy, Alpha readiness audit, and public changelog exist.
-- [x] **FOUND-009** — The canonical public Alpha address is `https://veteran-claims-companion.vercel.app`.
+- [x] **FOUND-009** — The canonical public Alpha address is `https://debriefclaims.com`; Production aliases and `www` redirect to the apex, and current operational/tester documentation uses the custom domain.
 
 ## Phase 1 — Immediate Alpha follow-up
 

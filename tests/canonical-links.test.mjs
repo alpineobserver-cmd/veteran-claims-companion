@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 
 const root=process.cwd();
-const canonicalOrigin="https://veteran-claims-companion.vercel.app";
+const canonicalOrigin="https://debriefclaims.com";
 const excludedDirectories=new Set([".git",".next","node_modules"]);
 const textExtensions=new Set([".css",".example",".html",".js",".json",".md",".mjs",".ts",".tsx",".txt",".yml",".yaml"]);
 
@@ -20,14 +20,14 @@ async function textFiles(directory){
   return files;
 }
 
-test("repository Vercel URLs use only the canonical public Alpha origin",async()=>{
+test("repository text does not present a Vercel deployment address as the public origin",async()=>{
   const violations=[];
   for(const file of await textFiles(root)){
     const relative=path.relative(root,file);
     if(relative==="tests/canonical-host.test.ts")continue;
     const content=await readFile(file,"utf8");
     for(const match of content.matchAll(/https:\/\/[a-z0-9-]+\.vercel\.app/gi)){
-      if(match[0]!==canonicalOrigin)violations.push(`${relative}: ${match[0]}`);
+      violations.push(`${relative}: ${match[0]}`);
     }
   }
   assert.deepEqual(violations,[],`Protected or non-canonical Vercel URLs found:\n${violations.join("\n")}`);
@@ -76,7 +76,7 @@ test("public and authenticated navigation expose support and status routes",asyn
 test("environment example preserves local development and the canonical Production host",async()=>{
   const example=await readFile(path.join(root,".env.example"),"utf8");
   assert.match(example,/^AUTH_URL="http:\/\/localhost:3000"$/m);
-  assert.match(example,/^AUTH_CANONICAL_HOST="veteran-claims-companion\.vercel\.app"$/m);
+  assert.match(example,/^AUTH_CANONICAL_HOST="debriefclaims\.com"$/m);
 });
 
 test("live canonical pages are public when PUBLIC_E2E_BASE_URL is supplied",{skip:!process.env.PUBLIC_E2E_BASE_URL},async()=>{
