@@ -1,10 +1,10 @@
 # Debrief product backlog
 
-Last reviewed: July 23, 2026
+Last reviewed: July 24, 2026
 Current release: closed Alpha  
 Current data boundary: fictional information and fictional documents only
 
-Most recent reconciliation: July 23, 2026 — recorded the first Staging-to-Production promotion, verified the default-branch health workflow, completed the independent claim-package export and keyboard-readiness work, and corrected step-change focus plus observable PDF-download feedback. See `docs/releases/2026-07-23-production-promotion.md` and `docs/export-and-keyboard-verification-2026-07-23.md`.
+Most recent reconciliation: July 24, 2026 — confirmed the operations/export/keyboard package and statement source/citation package reached Staging, completed the privacy-minimized personal-statement generation history, and added deterministic witness-source tracing to guided buddy-statement drafts. See `docs/generation-audit-trail.md`, `docs/releases/2026-07-23-production-promotion.md`, and `docs/export-and-keyboard-verification-2026-07-23.md`.
 
 This file is the working source of truth for product tasks. Update the checkbox and status when work changes, link the related pull request or decision record, and record user-facing releases in the public changelog.
 
@@ -165,12 +165,12 @@ These items must be completed and reviewed together before the real-data gate ca
 - [x] **AI-006 · P1** — Visually distinguish record-derived facts, user-provided facts, witness observations, and model-authored connective language. Completed July 24: the statement editor and consolidated package use distinct labeled treatments for veteran-provided facts, witness observations, record-derived facts, and AI-drafted, guided-template, or edited drafting language. The PDF carries the same factual-source and drafting-language labels, and the interface explains that source classification and authorship are separate.
 - [x] **AI-007 · P1** — Create a formal AI evaluation suite from the fictional scenarios. Completed independently July 22: a zero-cost, provider-free release gate scores all 40 fictional claims for the eight required dimensions and fails below the release floor.
   - Score factual fidelity, completeness, uncertainty preservation, tone, readability, unsupported claims, sensitivity handling, and cross-condition leakage.
-- [ ] **AI-008 · P1** — Preserve a privacy-conscious generation audit trail containing model, prompt version, source references, timestamp, result status, and user disposition.
+- [x] **AI-008 · P1** — Preserve a privacy-conscious generation audit trail containing model, prompt version, source references, timestamp, result status, and user disposition. Completed July 24: every personal-statement preflight, guided-template result, future provider result, and observable failure records its mode/model, policy version, field-name or timeline-position references, timestamps, result, and later accept/reject/regenerate/edit/save/download/export disposition with the owning claim. The trail deliberately excludes answers, statement text, names, document information, prompts, credentials, and provider bodies; it follows existing draft export and deletion controls. See `docs/generation-audit-trail.md`.
 - [x] **AI-009 · P1** — Version prompts and generation policies so changes can be compared and reversed. Completed independently July 22: current and rollback personal-statement policies have stable identifiers, deployment validation, runtime reporting, and fail-closed selection.
 - [x] **AI-010 · P1** — Establish per-user quotas, token limits, rate limits, budget alerts, and a hard spending cap. Completed independently July 22 without enabling paid AI: durable atomic controls now enforce per-user and global request ceilings, conservative per-user/global token reservations, a configurable response-token maximum, and an operator-defined daily spend reservation before a provider request. Privacy-safe 80% and 95% threshold events, fail-closed deployment validation, regression tests, and an operating runbook are included. Provider billing controls and protected alert delivery remain separate defense-in-depth work under AI-011 and SEC-010.
 - [ ] **AI-011 · P0 · [Blocked]** — Confirm provider retention, training, region, subprocessors, deletion, abuse-monitoring, and contract settings before processing real information.
 - [x] **AI-012** — Maintain a usable non-AI fallback for guided statement generation.
-- [ ] **AI-013 · P2** — Add evidence-grounded buddy-statement drafting after personal-statement quality gates pass.
+- [ ] **AI-013 · P2 · [Partially completed]** — Add evidence-grounded buddy-statement drafting after personal-statement quality gates pass. Completed independently July 24 for the non-AI path: every guided or edited witness paragraph now distinguishes witness-supplied facts, guided-template wording, and wording that no longer traces to a witness answer; the server preserves the same source trace with the saved statement, and the interface explains that tracing does not verify an observation or turn it into record evidence. Provider-assisted buddy drafting remains deferred until the personal-statement provider evaluation and AI gate pass.
 - [x] **AI-014 · P1 · [Added]** — Add a rapid disable/rollback path for a model or prompt version that fails evaluation or produces unsafe output. Completed independently July 22: the existing external-AI kill switch now works with a retained rollback policy, an invalid policy cannot reach the provider, and `docs/ai-release-and-rollback.md` defines privacy-safe containment and re-enable gates.
 
 ## Phase 6 — Conditions and VA Forms libraries
@@ -249,10 +249,10 @@ These items must be completed and reviewed together before the real-data gate ca
 
 ## Backlog maintenance checklist
 
-Most recent scrub: July 23, 2026. This is a recurring operating checklist, so its boxes intentionally reset for the next feedback or release cycle.
+Most recent scrub: July 24, 2026. This is a recurring operating checklist, so its boxes intentionally reset for the next feedback or release cycle.
 
-- [ ] Review this backlog after every Alpha feedback cycle.
-- [ ] Assign an owner and target milestone when an item enters active work.
-- [ ] Link implementation, test evidence, legal/security decisions, and release notes before checking an item complete.
-- [ ] Move newly discovered release blockers into the applicable gate immediately.
-- [ ] Keep fictional-data restrictions active until `GATE-001` is formally approved.
+- [x] Review this backlog after every Alpha feedback cycle.
+- [x] Assign an owner and target milestone when an item enters active work. AI-008 and the independent portion of AI-013 were owned by product engineering for the closed-Alpha refinement milestone.
+- [x] Link implementation, test evidence, legal/security decisions, and release notes before checking an item complete.
+- [x] Move newly discovered release blockers into the applicable gate immediately. No new release blocker was discovered in this cycle; provider-assisted buddy drafting remains behind the existing AI gate.
+- [x] Keep fictional-data restrictions active until `GATE-001` is formally approved.
