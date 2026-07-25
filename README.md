@@ -2,6 +2,8 @@
 
 An independent educational and organizational MVP for veterans preparing VA disability claim materials. It does not submit claims, give legal advice, or represent the Department of Veterans Affairs.
 
+**Current data boundary:** closed Alpha, entirely fictional information and documents only. Do not enter or upload real medical, claimant, government-identifier, or third-party information. The exact real-data release gates are tracked in [the product backlog](docs/product-backlog.md) and [the upload-security boundary](docs/pdf-upload-security-boundary.md).
+
 ## Project management
 
 Use the [product backlog](docs/product-backlog.md) as the working source of truth for priorities, release gates, Alpha follow-up, and future milestones. Record and triage tester reports in the single [Alpha feedback register](docs/alpha-feedback-register.md).
