@@ -14,6 +14,8 @@ Never record a secret value in this file, Git, issues, chat, screenshots, build 
 | `AUTH_SECRET` | Critical secret | Vercel sensitive variable | One permanent value per Staging/Production project; never shared | Auth.js, download tickets, HMAC principals | Alpha administrator + Engineering |
 | `AUTH_GOOGLE_SECRET` | Secret | Google Cloud/Vercel | Separate OAuth client per environment; Production scope only | Auth.js Google provider | Alpha administrator |
 | `AUTH_GOOGLE_ID` | Identifier, not secret | Google Cloud/Vercel | Matching environment only | Auth.js Google provider | Alpha administrator |
+| `AUTH_MICROSOFT_ENTRA_ID_SECRET` | Secret | Microsoft Entra ID/Vercel | Separate app registration and secret per environment; Production scope only | Auth.js Microsoft Entra ID provider | Alpha administrator |
+| `AUTH_MICROSOFT_ENTRA_ID_ID` | Identifier, not secret | Microsoft Entra ID/Vercel | Matching environment only | Auth.js Microsoft Entra ID provider | Alpha administrator |
 | `BLOB_READ_WRITE_TOKEN` or integration-managed Blob credential | Secret | Vercel Blob/Vercel integration | Matching environment only; Production scope | Private document storage | Alpha administrator |
 | `BLOB_STORE_ID` | Identifier, not secret | Vercel Blob | Matching environment only | Vercel integration | Alpha administrator |
 | `BLOB_WEBHOOK_PUBLIC_KEY` | Public verification material | Vercel Blob | Matching environment only | Vercel integration | Vercel/integration owner |
@@ -64,6 +66,10 @@ A password reset may invalidate the current connection immediately. Use a mainte
 ### Google OAuth secret
 
 Create or rotate the credential in the matching Google Cloud project, update only that environment's Vercel project, redeploy, test login/callback/logout with a fictional allowlisted account, and then disable/delete the superseded secret or client. Recheck authorized origins and redirect URIs; do not reuse the Production client in Staging.
+
+### Microsoft Entra OAuth secret
+
+Create or rotate the client secret in the matching Microsoft Entra app registration, update only that environment's Vercel project, redeploy, and test login/callback/logout with a fictional account. Confirm the callback uses `/api/auth/callback/microsoft-entra-id`, the app registration remains configured for token version 2, and no Production secret or client ID is reused by Staging. Revoke the superseded secret only after the replacement deployment is healthy.
 
 ### Private Blob credential
 
