@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { authAuditLogger, logAuthEvent } from "@/lib/auth-audit";
@@ -7,7 +8,10 @@ import { registrationsEnabled } from "@/lib/operational-controls";
 
 export const {handlers,auth,signIn,signOut}=NextAuth({
   adapter: PrismaAdapter(prisma),
-  providers: [Google],
+  providers: [
+    Google,
+    ...(process.env.AUTH_MICROSOFT_ENTRA_ID_ID?.trim()&&process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET?.trim()?[MicrosoftEntraID]:[])
+  ],
   pages: { signIn: "/login", error: "/auth/error" },
   session: { strategy: "database" },
   logger: authAuditLogger,

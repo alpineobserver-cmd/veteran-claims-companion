@@ -18,7 +18,7 @@ test("signed-in navigation exposes a direct, recoverable sign-out path",async()=
   assert.match(account,/await signOut\(\{redirectTo:"\/"\}\)/);
 });
 
-test("login page presents one Google action and retry guidance",liveBoundaryOptions,async()=>{
+test("login page presents supported sign-in actions and retry guidance",liveBoundaryOptions,async()=>{
   const login=await fetch(new URL("/login?retry=1",baseUrl),{redirect:"manual"});
   assert.equal(login.status,200);
   const html=await login.text();
@@ -27,14 +27,18 @@ test("login page presents one Google action and retry guidance",liveBoundaryOpti
   assert.match(html,/Alpha data boundary/);
 });
 
-test("Auth.js publishes only the canonical Google provider",liveBoundaryOptions,async()=>{
+test("Auth.js publishes configured canonical providers",liveBoundaryOptions,async()=>{
   const response=await fetch(new URL("/api/auth/providers",baseUrl),{redirect:"manual"});
   assert.equal(response.status,200);
   assert.match(response.headers.get("cache-control")||"",/no-store/);
   const providers=await response.json();
-  assert.deepEqual(Object.keys(providers),["google"]);
+  assert.ok(Object.hasOwn(providers,"google"));
   assert.equal(providers.google.signinUrl,`${expectedOrigin}/api/auth/signin/google`);
   assert.equal(providers.google.callbackUrl,`${expectedOrigin}/api/auth/callback/google`);
+  if(Object.hasOwn(providers,"microsoft-entra-id")){
+    assert.equal(providers["microsoft-entra-id"].signinUrl,`${expectedOrigin}/api/auth/signin/microsoft-entra-id`);
+    assert.equal(providers["microsoft-entra-id"].callbackUrl,`${expectedOrigin}/api/auth/callback/microsoft-entra-id`);
+  }
 });
 
 test("unauthenticated session is empty and private",liveBoundaryOptions,async()=>{
