@@ -18,8 +18,7 @@ export async function POST(request:Request,context:Context){
   if(!document)return NextResponse.json({error:"Document not found."},{status:404});
   try{
     const ticket=issueDocumentDownloadTicket(document.id,session.user.id);
-    const url=`/api/documents/${encodeURIComponent(document.id)}/content?token=${encodeURIComponent(ticket.token)}`;
-    return NextResponse.json({url,expiresAt:new Date(ticket.expiresAt).toISOString()},{headers:{"Cache-Control":"private, no-store","Referrer-Policy":"no-referrer"}});
+    return NextResponse.json({token:ticket.token,expiresAt:new Date(ticket.expiresAt).toISOString()},{headers:{"Cache-Control":"private, no-store","Referrer-Policy":"no-referrer"}});
   }catch(reason){
     emitSecurityEvent("document_ticket_failed",{operation:"ISSUE_TICKET",scope:"document-download",code:reason instanceof DocumentDownloadConfigurationError?reason.name:securityEventErrorCode(reason)},"error");
     return NextResponse.json({error:"Secure document download is unavailable."},{status:503});

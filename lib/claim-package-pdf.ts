@@ -1,6 +1,7 @@
 import { evidenceStatusLabel, intentToFileLabel, type EvidenceMap, type IntentToFileStatus } from "./claim-builder-intelligence";
 import type { StatementProvenance } from "./statement-provenance";
-type PackageInput={condition:string;claimType:string;intentToFileStatus:IntentToFileStatus;intentToFileDate:string;name:string;statement:string;statementProvenance:StatementProvenance;timeline:{date:string;title:string;details:string;source:string;approximate:boolean}[];evidenceMap:EvidenceMap;selectedEvidence:string[];linkedDocuments:{factId:string;documentName:string}[];qualityFindings:{level:string;title:string;detail:string}[]};
+import { statementFactSourceKind, statementFactSourceLabel } from "./statement-source-labels";
+type PackageInput={condition:string;claimType:string;intentToFileStatus:IntentToFileStatus;intentToFileDate:string;name:string;statement:string;statementMode:""|"ai"|"template"|"edited"|"stale";statementProvenance:StatementProvenance;timeline:{date:string;title:string;details:string;source:string;approximate:boolean}[];evidenceMap:EvidenceMap;selectedEvidence:string[];linkedDocuments:{factId:string;documentId:string;documentName:string;pageReference:string}[];qualityFindings:{level:string;title:string;detail:string}[]};
 const factLabels:Record<string,string>={current:"Current condition",onset:"Onset or worsening",service:"In-service event or circumstances",function:"Symptoms and functional effects",treatment:"Treatment history",worsening:"Change since prior decision",secondary:"Secondary relationship"};
 const clean=(value:string)=>value.normalize("NFKD").replace(/[^\x20-\x7E\n]/g,"-").replace(/\s+/g," ").trim();
 const escapePdf=(value:string)=>value.replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");
@@ -24,16 +25,19 @@ export function createClaimPackagePdf(input:PackageInput){
   heading("Personal statement");
   input.statement.split(/\n\s*\n/).filter(Boolean).forEach(value=>paragraph(value));
   heading("Statement sources");
-  paragraph("This trace shows which saved answer or timeline entry each factual statement came from. A source link does not prove the fact or mean a document supports every word.",{size:8,gap:9});
+  paragraph("This trace separates factual sources from drafting language. A citation helps locate a record; it does not prove the fact or mean a document supports every word.",{size:8,gap:9});
+  const draftingLabel=input.statementMode==="ai"?"AI-drafted wording":input.statementMode==="template"?"Guided-template wording":input.statementMode==="edited"?"Edited or drafting language":"Drafting language";
   if(input.statementProvenance.sentences.length)input.statementProvenance.sentences.forEach((sentence,index)=>{
     ensure(56);paragraph(`${index+1}. ${sentence.text}`,{bold:true,gap:3});
+    paragraph(`Wording: ${draftingLabel}`,{size:8,indent:10,gap:2});
     if(sentence.origins.length)sentence.origins.forEach(origin=>{
-      paragraph(`From: ${origin.label} - ${origin.excerpt}`,{size:8,indent:10,gap:2});
+      const kind=statementFactSourceKind(origin,input.evidenceMap);
+      paragraph(`${statementFactSourceLabel[kind]}: ${origin.label} - ${origin.excerpt}`,{size:8,indent:10,gap:2});
       if(origin.factId){
         const evidence=input.evidenceMap[origin.factId];
-        const files=input.linkedDocuments.filter(document=>document.factId===origin.factId).map(document=>document.documentName);
+        const files=input.linkedDocuments.filter(document=>document.factId===origin.factId);
         if(evidence)paragraph(`Related support: ${evidenceStatusLabel(evidence.status)}${evidence.source?` - ${evidence.source}`:""}`,{size:8,indent:10,gap:2});
-        if(files.length)paragraph(`Uploaded files linked to this fact: ${[...new Set(files)].join(", ")}`,{size:8,indent:10,gap:2});
+        if(kind==="record")files.forEach(file=>paragraph(`Record citation: ${file.documentName} - ${file.pageReference}`,{size:8,indent:10,gap:2}));
       }
     });
     else paragraph("Source review needed - this wording is not clearly traceable to a saved answer or timeline event.",{size:8,indent:10,gap:4});
@@ -44,7 +48,7 @@ export function createClaimPackagePdf(input:PackageInput){
   if(input.selectedEvidence.length)input.selectedEvidence.forEach(bullet);else paragraph("No evidence types were selected.");
   y-=5;line("Fact-to-evidence links",{size:11,bold:true,leading:18});
   const links=Object.entries(input.evidenceMap);if(links.length)links.forEach(([fact,link])=>bullet(`${factLabels[fact]||fact}: ${evidenceStatusLabel(link.status)}${link.source?` - ${link.source}`:""}`));else paragraph("No support statuses were entered for the major facts.");
-  if(input.linkedDocuments.length){y-=5;line("Uploaded document links",{size:11,bold:true,leading:18});input.linkedDocuments.forEach(item=>bullet(`${factLabels[item.factId]||item.factId}: ${item.documentName}`))}else paragraph("No uploaded files were linked to a specific fact. This does not mean supporting information is absent.",{size:9});
+  if(input.linkedDocuments.length){y-=5;line("Uploaded document links",{size:11,bold:true,leading:18});input.linkedDocuments.forEach(item=>bullet(`${factLabels[item.factId]||item.factId}: ${item.documentName}${item.pageReference?` - ${item.pageReference}`:""}`))}else paragraph("No uploaded files were linked to a specific fact. This does not mean supporting information is absent.",{size:9});
   ensure(90);heading("Readiness checks");
   if(input.qualityFindings.length)input.qualityFindings.forEach(item=>{ensure(50);line(`[${item.level.toUpperCase()}] ${item.title}`,{bold:true});paragraph(item.detail,{indent:10})});else paragraph("No automated issues were identified. This does not replace review by the person making the statement or an accredited representative.");
   ensure(105);heading("Final review");

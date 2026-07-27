@@ -1,4 +1,4 @@
-export const DEFAULT_CANONICAL_ALPHA_HOST="veteran-claims-companion.vercel.app";
+export const DEFAULT_CANONICAL_ALPHA_HOST="debriefclaims.com";
 
 type CanonicalRedirectInput={
   requestUrl:URL;

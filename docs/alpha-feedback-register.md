@@ -55,7 +55,7 @@ When uncertain between two levels, use the higher level until reproduction clari
 
 | ID | Received | Tester | Category | Severity | Workflow stage | Environment | Fictional scenario | Summary | Status | Owner | Duplicate of | Resolution/evidence |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| AF-0001 | 2026-07-19 | T-UNASSIGNED | Usability | High | Public access | Production; browser unknown | Not applicable | A protected Vercel deployment alias was shared, so a visitor reached Vercel access rather than the Debrief splash page. | Resolved | Product/Engineering | — | Canonical URL independently returned `200`; protected aliases returned Vercel SSO redirects. README and tester-link guidance identify `https://veteran-claims-companion.vercel.app` as the only public Alpha address. Follow-up automation: `TEST-006`. |
+| AF-0001 | 2026-07-19 | T-UNASSIGNED | Usability | High | Public access | Production; browser unknown | Not applicable | A protected Vercel deployment alias was shared, so a visitor reached Vercel access rather than the Debrief splash page. | Resolved | Product/Engineering | — | Canonical URL independently returned `200`; protected aliases returned Vercel SSO redirects. README and tester-link guidance identify `https://debriefclaims.com` as the only public Alpha address. Follow-up automation: `TEST-006`. |
 | AF-0002 | 2026-07-20 | T-UNASSIGNED | Missing feature | High | Claim Builder — Claim details | Production; multiple users; device/browser not reported | Not applicable | The claim process did not ask whether the user had submitted an intent to file, risking omission of an important filing-timeline checkpoint. | Ready to verify | Product/Engineering | — | Added required status selection, optional date, official VA guidance, readiness/PDF retention, and three regression checks. Production verification remains after deployment. |
 
 ## Detailed records
@@ -75,7 +75,7 @@ When uncertain between two levels, use the higher level until reproduction clari
 - **Observed:** The visitor reached Vercel's protected-deployment access flow and believed Vercel had to be downloaded.
 - **Reproduction:** Open a generated deployment or branch alias while signed out of Vercel.
 - **Cause:** Protected Vercel aliases were available alongside the canonical public production domain. The access gate runs before Debrief middleware, so the application cannot redirect those protected requests.
-- **Resolution:** Share only `https://veteran-claims-companion.vercel.app`. The canonical address was independently verified as public; generated deployment and branch aliases were verified as protected.
+- **Resolution:** Share only `https://debriefclaims.com`. The canonical address was independently verified as public; generated deployment and branch aliases remain non-public infrastructure addresses.
 - **Verification:** Anonymous request to the canonical origin returned the Debrief application with HTTP `200`. Anonymous requests to generated aliases redirected to Vercel SSO.
 - **Regression/follow-up:** Complete `TEST-006` and `OPS-012` in `docs/product-backlog.md` so release checks and tester communications reject protected aliases.
 - **Sensitive information recorded:** No.

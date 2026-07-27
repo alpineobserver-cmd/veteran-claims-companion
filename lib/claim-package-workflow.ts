@@ -1,6 +1,7 @@
 import { claimDraftSchema } from "./claim-drafts";
 import { factRows, hasSupportingInformation, initialAnswers, normalizeEvidenceMap, qualityFindings, type Answers } from "./claim-builder-intelligence";
 import { statementProvenanceSummary } from "./statement-provenance";
+import { normalizeDocumentCitations, recordCitationGaps } from "./statement-source-labels";
 
 export const packageStatuses=["planned","requested","obtained","reviewed","exported","submitted"] as const;
 export type PackageStatus=(typeof packageStatuses)[number];
@@ -42,6 +43,7 @@ export function validatePackageClaim(value:unknown,title:string):PackageValidati
   const sections=statement.split(/\n\s*\n/).map(section=>section.trim()).filter(Boolean);
   const confirmations=draft.confirmations||{};
   const evidenceMap=normalizeEvidenceMap(draft.evidenceMap);
+  const documentCitations=normalizeDocumentCitations(draft.documentCitations);
   const facts=factRows(answers,condition);
   const findings=qualityFindings(answers,condition,(draft.timeline||[]) as never[],evidenceMap);
   const validations:PackageValidation[]=[];
@@ -56,6 +58,8 @@ export function validatePackageClaim(value:unknown,title:string):PackageValidati
   if(statement&&(!sections.length||sections.some((_,index)=>!confirmations[String(index)])))add("verification","blocker","Statement verification is incomplete","Confirm every statement section before treating this condition as reviewed.");
   if(facts.some(fact=>!hasSupportingInformation(evidenceMap[fact.id])))add("evidence","attention","Some facts have no identified support","Classify each key fact as a record, personal recollection, witness statement, pending record, or not identified.");
   if(facts.some(fact=>evidenceMap[fact.id]?.status==="record_not_obtained"))add("pending-records","attention","An identified record is still pending","The package can continue, but the record is not counted as available evidence.");
+  const citationGaps=recordCitationGaps(draft.statementProvenance,evidenceMap,draft.documentLinks||{},documentCitations);
+  if(citationGaps.length)add("record-citations","blocker",`${citationGaps.length} uploaded-record ${citationGaps.length===1?"citation is":"citations are"} missing`,"Add a page, section, or other precise location for every uploaded record that supports wording used in the statement.");
   if(answers.claimType==="Secondary claim"&&!answers.clinicianDiscussion.trim())add("secondary-source","check","Medical relationship source is not identified","A personal statement may describe observations, but a medical relationship should be attributed to a qualified source or record.");
   if(!answers.intentToFileStatus||answers.intentToFileStatus==="not_sure")add("intent","check","Intent-to-file status needs confirmation","Confirm the current status and any VA confirmation outside Debrief. VA determines effective dates.");
   if(findings.some(finding=>finding.level==="check"&&finding.id==="contradiction"))add("contradiction","blocker","Questionnaire answers may conflict","Review timing or frequency answers before exporting the package.");
@@ -73,7 +77,8 @@ export function evidenceChecklist(value:unknown,title:string){
   const answers={...initialAnswers,...draft.answers} as Answers;
   const condition=(answers.condition==="Other / condition not listed"?answers.otherCondition:answers.condition)||title;
   const map=normalizeEvidenceMap(draft.evidenceMap);
-  return factRows(answers,condition).map(fact=>({id:fact.id,fact:fact.fact,suggested:fact.suggested,status:map[fact.id]?.status||"none_identified",source:map[fact.id]?.source||"",documentIds:draft.documentLinks?.[fact.id]||[]}));
+  const citations=normalizeDocumentCitations(draft.documentCitations);
+  return factRows(answers,condition).map(fact=>({id:fact.id,fact:fact.fact,suggested:fact.suggested,status:map[fact.id]?.status||"none_identified",source:map[fact.id]?.source||"",documentIds:draft.documentLinks?.[fact.id]||[],documentCitations:citations[fact.id]||{}}));
 }
 
 export function validatePackageEnvironment(documents:Array<{sha256:string;originalName:string}>,formsVerified:string,now=new Date()):PackageValidation[]{

@@ -25,7 +25,7 @@ AUTH_E2E_BASE_URL=http://localhost:3000 npm run test:auth
 After deployment, run the same non-credential boundary checks against Production:
 
 ```bash
-AUTH_E2E_BASE_URL=https://veteran-claims-companion.vercel.app npm run test:auth
+AUTH_E2E_BASE_URL=https://debriefclaims.com npm run test:auth
 ```
 
 The automated suite checks the login page, provider and callback URLs, unauthenticated session response, cache controls, and branded error recovery.
@@ -34,7 +34,7 @@ If `AUTH_E2E_BASE_URL` is omitted, the tests that need a running website are rep
 ## Human callback verification
 
 1. Open a private browser window.
-2. Visit only `https://veteran-claims-companion.vercel.app/login`.
+2. Visit only `https://debriefclaims.com/login`.
 3. Select **Continue with Google** once.
 4. Sign in with the dedicated fictional Alpha account.
 5. Confirm Google returns to `/dashboard` on the canonical domain.

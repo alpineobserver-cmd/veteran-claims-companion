@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { securitySubkey } from "@/lib/key-derivation";
 
 export const DOCUMENT_DOWNLOAD_TTL_MS=60_000;
 const CLOCK_SKEW_MS=5_000;
@@ -18,13 +19,10 @@ type TicketOptions={now?:number;secret?:string};
 
 export class DocumentDownloadConfigurationError extends Error {}
 
-function signingSecret(explicit?:string){
-  const secret=explicit??process.env.AUTH_SECRET??process.env.NEXTAUTH_SECRET;
-  if(!secret||secret.length<32)throw new DocumentDownloadConfigurationError("A permanent authentication secret is required for secure document downloads.");
-  return secret;
+function signingKey(explicit?:string){
+  try{return securitySubkey("document-download",explicit)}catch{throw new DocumentDownloadConfigurationError("A permanent authentication secret is required for secure document downloads.")}
 }
-
-function signature(payload:string,secret:string){
+function signature(payload:string,secret:Buffer){
   return createHmac("sha256",secret).update(payload).digest("base64url");
 }
 
@@ -38,7 +36,7 @@ export function issueDocumentDownloadTicket(documentId:string,userId:string,opti
   const now=options.now??Date.now();
   const payload:TicketPayload={version:1,purpose:TICKET_PURPOSE,documentId,userId,issuedAt:now,expiresAt:now+DOCUMENT_DOWNLOAD_TTL_MS,nonce:randomBytes(12).toString("base64url")};
   const encoded=Buffer.from(JSON.stringify(payload)).toString("base64url");
-  return {token:`${encoded}.${signature(encoded,signingSecret(options.secret))}`,expiresAt:payload.expiresAt};
+  return {token:`${encoded}.${signature(encoded,signingKey(options.secret))}`,expiresAt:payload.expiresAt};
 }
 
 export function verifyDocumentDownloadTicket(token:string,documentId:string,userId:string,options:TicketOptions={}){
@@ -47,7 +45,7 @@ export function verifyDocumentDownloadTicket(token:string,documentId:string,user
   if(parts.length!==2)return false;
   const [encoded,provided]=parts;
   try{
-    const expected=signature(encoded,signingSecret(options.secret));
+    const expected=signature(encoded,signingKey(options.secret));
     const providedBytes=Buffer.from(provided,"base64url");
     const expectedBytes=Buffer.from(expected,"base64url");
     const payloadBytes=Buffer.from(encoded,"base64url");

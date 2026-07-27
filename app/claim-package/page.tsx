@@ -2,17 +2,19 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { claimDraftSchema } from "@/lib/claim-drafts";
-import { factRows, hasAvailableRecord, initialAnswers, normalizeEvidenceMap, type Answers } from "@/lib/claim-builder-intelligence";
+import { factRows, hasAvailableRecord, initialAnswers, normalizeEvidenceMap, type Answers, type EvidenceMap } from "@/lib/claim-builder-intelligence";
 import { evidenceChecklist, packageReadiness, packageStatus, validatePackageClaim, validatePackageEnvironment, type PackageStatus, type PackageValidation } from "@/lib/claim-package-workflow";
 import { prisma } from "@/lib/prisma";
 import { VA_FORM_DOWNLOADS_VERIFIED } from "@/lib/va-forms";
 import { PackageStatusControl } from "@/components/package-status-control";
 import { statementProvenanceSummary, type StatementProvenance } from "@/lib/statement-provenance";
+import { normalizeDocumentCitations, statementFactSourceKind, statementFactSourceLabel, type DocumentCitations } from "@/lib/statement-source-labels";
 import { AlertTriangle, ArrowRight, Check, ClipboardCheck, FileText, Files, FolderOpen, Link2, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import "./claim-package.css";
 import "./statement-provenance.css";
+import "./source-citations.css";
 
 export const metadata:Metadata={title:"Claim package",description:"Review fictional condition statements, supporting items, and preparation next steps together."};
 
@@ -33,7 +35,10 @@ type PackageItem={
   progress:number;
   updatedAt:Date;
   statement:string;
+  statementMode:""|"ai"|"template"|"edited"|"stale";
   statementProvenance:StatementProvenance;
+  documentCitations:DocumentCitations;
+  evidenceMap:EvidenceMap;
   sourcedStatements:number;
   unsourcedStatements:number;
   statementSections:number;
@@ -60,14 +65,16 @@ function packageItem(claim:PackageClaim,documentNames:Record<string,string>):Pac
   const evidenceMap=normalizeEvidenceMap(draft?.evidenceMap);
   const facts=factRows(answers,condition);
   const statement=draft?.statement?.trim()||"";
+  const statementMode=draft?.statementMode||"";
   const sections=statement.split(/\n\s*\n/).map(value=>value.trim()).filter(Boolean);
   const confirmations=draft?.confirmations||{};
   const validations=validatePackageClaim(claim.draftData,claim.title);
   const statementProvenance=(draft?.statementProvenance||{version:1,sentences:[]}) as StatementProvenance;
+  const documentCitations=normalizeDocumentCitations(draft?.documentCitations);
   const sourceSummary=statementProvenanceSummary(statementProvenance);
   return {
-    id:claim.id,condition,claimType:answers.claimType,progress:claim.progress,updatedAt:claim.updatedAt,statement,
-    statementProvenance,sourcedStatements:sourceSummary.mapped,unsourcedStatements:sourceSummary.unmapped,
+    id:claim.id,condition,claimType:answers.claimType,progress:claim.progress,updatedAt:claim.updatedAt,statement,statementMode,
+    statementProvenance,documentCitations,evidenceMap,sourcedStatements:sourceSummary.mapped,unsourcedStatements:sourceSummary.unmapped,
     statementSections:sections.length,
     confirmedSections:sections.filter((_,index)=>confirmations[String(index)]).length,
     evidenceFacts:facts.length,
@@ -136,10 +143,11 @@ function ConditionCard({item}:{item:PackageItem}){
   const state=itemState(item);
   const blockers=item.validations.filter(validation=>validation.level==="blocker");
   const notices=item.validations.filter(validation=>validation.level!=="blocker");
+  const draftingLabel=item.statementMode==="ai"?"AI-drafted wording":item.statementMode==="template"?"Guided-template wording":item.statementMode==="edited"?"Edited or drafting language":"Drafting language";
   return <article className={`package-condition readiness-${item.readiness}`}><div className="package-condition-main"><div className="package-condition-title"><span className={`package-state ${state.tone}`}>{state.label}</span><span className={`readiness-pill ${item.readiness}`}>{item.readiness==="ready"?"Ready for export":item.readiness==="review"?"Review suggested":"Needs attention"}</span><h3>{item.condition}</h3><p>{item.claimType||"Claim path not selected"} · Updated {new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",year:"numeric"}).format(item.updatedAt)}</p></div><div className="package-progress"><span><i style={{width:`${item.progress}%`}}/></span><strong>{item.progress}% prepared</strong></div><nav className="condition-workflow" aria-label={`${item.condition} statement workflow`}><a href={`/claim-builder?claim=${item.id}&section=statement`}><FileText size={15}/><span><strong>Personal statement</strong><small>{item.statement?"Draft saved":"Draft needed"}</small></span><ArrowRight size={13}/></a><a href={`/buddy-statement?claim=${item.id}`}><Users size={15}/><span><strong>Buddy statements</strong><small>{item.buddyStatements?`${item.buddyStatements} saved`:"Optional"}</small></span><ArrowRight size={13}/></a><a href={`/claim-builder?claim=${item.id}&section=package`}><ClipboardCheck size={15}/><span><strong>Review and download</strong><small>{item.statementSections&&item.confirmedSections===item.statementSections?"Verified":"Review needed"}</small></span><ArrowRight size={13}/></a></nav>
     {(blockers.length>0||notices.length>0)&&<details className="package-validation" open={blockers.length>0}><summary><AlertTriangle size={14}/>{blockers.length?`${blockers.length} blocking ${blockers.length===1?"item":"items"}`:`${notices.length} review ${notices.length===1?"item":"items"}`}</summary><ul>{item.validations.map(validation=><li className={validation.level} key={validation.id}><strong>{validation.title}</strong><span>{validation.detail}</span></li>)}</ul></details>}
     <details className="package-evidence"><summary><Link2 size={14}/>Evidence checklist and sources</summary><div>{item.checklist.map(row=><section key={row.id}><strong>{row.fact}</strong><span>{row.source||row.suggested}</span><small>{row.status.replaceAll("_"," ")}{row.documentIds.length?` · ${row.documentIds.map(id=>item.documentNames[id]).filter(Boolean).join(", ")}`:" · no uploaded file linked"}</small></section>)}</div><p>This checklist organizes identified support; it does not predict whether evidence is sufficient or guarantee a claim result.</p></details>
-    {item.statementProvenance.sentences.length>0&&<details className={`package-sources ${item.unsourcedStatements?"has-warning":""}`}><summary><Link2 size={14}/>Personal statement source trace · {item.sourcedStatements} of {item.statementProvenance.sentences.length} linked</summary><div>{item.statementProvenance.sentences.map(sentence=><section className={sentence.status} key={sentence.id}><p>“{sentence.text}”</p>{sentence.origins.length?sentence.origins.map((origin,index)=>{const fact=item.checklist.find(row=>row.id===origin.factId);return <span key={`${origin.field||origin.timelineEventId}-${index}`}><strong>{origin.label}</strong><small>{origin.excerpt}</small>{fact&&<em>Related support: {fact.status.replaceAll("_"," ")}{fact.documentIds.length?` · ${fact.documentIds.map(id=>item.documentNames[id]).filter(Boolean).join(", ")}`:""}</em>}</span>}):<span className="source-needed"><strong>Source review needed</strong><small>Revise this wording or add the supporting answer before export.</small></span>}</section>)}</div><p>These links identify where wording originated; they do not prove a fact or guarantee that a related document supports every word.</p></details>}
+    {item.statementProvenance.sentences.length>0&&<details className={`package-sources ${item.unsourcedStatements?"has-warning":""}`}><summary><Link2 size={14}/>Personal statement source trace · {item.sourcedStatements} of {item.statementProvenance.sentences.length} linked</summary><div className="source-label-legend" aria-label="Statement source labels"><span className="source-kind user">Veteran-provided fact</span><span className="source-kind witness">Witness observation</span><span className="source-kind record">Record-derived fact</span><span className="source-kind drafting">{draftingLabel}</span></div><div>{item.statementProvenance.sentences.map(sentence=><section className={sentence.status} key={sentence.id}><div className="sentence-source-heading"><p>“{sentence.text}”</p>{item.statementMode&&<span className="source-kind drafting">{draftingLabel}</span>}</div>{sentence.origins.length?sentence.origins.map((origin,index)=>{const fact=item.checklist.find(row=>row.id===origin.factId);const kind=statementFactSourceKind(origin,item.evidenceMap);return <span className={`source-origin ${kind}`} key={`${origin.field||origin.timelineEventId}-${index}`}><span className={`source-kind ${kind}`}>{statementFactSourceLabel[kind]}</span><strong>{origin.label}</strong><small>{origin.excerpt}</small>{fact&&<em>Source classification: {fact.status.replaceAll("_"," ")}{fact.source?` · ${fact.source}`:""}</em>}{kind==="record"&&fact?.documentIds.map(id=><em className={`record-citation ${fact.documentCitations[id]?"":"missing"}`} key={id}>{item.documentNames[id]||"Uploaded document"} · {fact.documentCitations[id]?`Citation: ${fact.documentCitations[id]}`:"Page or section reference required"}</em>)}</span>}):<span className="source-needed"><span className="source-kind drafting">{draftingLabel}</span><strong>Source review needed</strong><small>Revise this wording or add the supporting answer before export.</small></span>}</section>)}</div><p>Fact labels identify the saved source classification. Drafting labels identify who or what organized the wording. A citation helps locate a record; it does not prove the fact or guarantee the file supports every word.</p></details>}
     {item.statement&&<blockquote>{item.statement.slice(0,220)}{item.statement.length>220?"…":""}</blockquote>}</div><div className="package-condition-actions"><PackageStatusControl claimId={item.id} status={item.status} version={item.draftVersion}/><a className="button secondary" href={conditionHref(item)}>{state.action}<ArrowRight size={14}/></a></div></article>;
 }
 

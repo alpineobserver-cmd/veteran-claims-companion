@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import type { Metadata } from "next";
 import "./buddy-statement.css";
+import "./buddy-sources.css";
 
 export const metadata:Metadata={title:"Buddy statement",description:"Prepare and save a fictional witness or buddy statement for a claim workspace."};
 

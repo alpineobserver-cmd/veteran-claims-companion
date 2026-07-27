@@ -9,8 +9,18 @@ const root=process.cwd();const read=(relative:string)=>readFile(path.join(root,r
 
 test("cross-origin mutation protection accepts same-origin and rejects a foreign origin",()=>{
   assert.equal(rejectCrossOriginMutation(new Request("https://debrief.test/api/claims",{method:"POST",headers:{origin:"https://debrief.test"}})),null);
+  assert.equal(rejectCrossOriginMutation(new Request("https://debrief.test/api/claims",{method:"POST",headers:{"sec-fetch-site":"same-origin"}})),null);
+  assert.equal(rejectCrossOriginMutation(new Request("https://debrief.test/api/claims",{method:"POST"}))?.status,403);
   const rejected=rejectCrossOriginMutation(new Request("https://debrief.test/api/claims",{method:"POST",headers:{origin:"https://attacker.test"}}));
   assert.equal(rejected?.status,403);
+});
+
+test("anonymous compute routes apply a durable privacy-safe rate limit",async()=>{
+  const [packageRoute,ai,rateLimit]=await Promise.all([read("app/api/claim-package/route.ts"),read("app/api/ai/personal-statement/route.ts"),read("lib/rate-limit.ts")]);
+  assert.match(packageRoute,/enforceAnonymousRateLimit\(request,\[rateLimitPolicies\.anonymousPackagePdf\]/);
+  assert.match(ai,/enforceAnonymousRateLimit\(request,\[rateLimitPolicies\.anonymousTemplateDraft\]/);
+  assert.match(rateLimit,/x-vercel-forwarded-for/);
+  assert.match(rateLimit,/function anonymousPrincipal/);
 });
 
 test("request-size checks fail closed for missing, invalid, oversized, or chunked lengths",()=>{

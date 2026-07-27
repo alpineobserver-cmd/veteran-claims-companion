@@ -5,7 +5,7 @@ if(!isProduction){
   process.exit(0);
 }
 
-const canonicalHost=process.env.AUTH_CANONICAL_HOST||"veteran-claims-companion.vercel.app";
+const canonicalHost=process.env.AUTH_CANONICAL_HOST||"debriefclaims.com";
 const problems=[];
 
 for(const key of ["AUTH_SECRET","AUTH_GOOGLE_ID","AUTH_GOOGLE_SECRET","AUTH_URL"]){

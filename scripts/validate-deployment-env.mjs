@@ -1,5 +1,5 @@
 const allowed=new Set(["development","preview","staging","production"]);
-const canonicalProductionHost="veteran-claims-companion.vercel.app";
+const canonicalProductionHost="debriefclaims.com";
 const inferred=process.env.VERCEL_ENV==="production"?"production":process.env.VERCEL_ENV==="preview"?"preview":"development";
 const appEnvironment=(process.env.APP_ENV||inferred).trim().toLowerCase();
 const dataEnvironment=process.env.DATA_ENVIRONMENT?.trim().toLowerCase();
@@ -41,6 +41,7 @@ if(["gcs","google-cloud-storage"].includes(storageProvider||"")){
 
 for(const key of operationalControls){
   const value=process.env[key]?.trim().toLowerCase();
+  if(["staging","production"].includes(appEnvironment)&&!value)problems.push(`${key} must be explicitly set for hosted deployments.`);
   if(value&&!operationalValues.has(value))problems.push(`${key} must use an explicit enabled or disabled value.`);
 }
 
