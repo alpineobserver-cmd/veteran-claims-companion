@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17 3 * * 1"
+  push:
+    branches: [codex/zap-staging-passive-rescan]
 
 permissions:
   contents: read
@@ -18,10 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - name: Run passive OWASP ZAP baseline against the canonical public origin
+      - name: Run passive OWASP ZAP baseline against isolated Staging
         uses: zaproxy/action-baseline@f948cb8d66e25e330a23e64e3fc72a5c0018b16d # master as reviewed July 30, 2026
         with:
-          target: https://debriefclaims.com
+          target: https://debrief-staging-khaki.vercel.app
           cmd_options: "-a -T 5"
           allow_issue_writing: false
           fail_action: false
