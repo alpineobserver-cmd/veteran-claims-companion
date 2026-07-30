@@ -138,13 +138,16 @@ async function refreshDefinitions(){
 
 createServer(async(request,response)=>{
   if(request.method!=="POST")return sendJson(response,405,{error:"method_not_allowed"});
-  if(request.url==="/refresh-definitions"){
+  // Eventarc appends delivery-control query parameters. Route only by the
+  // pathname so those transport details cannot turn a valid event into 404.
+  const pathname=new URL(request.url||"/",`http://${request.headers.host||"localhost"}`).pathname;
+  if(pathname==="/refresh-definitions"){
     // Cloud Run requires an authenticated Scheduler service account for this route.
     // Keeping authorization at the private service boundary avoids copying a secret
     // into a Scheduler job configuration.
     try{await refreshDefinitions();return sendJson(response,204)}catch{return sendJson(response,503,{error:"definitions_unavailable"})}
   }
-  if(request.url!=="/events")return sendJson(response,404,{error:"not_found"});
+  if(pathname!=="/events")return sendJson(response,404,{error:"not_found"});
   const chunks=[];for await(const chunk of request)chunks.push(chunk);let event;
   try{event=JSON.parse(Buffer.concat(chunks).toString("utf8"))}catch{return sendJson(response,400,{error:"invalid_event"})}
   // Eventarc sends CloudEvents in binary HTTP mode to Cloud Run: the request
