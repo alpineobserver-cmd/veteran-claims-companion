@@ -20,7 +20,7 @@ export async function GET(){
       progressItems:{orderBy:{key:"asc"},select:{key:true,label:true,complete:true,updatedAt:true}}
     }},
     statements:{orderBy:{createdAt:"asc"},select:{id:true,claimId:true,templateId:true,title:true,content:true,createdAt:true,updatedAt:true}},
-    documents:{orderBy:{createdAt:"asc"},select:{id:true,claimId:true,originalName:true,mimeType:true,size:true,sha256:true,provider:true,status:true,syntheticConfirmed:true,createdAt:true,updatedAt:true,pages:{orderBy:{pageNumber:"asc"},select:{pageNumber:true,ocrText:true,createdAt:true,updatedAt:true}}}},
+    documents:{orderBy:{createdAt:"asc"},select:{id:true,claimId:true,originalName:true,mimeType:true,size:true,sha256:true,provider:true,status:true,syntheticConfirmed:true,scanEngine:true,scanEngineVersion:true,definitionVersion:true,scanAttemptCount:true,scanStartedAt:true,scanCompletedAt:true,scanErrorCode:true,createdAt:true,updatedAt:true,pages:{orderBy:{pageNumber:"asc"},select:{pageNumber:true,ocrText:true,createdAt:true,updatedAt:true}},scans:{orderBy:{createdAt:"asc"},select:{sourceGeneration:true,outcome:true,engine:true,engineVersion:true,definitionVersion:true,errorCode:true,completedAt:true,createdAt:true}}}},
     uploads:{orderBy:{createdAt:"asc"},select:{id:true,evidenceId:true,filename:true,mimeType:true,size:true,provider:true,createdAt:true}},
     auditEvents:{orderBy:{createdAt:"asc"},select:{id:true,claimId:true,documentId:true,action:true,metadata:true,createdAt:true}}
   }});
@@ -28,7 +28,7 @@ export async function GET(){
   const principalHash=rateLimitPrincipalHash(`user:${session.user.id}`);
   const [securityCounters,storageReconciliation]=await Promise.all([
     prisma.rateLimitBucket.findMany({where:{principalHash},orderBy:{windowStart:"asc"},select:{scope:true,windowStart:true,windowEndsAt:true,count:true}}),
-    prisma.storageReconciliationTask.findMany({where:{principalHash},orderBy:{createdAt:"asc"},select:{operation:true,scope:true,entityId:true,storageProvider:true,status:true,attempts:true,lastErrorCode:true,lastAttemptAt:true,resolvedAt:true,createdAt:true,updatedAt:true}})
+    prisma.storageReconciliationTask.findMany({where:{principalHash},orderBy:{createdAt:"asc"},select:{operation:true,scope:true,entityId:true,storageProvider:true,storageZone:true,status:true,attempts:true,lastErrorCode:true,lastAttemptAt:true,resolvedAt:true,createdAt:true,updatedAt:true}})
   ]);
   const exportedAt=new Date();
   const payload={

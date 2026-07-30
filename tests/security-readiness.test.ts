@@ -96,7 +96,7 @@ test("security-relevant runtime output is routed through the single event format
   const files=[
     "auth.ts","lib/auth-audit.ts","lib/rate-limit.ts","lib/storage-reconciliation.ts",
     "app/api/account/route.ts","app/api/ai/personal-statement/route.ts","app/api/claims/[id]/route.ts",
-    "app/api/documents/route.ts","app/api/documents/[id]/route.ts","app/api/documents/[id]/content/route.ts",
+    "app/api/documents/route.ts","app/api/documents/[id]/route.ts","app/api/documents/[id]/content/route.ts","app/api/internal/documents/scan/route.ts",
     "app/api/documents/[id]/download-link/route.ts"
   ];
   for(const file of files){

@@ -35,17 +35,45 @@ model Document {
   size Int
   sha256 String
   provider String
-  status DocumentStatus @default(TEST_ONLY)
+  status DocumentStatus @default(PENDING_SCAN)
+  quarantineKey String?
+  cleanStorageKey String?
+  objectGeneration String?
+  scanEngine String?
+  scanEngineVersion String?
+  definitionVersion String?
+  scanAttemptCount Int @default(0)
+  scanStartedAt DateTime?
+  scanCompletedAt DateTime?
+  scanErrorCode String?
   syntheticConfirmed Boolean @default(false)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
   pages DocumentPage[]
+  scans DocumentScan[]
   auditEvents AuditEvent[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId, createdAt])
   @@index([claimId, createdAt])
+}
+
+model DocumentScan {
+  id String @id @default(cuid())
+  documentId String
+  sourceGeneration String
+  outcome DocumentScanOutcome
+  engine String
+  engineVersion String?
+  definitionVersion String?
+  errorCode String?
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, sourceGeneration])
+  @@index([outcome, createdAt])
 }
 
 model DocumentPage {
@@ -135,6 +163,7 @@ model StorageReconciliationTask {
   entityId String?
   storageKey String?
   storageProvider String?
+  storageZone String?
   status String @default("PENDING")
   attempts Int @default(1)
   lastErrorCode String
@@ -357,6 +386,18 @@ enum DocumentStatus {
   QUARANTINED
   READY
   REJECTED
+  PENDING_SCAN
+  SCANNING
+  CLEAN
+  REJECTED_MALWARE
+  SCAN_FAILED
+  DELETING
+}
+
+enum DocumentScanOutcome {
+  CLEAN
+  REJECTED_MALWARE
+  FAILED
 }
 
 enum AuditAction {
@@ -364,4 +405,11 @@ enum AuditAction {
   DOCUMENT_UPLOADED
   DOCUMENT_DOWNLOADED
   DOCUMENT_DELETED
+  DOCUMENT_SCAN_QUEUED
+  DOCUMENT_SCAN_STARTED
+  DOCUMENT_SCAN_CLEAN
+  DOCUMENT_SCAN_REJECTED
+  DOCUMENT_SCAN_FAILED
+  DOCUMENT_SCAN_STALE
+  DOCUMENT_SCAN_PROMOTION_FAILED
 }

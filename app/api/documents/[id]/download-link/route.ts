@@ -5,6 +5,7 @@ import { rejectCrossOriginMutation } from "@/lib/request-security";
 import { enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { emitSecurityEvent, securityEventErrorCode } from "@/lib/security-events";
+import { documentIsDownloadable } from "@/lib/malware-scanning";
 
 export const runtime="nodejs";
 type Context={params:Promise<{id:string}>};
@@ -14,8 +15,9 @@ export async function POST(request:Request,context:Context){
   const session=await auth();if(!session?.user?.id)return NextResponse.json({error:"Sign in to download this document."},{status:401});
   const limited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.documentAccess],"Too many document requests. Please wait before trying again.");if(limited)return limited;
   const {id}=await context.params;
-  const document=await prisma.document.findFirst({where:{id,userId:session.user.id},select:{id:true}});
+  const document=await prisma.document.findFirst({where:{id,userId:session.user.id},select:{id:true,status:true,cleanStorageKey:true}});
   if(!document)return NextResponse.json({error:"Document not found."},{status:404});
+  if(!documentIsDownloadable(document.status)||!document.cleanStorageKey)return NextResponse.json({error:"This document is not available until its security scan completes."},{status:409,headers:{"Cache-Control":"private, no-store"}});
   try{
     const ticket=issueDocumentDownloadTicket(document.id,session.user.id);
     return NextResponse.json({token:ticket.token,expiresAt:new Date(ticket.expiresAt).toISOString()},{headers:{"Cache-Control":"private, no-store","Referrer-Policy":"no-referrer"}});

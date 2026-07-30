@@ -20,7 +20,7 @@
     "test:auth": "node --import tsx --test tests/auth-boundary.test.mjs tests/canonical-host.test.ts",
     "test:links": "node --test tests/canonical-links.test.mjs",
     "test:accessibility": "node --test tests/accessibility-contract.test.mjs",
-    "test:storage": "node --import tsx --test tests/document-storage-security.test.ts tests/document-upload-security.test.ts",
+    "test:storage": "node --import tsx --test tests/document-storage-security.test.ts tests/document-upload-security.test.ts tests/malware-scanning.test.ts",
     "test:controls": "node --import tsx --test tests/operational-controls.test.ts tests/ai-release-controls.test.ts",
     "test:data-controls": "node --import tsx --test tests/account-data-controls.test.ts",
     "test:rate-limit": "node --import tsx --test tests/durable-rate-limit.test.ts",

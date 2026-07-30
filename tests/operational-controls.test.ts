@@ -41,9 +41,9 @@ test("registration pause checks the provider account without blocking existing u
 
 test("deployment validation and the environment template enumerate every control",async()=>{
   const [validator,example]=await Promise.all([read("scripts/validate-deployment-env.mjs"),read(".env.example")]);
-  for(const key of ["DEBRIEF_UPLOADS_ENABLED","DEBRIEF_AI_GENERATION_ENABLED","DEBRIEF_REGISTRATIONS_ENABLED"]){
+  for(const key of ["DEBRIEF_UPLOADS_ENABLED","DEBRIEF_AI_GENERATION_ENABLED","DEBRIEF_REGISTRATIONS_ENABLED","DEBRIEF_MALWARE_SCANNING_ENABLED","DEBRIEF_REAL_DOCUMENTS_ENABLED"]){
     assert.match(validator,new RegExp(key));
-    assert.match(example,new RegExp(`${key}="true"`));
+    assert.match(example,new RegExp(`${key}="(?:true|false)"`));
   }
   assert.match(validator,/DEBRIEF_AI_POLICY_VERSION/);
   assert.match(example,/DEBRIEF_AI_POLICY_VERSION="personal-statement-v1"/);

@@ -4,12 +4,15 @@ import { Storage as GoogleStorage } from "@google-cloud/storage";
 import { del as deleteBlob, get as getBlob, put as putBlob } from "@vercel/blob";
 import { getVercelOidcToken } from "@vercel/oidc";
 import { ExternalAccountClient } from "google-auth-library";
+import type { DocumentStorageZone } from "@/lib/malware-scanning";
 
 export type StoredFile={data:Buffer;contentType?:string};
+export type StoredObject={key:string;generation?:string};
 
 export interface StorageProvider {
   readonly name:string;
-  put(file:Buffer,key:string,mimeType:string):Promise<{key:string}>;
+  readonly zone?:DocumentStorageZone;
+  put(file:Buffer,key:string,mimeType:string):Promise<StoredObject>;
   get(key:string):Promise<StoredFile|null>;
   delete(key:string):Promise<void>;
 }
@@ -26,6 +29,7 @@ function required(name:string){
 
 class LocalSyntheticStorageProvider implements StorageProvider {
   readonly name=storageProviderNames.local;
+  readonly zone:DocumentStorageZone="primary";
   private readonly root=path.resolve(process.cwd(),".data","synthetic-documents");
 
   private resolve(key:string){
@@ -41,6 +45,7 @@ class LocalSyntheticStorageProvider implements StorageProvider {
 
 class VercelPrivateBlobStorageProvider implements StorageProvider {
   readonly name=storageProviderNames.vercel;
+  readonly zone:DocumentStorageZone="primary";
   async put(file:Buffer,key:string,mimeType:string){const result=await putBlob(key,file,{access:"private",contentType:mimeType,addRandomSuffix:false,cacheControlMaxAge:60});return{key:result.pathname}}
   async get(key:string){const result=await getBlob(key,{access:"private",useCache:false});if(!result||result.statusCode!==200||!result.stream)return null;const data=Buffer.from(await new Response(result.stream).arrayBuffer());return{data,contentType:result.blob.contentType}}
   async delete(key:string){await deleteBlob(key)}
@@ -74,10 +79,22 @@ function isNotFound(reason:unknown){return typeof reason==="object"&&reason!==nu
 
 class GoogleCloudStorageProvider implements StorageProvider {
   readonly name=storageProviderNames.google;
-  private bucket(){return getGoogleStorageClient().bucket(required("GCS_BUCKET"))}
+  readonly zone:DocumentStorageZone;
+  constructor(zone:DocumentStorageZone="primary"){this.zone=zone}
+  private bucketName(){
+    const names:Record<DocumentStorageZone,string>={
+      primary:"GCS_BUCKET",quarantine:"GCS_QUARANTINE_BUCKET",clean:"GCS_CLEAN_BUCKET",rejected:"GCS_REJECTED_BUCKET"
+    };
+    return required(names[this.zone]);
+  }
+  private bucket(){return getGoogleStorageClient().bucket(this.bucketName())}
   async put(file:Buffer,key:string,mimeType:string){
-    await this.bucket().file(key).save(file,{resumable:false,validation:"crc32c",contentType:mimeType,metadata:{cacheControl:"private, no-store"},preconditionOpts:{ifGenerationMatch:0}});
-    return{key};
+    const object=this.bucket().file(key);
+    await object.save(file,{resumable:false,validation:"crc32c",contentType:mimeType,metadata:{cacheControl:"private, no-store"},preconditionOpts:{ifGenerationMatch:0}});
+    const [metadata]=await object.getMetadata();
+    const generation=String(metadata.generation||"");
+    if(!/^\d+$/.test(generation))throw new StorageConfigurationError("Google Cloud Storage did not return an immutable object generation.");
+    return{key,generation};
   }
   async get(key:string){
     const object=this.bucket().file(key);
@@ -96,16 +113,18 @@ export function configuredDocumentStorageName():StorageProviderName {
   throw new StorageConfigurationError("DOCUMENT_STORAGE_PROVIDER must be gcs, vercel, or local.");
 }
 
-export function documentStorage(providerName?:string|null):StorageProvider {
+export function documentStorage(providerName?:string|null,zone:DocumentStorageZone="primary"):StorageProvider {
   const selected=providerName?.trim()||configuredDocumentStorageName();
   if(selected===storageProviderNames.local){
+    if(zone!=="primary")throw new StorageConfigurationError("Quarantine scanning requires Google Cloud Storage.");
     if(process.env.NODE_ENV==="production")throw new StorageConfigurationError("Local document storage is prohibited in a hosted deployment.");
     return new LocalSyntheticStorageProvider();
   }
   if(selected===storageProviderNames.vercel){
+    if(zone!=="primary")throw new StorageConfigurationError("Quarantine scanning requires Google Cloud Storage.");
     if(!process.env.VERCEL&&!process.env.BLOB_READ_WRITE_TOKEN)throw new StorageConfigurationError("Connect a private Vercel Blob store before using document intake.");
     return new VercelPrivateBlobStorageProvider();
   }
-  if(selected===storageProviderNames.google)return new GoogleCloudStorageProvider();
+  if(selected===storageProviderNames.google)return new GoogleCloudStorageProvider(zone);
   throw new StorageConfigurationError("The document record names an unsupported private storage provider.");
 }
