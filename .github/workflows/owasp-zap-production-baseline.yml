@@ -4,6 +4,10 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17 3 * * 1"
+  # Temporary one-time trigger for the initial Baseline evidence run. It will be
+  # removed from this branch before the workflow is proposed for merge.
+  push:
+    branches: [codex/owasp-zap-baseline]
 
 permissions:
   contents: read
