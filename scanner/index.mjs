@@ -5,11 +5,13 @@ import { basename, extname, join } from "node:path";
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { Storage } from "@google-cloud/storage";
+import { GoogleAuth } from "google-auth-library";
 
 const maxFileBytes=4*1024*1024;
 const definitionMaxAgeSeconds=Number(process.env.MAX_DEFINITION_AGE_SECONDS||86400);
 const scanTimeoutMs=Number(process.env.SCAN_TIMEOUT_MS||45000);
 const storage=new Storage();
+const taskAuth=new GoogleAuth({scopes:["https://www.googleapis.com/auth/cloud-platform"]});
 const required=name=>{const value=process.env[name]?.trim();if(!value)throw new Error(`${name} is required`);return value};
 const config={
   quarantineBucket:required("GCS_QUARANTINE_BUCKET"),
@@ -18,6 +20,12 @@ const config={
   definitionsBucket:required("GCS_DEFINITIONS_BUCKET"),
   callbackUrl:required("DEBRIEF_SCAN_CALLBACK_URL"),
   callbackSecret:required("DOCUMENT_SCAN_CALLBACK_SECRET"),
+  projectId:required("GCP_PROJECT_ID"),
+  taskQueue:required("CLOUD_TASKS_QUEUE"),
+  taskLocation:required("CLOUD_TASKS_LOCATION"),
+  taskTargetUrl:required("SCAN_TASK_TARGET_URL"),
+  taskAudience:required("SCAN_TASK_AUDIENCE"),
+  taskServiceAccount:required("SCAN_TASK_SERVICE_ACCOUNT"),
 };
 if(config.callbackSecret.length<32)throw new Error("Scanner callback secret must be at least 32 characters");
 
@@ -36,6 +44,13 @@ function safeError(error){const message=error instanceof Error?error.message:"UN
 function cleanKeyFor(bucket,name,generation){return `clean/${createHash("sha256").update(`${bucket}\0${name}\0${generation}`).digest("hex")}${extname(name).toLowerCase()||".bin"}`}
 function definitionVersion(files){return createHash("sha256").update(files.sort().join("\n")).digest("hex").slice(0,32)}
 function storageErrorCode(error){return typeof error==="object"&&error&&"code" in error?Number(error.code):0}
+function taskErrorCode(error){return typeof error==="object"&&error?String(error.code||error.response?.data?.error?.status||""):""}
+function taskParent(){return `projects/${config.projectId}/locations/${config.taskLocation}/queues/${config.taskQueue}`}
+function taskIdFor(event){return `scan-${createHash("sha256").update(`${event.bucket}\0${event.name}\0${event.generation}`).digest("hex")}`}
+async function enqueueScan(event){
+  const parent=taskParent();const task={name:`${parent}/tasks/${taskIdFor(event)}`,httpRequest:{httpMethod:"POST",url:config.taskTargetUrl,headers:{"Content-Type":"application/json"},body:Buffer.from(JSON.stringify(event)).toString("base64"),oidcToken:{serviceAccountEmail:config.taskServiceAccount,audience:config.taskAudience}}};
+  try{const client=await taskAuth.getClient();await client.request({url:`https://cloudtasks.googleapis.com/v2/${parent}/tasks`,method:"POST",data:{task}})}catch(error){if(taskErrorCode(error)!=="6"&&taskErrorCode(error)!=="ALREADY_EXISTS")throw error}
+}
 async function saveExactlyOnce(file,bytes,options){
   try{await file.save(bytes,options)}catch{
     const [existing]=await file.download({validation:"crc32c"}).catch(()=>[null]);
@@ -56,6 +71,8 @@ function parsedEventCandidate(value){
   }
   return null;
 }
+function validEventData(data){return Boolean(data&&data.bucket===config.quarantineBucket&&typeof data.name==="string"&&data.name.length&&/^\d+$/.test(String(data.generation||""))&&Number.isSafeInteger(Number(data.size))&&Number(data.size)>=1&&Number(data.size)<=maxFileBytes)}
+function normalizedScanEvent(data,eventId){return {id:String(eventId||randomUUID()).slice(0,160),bucket:data.bucket,name:data.name,generation:String(data.generation),size:Number(data.size)}}
 
 async function loadDefinitions(directory){
   await mkdir(directory,{recursive:true});
@@ -150,13 +167,17 @@ createServer(async(request,response)=>{
     // into a Scheduler job configuration.
     try{await refreshDefinitions();return sendJson(response,204)}catch{return sendJson(response,503,{error:"definitions_unavailable"})}
   }
-  if(pathname!=="/events")return sendJson(response,404,{error:"not_found"});
+  if(pathname!=="/events"&&pathname!=="/scan")return sendJson(response,404,{error:"not_found"});
   const chunks=[];for await(const chunk of request)chunks.push(chunk);let event;
   try{event=JSON.parse(Buffer.concat(chunks).toString("utf8"))}catch{operationalEvent("event_rejected","INVALID_EVENT_JSON");return sendJson(response,400,{error:"invalid_event"})}
   // Eventarc sends CloudEvents in binary HTTP mode to Cloud Run: the request
   // body is the Storage event data and `ce-*` metadata is in request headers.
   // Also accept structured and Pub/Sub-wrapped fixtures for controlled testing.
   const data=parsedEventCandidate(event);
-  if(!data||data.bucket!==config.quarantineBucket||typeof data.name!=="string"||!data.name.length||!/^\d+$/.test(String(data.generation||""))||!Number.isSafeInteger(Number(data.size))||Number(data.size)<1||Number(data.size)>maxFileBytes){operationalEvent("event_rejected","INVALID_EVENT_SHAPE");return sendJson(response,204)}
-  try{await processObject({id:request.headers["ce-id"],bucket:data.bucket,name:data.name,generation:data.generation,size:data.size});operationalEvent("scan_completed","SUCCESS");return sendJson(response,204)}catch(error){operationalEvent("scan_failed",safeError(error));return sendJson(response,503,{error:"scan_unavailable"})}
+  if(!validEventData(data)){operationalEvent("event_rejected","INVALID_EVENT_SHAPE");return sendJson(response,204)}
+  const scanEvent=normalizedScanEvent(data,event.eventId||request.headers["ce-id"]);
+  if(pathname==="/events"){
+    try{await enqueueScan(scanEvent);operationalEvent("scan_queued","SUCCESS");return sendJson(response,204)}catch(error){operationalEvent("queue_failed",safeError(error));return sendJson(response,503,{error:"scan_unavailable"})}
+  }
+  try{await processObject(scanEvent);operationalEvent("scan_completed","SUCCESS");return sendJson(response,204)}catch(error){operationalEvent("scan_failed",safeError(error));return sendJson(response,503,{error:"scan_unavailable"})}
 }).listen(Number(process.env.PORT||8080));
