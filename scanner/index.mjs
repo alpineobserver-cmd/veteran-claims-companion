@@ -32,6 +32,18 @@ async function callback(payload){
 function safeError(error){const message=error instanceof Error?error.message:"UNKNOWN_SCANNER_RESPONSE";return new Set(["MALWARE_DETECTED","SCANNER_TIMEOUT","SCANNER_UNAVAILABLE","STALE_DEFINITIONS","UNKNOWN_SCANNER_RESPONSE","PROMOTION_FAILED","SOURCE_MISSING","SOURCE_GENERATION_MISMATCH","CLEAN_OBJECT_MISSING","CLEAN_OBJECT_CHECKSUM_MISMATCH"]).has(message)?message:"UNKNOWN_SCANNER_RESPONSE"}
 function cleanKeyFor(bucket,name,generation){return `clean/${createHash("sha256").update(`${bucket}\0${name}\0${generation}`).digest("hex")}${extname(name).toLowerCase()||".bin"}`}
 function definitionVersion(files){return createHash("sha256").update(files.sort().join("\n")).digest("hex").slice(0,32)}
+function storageErrorCode(error){return typeof error==="object"&&error&&"code" in error?Number(error.code):0}
+async function saveExactlyOnce(file,bytes,options){
+  try{await file.save(bytes,options)}catch{
+    const [existing]=await file.download({validation:"crc32c"}).catch(()=>[null]);
+    if(!existing||!Buffer.from(existing).equals(Buffer.from(bytes)))throw new Error("PROMOTION_FAILED");
+  }
+}
+async function deleteSourceOnce(source,generation){
+  try{await source.delete({ifGenerationMatch:Number(generation)})}catch(error){
+    const code=storageErrorCode(error);if(code!==404&&code!==412)throw error;
+  }
+}
 function parsedEventCandidate(value){
   if(!value||typeof value!=="object")return null;
   if(typeof value.bucket==="string")return value;
@@ -85,23 +97,20 @@ async function processObject(event){
     if(exitCode===0){
       const [bytes]=await source.download({validation:"crc32c"});
       const cleanKey=cleanKeyFor(bucket,name,String(generation));const clean=storage.bucket(config.cleanBucket).file(cleanKey);
-      try{await clean.save(bytes,{resumable:false,validation:"crc32c",contentType:metadata.contentType||"application/octet-stream",metadata:{cacheControl:"private, no-store"},preconditionOpts:{ifGenerationMatch:0}})}catch{
-        const [existing]=await clean.download({validation:"crc32c"}).catch(()=>[null]);
-        if(!existing||!Buffer.from(existing).equals(Buffer.from(bytes)))throw new Error("PROMOTION_FAILED");
-      }
+      await saveExactlyOnce(clean,bytes,{resumable:false,validation:"crc32c",contentType:metadata.contentType||"application/octet-stream",metadata:{cacheControl:"private, no-store"},preconditionOpts:{ifGenerationMatch:0}});
       const [cleanMetadata]=await clean.getMetadata();
       if(Number(cleanMetadata.size)!==bytes.length||String(cleanMetadata.md5Hash||"")!==String(metadata.md5Hash||""))throw new Error("PROMOTION_FAILED");
       await callback({...base,outcome:"CLEAN",cleanKey,definitionVersion:definitions});
-      await source.delete({ifGenerationMatch:Number(generation)});
+      await deleteSourceOnce(source,generation);
       return;
     }
     if(exitCode===1){
       if(config.rejectedBucket){
         const [bytes]=await source.download({validation:"crc32c"});const rejected=storage.bucket(config.rejectedBucket).file(`rejected/${createHash("sha256").update(`${bucket}\0${name}\0${generation}`).digest("hex")}`);
-        await rejected.save(bytes,{resumable:false,validation:"crc32c",contentType:"application/octet-stream",metadata:{cacheControl:"private, no-store"},preconditionOpts:{ifGenerationMatch:0}});
+        await saveExactlyOnce(rejected,bytes,{resumable:false,validation:"crc32c",contentType:"application/octet-stream",metadata:{cacheControl:"private, no-store"},preconditionOpts:{ifGenerationMatch:0}});
       }
       await callback({...base,outcome:"REJECTED_MALWARE",definitionVersion:definitions,errorCode:"MALWARE_DETECTED"});
-      await source.delete({ifGenerationMatch:Number(generation)});
+      await deleteSourceOnce(source,generation);
       return;
     }
     throw new Error("SCANNER_UNAVAILABLE");
