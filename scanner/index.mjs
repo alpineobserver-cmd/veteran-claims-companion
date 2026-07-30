@@ -1,5 +1,5 @@
-import { createHmac, createHash, randomUUID, timingSafeEqual } from "node:crypto";
-import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { createHmac, createHash, randomUUID } from "node:crypto";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, extname, join } from "node:path";
 import { spawn } from "node:child_process";
@@ -18,11 +18,9 @@ const config={
   definitionsBucket:required("GCS_DEFINITIONS_BUCKET"),
   callbackUrl:required("DEBRIEF_SCAN_CALLBACK_URL"),
   callbackSecret:required("DOCUMENT_SCAN_CALLBACK_SECRET"),
-  refreshSecret:required("DEFINITION_REFRESH_SECRET"),
 };
-if(config.callbackSecret.length<32||config.refreshSecret.length<32)throw new Error("Scanner callback and refresh secrets must be at least 32 characters");
+if(config.callbackSecret.length<32)throw new Error("Scanner callback secret must be at least 32 characters");
 
-function safeEqual(left,right){const a=Buffer.from(left);const b=Buffer.from(right);return a.length===b.length&&timingSafeEqual(a,b)}
 function scannerVersion(){return process.env.SCANNER_POLICY_VERSION||"gcs-clamav-quarantine-v1"}
 function sendJson(response,status,payload={}){response.writeHead(status,{"Content-Type":"application/json","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});response.end(JSON.stringify(payload))}
 function callbackSignature(timestamp,body){return createHmac("sha256",config.callbackSecret).update(`${timestamp}.${body}`).digest("hex")}
@@ -107,7 +105,14 @@ async function processObject(event){
 async function refreshDefinitions(){
   const working=await mkdtemp(join(tmpdir(),"debrief-definitions-"));
   try{
-    const code=await run("freshclam",["--datadir",working,"--no-warnings"],120000);
+    const configPath=join(working,"freshclam.conf");
+    await writeFile(configPath,[
+      `DatabaseDirectory ${working}`,
+      "DatabaseOwner node",
+      "DatabaseMirror database.clamav.net",
+      "DNSDatabaseInfo yes",
+    ].join("\n"),{mode:0o600});
+    const code=await run("freshclam",["--config-file",configPath,"--no-warnings","--stdout"],120000);
     if(code!==0)throw new Error("SCANNER_UNAVAILABLE");
     for(const name of await readdir(working))if(/\.(?:cvd|cld)$/i.test(name))await storage.bucket(config.definitionsBucket).file(`clamav/${name}`).save(await import("node:fs/promises").then(({readFile})=>readFile(join(working,name))),{resumable:false,validation:"crc32c",metadata:{cacheControl:"private, no-store"}});
   }finally{await rm(working,{recursive:true,force:true})}
@@ -116,7 +121,9 @@ async function refreshDefinitions(){
 createServer(async(request,response)=>{
   if(request.method!=="POST")return sendJson(response,405,{error:"method_not_allowed"});
   if(request.url==="/refresh-definitions"){
-    if(!safeEqual(request.headers["x-debrief-refresh-secret"]||"",config.refreshSecret))return sendJson(response,401,{error:"unauthorized"});
+    // Cloud Run requires an authenticated Scheduler service account for this route.
+    // Keeping authorization at the private service boundary avoids copying a secret
+    // into a Scheduler job configuration.
     try{await refreshDefinitions();return sendJson(response,204)}catch{return sendJson(response,503,{error:"definitions_unavailable"})}
   }
   if(request.url!=="/events")return sendJson(response,404,{error:"not_found"});

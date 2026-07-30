@@ -9,9 +9,9 @@ RUN apt-get update \
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
-COPY scanner/index.mjs ./scanner/index.mjs
+COPY index.mjs ./index.mjs
 
 USER node
 ENV NODE_ENV=production
 ENV PORT=8080
-CMD ["node","scanner/index.mjs"]
+CMD ["node","index.mjs"]
