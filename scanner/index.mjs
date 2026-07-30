@@ -40,16 +40,18 @@ async function callback(payload){
   const response=await fetch(config.callbackUrl,{method:"POST",headers:{"Content-Type":"application/json","X-Debrief-Scan-Timestamp":timestamp,"X-Debrief-Scan-Signature":callbackSignature(timestamp,body)},body,signal:AbortSignal.timeout(10000)});
   if(!response.ok)throw new Error("SCAN_CALLBACK_FAILED");
 }
-function safeError(error){const message=error instanceof Error?error.message:"UNKNOWN_SCANNER_RESPONSE";return new Set(["MALWARE_DETECTED","SCANNER_TIMEOUT","SCANNER_UNAVAILABLE","STALE_DEFINITIONS","UNKNOWN_SCANNER_RESPONSE","PROMOTION_FAILED","SOURCE_MISSING","SOURCE_GENERATION_MISMATCH","CLEAN_OBJECT_MISSING","CLEAN_OBJECT_CHECKSUM_MISMATCH"]).has(message)?message:"UNKNOWN_SCANNER_RESPONSE"}
+function safeError(error){const message=error instanceof Error?error.message:"UNKNOWN_SCANNER_RESPONSE";return new Set(["MALWARE_DETECTED","SCANNER_TIMEOUT","SCANNER_UNAVAILABLE","STALE_DEFINITIONS","UNKNOWN_SCANNER_RESPONSE","PROMOTION_FAILED","SOURCE_MISSING","SOURCE_GENERATION_MISMATCH","CLEAN_OBJECT_MISSING","CLEAN_OBJECT_CHECKSUM_MISMATCH","TASK_AUTH_FAILED","TASK_HTTP_400","TASK_HTTP_401","TASK_HTTP_403","TASK_HTTP_404","TASK_HTTP_409","TASK_HTTP_429","TASK_HTTP_500","TASK_HTTP_503"]).has(message)?message:"UNKNOWN_SCANNER_RESPONSE"}
 function cleanKeyFor(bucket,name,generation){return `clean/${createHash("sha256").update(`${bucket}\0${name}\0${generation}`).digest("hex")}${extname(name).toLowerCase()||".bin"}`}
 function definitionVersion(files){return createHash("sha256").update(files.sort().join("\n")).digest("hex").slice(0,32)}
 function storageErrorCode(error){return typeof error==="object"&&error&&"code" in error?Number(error.code):0}
-function taskErrorCode(error){return typeof error==="object"&&error?String(error.code||error.response?.data?.error?.status||""):""}
 function taskParent(){return `projects/${config.projectId}/locations/${config.taskLocation}/queues/${config.taskQueue}`}
 function taskIdFor(event){return `scan-${createHash("sha256").update(`${event.bucket}\0${event.name}\0${event.generation}`).digest("hex")}`}
 async function enqueueScan(event){
   const parent=taskParent();const task={name:`${parent}/tasks/${taskIdFor(event)}`,httpRequest:{httpMethod:"POST",url:config.taskTargetUrl,headers:{"Content-Type":"application/json"},body:Buffer.from(JSON.stringify(event)).toString("base64"),oidcToken:{serviceAccountEmail:config.taskServiceAccount,audience:config.taskAudience}}};
-  try{const client=await taskAuth.getClient();await client.request({url:`https://cloudtasks.googleapis.com/v2/${parent}/tasks`,method:"POST",data:{task}})}catch(error){if(taskErrorCode(error)!=="6"&&taskErrorCode(error)!=="ALREADY_EXISTS")throw error}
+  const accessToken=await taskAuth.getAccessToken();if(!accessToken)throw new Error("TASK_AUTH_FAILED");
+  const response=await fetch(`https://cloudtasks.googleapis.com/v2/${parent}/tasks`,{method:"POST",headers:{Authorization:`Bearer ${accessToken}`,"Content-Type":"application/json"},body:JSON.stringify({task})});
+  if(response.status===409)return;
+  if(!response.ok)throw new Error(`TASK_HTTP_${response.status}`);
 }
 async function saveExactlyOnce(file,bytes,options){
   try{await file.save(bytes,options)}catch{
