@@ -23,6 +23,9 @@ if(config.callbackSecret.length<32)throw new Error("Scanner callback secret must
 
 function scannerVersion(){return process.env.SCANNER_POLICY_VERSION||"gcs-clamav-quarantine-v1"}
 function sendJson(response,status,payload={}){response.writeHead(status,{"Content-Type":"application/json","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});response.end(JSON.stringify(payload))}
+// Deliberately excludes object names, account information, document data, and
+// secrets. Cloud Run already supplies the timestamp and request correlation.
+function operationalEvent(stage,code){process.stdout.write(`${JSON.stringify({event:"scanner_operation",stage,code})}\n`)}
 function callbackSignature(timestamp,body){return createHmac("sha256",config.callbackSecret).update(`${timestamp}.${body}`).digest("hex")}
 async function callback(payload){
   const body=JSON.stringify(payload);const timestamp=String(Date.now());
@@ -149,11 +152,11 @@ createServer(async(request,response)=>{
   }
   if(pathname!=="/events")return sendJson(response,404,{error:"not_found"});
   const chunks=[];for await(const chunk of request)chunks.push(chunk);let event;
-  try{event=JSON.parse(Buffer.concat(chunks).toString("utf8"))}catch{return sendJson(response,400,{error:"invalid_event"})}
+  try{event=JSON.parse(Buffer.concat(chunks).toString("utf8"))}catch{operationalEvent("event_rejected","INVALID_EVENT_JSON");return sendJson(response,400,{error:"invalid_event"})}
   // Eventarc sends CloudEvents in binary HTTP mode to Cloud Run: the request
   // body is the Storage event data and `ce-*` metadata is in request headers.
   // Also accept structured and Pub/Sub-wrapped fixtures for controlled testing.
   const data=parsedEventCandidate(event);
-  if(!data||data.bucket!==config.quarantineBucket||typeof data.name!=="string"||!data.name.length||!/^\d+$/.test(String(data.generation||""))||!Number.isSafeInteger(Number(data.size))||Number(data.size)<1||Number(data.size)>maxFileBytes)return sendJson(response,204)
-  try{await processObject({id:request.headers["ce-id"],bucket:data.bucket,name:data.name,generation:data.generation,size:data.size});return sendJson(response,204)}catch{return sendJson(response,503,{error:"scan_unavailable"})}
+  if(!data||data.bucket!==config.quarantineBucket||typeof data.name!=="string"||!data.name.length||!/^\d+$/.test(String(data.generation||""))||!Number.isSafeInteger(Number(data.size))||Number(data.size)<1||Number(data.size)>maxFileBytes){operationalEvent("event_rejected","INVALID_EVENT_SHAPE");return sendJson(response,204)}
+  try{await processObject({id:request.headers["ce-id"],bucket:data.bucket,name:data.name,generation:data.generation,size:data.size});operationalEvent("scan_completed","SUCCESS");return sendJson(response,204)}catch(error){operationalEvent("scan_failed",safeError(error));return sendJson(response,503,{error:"scan_unavailable"})}
 }).listen(Number(process.env.PORT||8080));
