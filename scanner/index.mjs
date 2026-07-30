@@ -41,13 +41,6 @@ function parsedEventCandidate(value){
   }
   return null;
 }
-function eventShape(data){return {
-  payload:Boolean(data),
-  expectedBucket:Boolean(data&&data.bucket===config.quarantineBucket),
-  keyPresent:Boolean(data&&typeof data.name==="string"&&data.name.length),
-  generationValid:Boolean(data&&/^\d+$/.test(String(data.generation||""))),
-  sizeValid:Boolean(data&&Number.isSafeInteger(Number(data.size))&&Number(data.size)>0&&Number(data.size)<=maxFileBytes),
-}}
 
 async function loadDefinitions(directory){
   await mkdir(directory,{recursive:true});
@@ -111,7 +104,6 @@ async function processObject(event){
       await source.delete({ifGenerationMatch:Number(generation)});
       return;
     }
-    console.warn("scanner_engine_unavailable",{exitCode});
     throw new Error("SCANNER_UNAVAILABLE");
   }catch(error){
     await callback({...base,outcome:"FAILED",errorCode:safeError(error)}).catch(()=>{});
@@ -149,7 +141,7 @@ createServer(async(request,response)=>{
   // Eventarc sends CloudEvents in binary HTTP mode to Cloud Run: the request
   // body is the Storage event data and `ce-*` metadata is in request headers.
   // Also accept structured and Pub/Sub-wrapped fixtures for controlled testing.
-  const data=parsedEventCandidate(event);const shape=eventShape(data);
-  if(!shape.payload||!shape.expectedBucket||!shape.keyPresent||!shape.generationValid||!shape.sizeValid){console.warn("scanner_event_ignored",shape);return sendJson(response,204)}
+  const data=parsedEventCandidate(event);
+  if(!data||data.bucket!==config.quarantineBucket||typeof data.name!=="string"||!data.name.length||!/^\d+$/.test(String(data.generation||""))||!Number.isSafeInteger(Number(data.size))||Number(data.size)<1||Number(data.size)>maxFileBytes)return sendJson(response,204)
   try{await processObject({id:request.headers["ce-id"],bucket:data.bucket,name:data.name,generation:data.generation,size:data.size});return sendJson(response,204)}catch{return sendJson(response,503,{error:"scan_unavailable"})}
 }).listen(Number(process.env.PORT||8080));
