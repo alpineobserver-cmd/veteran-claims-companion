@@ -112,8 +112,9 @@ test("security-relevant runtime output is routed through the single event format
 test("the CSP narrows production behavior while recording the framework compatibility residual",async()=>{
   const production=contentSecurityPolicy(false);
   const development=contentSecurityPolicy(true);
-  for(const directive of["script-src-attr 'none'","media-src 'none'","manifest-src 'self'","frame-src 'none'","upgrade-insecure-requests"])
+  for(const directive of["script-src-attr 'none'","media-src 'none'","manifest-src 'self'","frame-src 'none'","img-src 'self' data:","upgrade-insecure-requests"])
     assert.match(production,new RegExp(directive.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
+  assert.doesNotMatch(production,/img-src[^;]*https:/);
   assert.doesNotMatch(production,/unsafe-eval/);
   assert.match(development,/unsafe-eval/);
   assert.doesNotMatch(development,/upgrade-insecure-requests/);
@@ -121,4 +122,11 @@ test("the CSP narrows production behavior while recording the framework compatib
   const record=await read("docs/content-security-policy.md");
   assert.match(record,/explicit residual risk/i);
   assert.match(record,/nonces require[\s\S]*dynamic rendering/i);
+});
+
+test("application responses opt into cross-origin resource isolation",async()=>{
+  const config=await read("next.config.ts");
+  assert.match(config,/Cross-Origin-Opener-Policy",value:"same-origin/);
+  assert.match(config,/Cross-Origin-Embedder-Policy",value:"require-corp/);
+  assert.match(config,/Cross-Origin-Resource-Policy",value:"same-origin/);
 });
