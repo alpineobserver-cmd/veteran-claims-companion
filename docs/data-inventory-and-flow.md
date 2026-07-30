@@ -28,13 +28,19 @@ This inventory describes the code currently deployed for the fictional-data Alph
 | `Document.userId`, `Document.claimId` | Ownership and workspace authorization keys | Exported; cascaded with owner/workspace |
 | `Document.originalName` | Restricted user-supplied filename after normalization | Exported; never included in security logs; deleted with record |
 | `Document.storageKey` | Authentication-adjacent private object locator | Never exported or sent to the browser; deleted after verified object deletion |
+| `Document.quarantineKey`, `Document.cleanStorageKey` | Restricted private locators for the unscanned and verified-clean storage zones | Never exported or logged; deleted from every applicable zone during document/workspace/account cleanup |
+| `Document.objectGeneration` | Immutable source-object generation used to bind an Eventarc scan result to the exact uploaded bytes | Never exported or logged; deleted with the document |
 | `Document.mimeType`, `Document.size` | File-validation and delivery metadata | Exported; permitted in account audit metadata |
 | `Document.sha256` | Security metadata for integrity/duplicate review | Exported; deleted with record |
 | `Document.provider` | Storage-routing metadata | Exported; deleted with record |
 | `Document.status` | Test/quarantine/readiness state | Exported; deleted with record |
+| `Document.scanEngine`, `Document.scanEngineVersion`, `Document.definitionVersion`, `Document.scanAttemptCount`, `Document.scanStartedAt`, `Document.scanCompletedAt`, `Document.scanErrorCode` | Privacy-minimized scanner lifecycle metadata; error codes are allowlisted and contain no scanner output | Exported as restricted account metadata; never includes a filename, storage key, content, or malware signature |
 | `Document.syntheticConfirmed` | Fictional-data acknowledgement | Exported; deleted with record |
 | `Document.createdAt`, `Document.updatedAt` | Lifecycle metadata | Exported; deleted with record |
-| `Document.user`, `Document.claim`, `Document.pages`, `Document.auditEvents` | Prisma relationship helpers | No separate stored value |
+| `Document.user`, `Document.claim`, `Document.pages`, `Document.scans`, `Document.auditEvents` | Prisma relationship helpers | No separate stored value |
+| `DocumentScan.id`, `DocumentScan.documentId`, `DocumentScan.sourceGeneration` | Internal scan-attempt identity and exact source-generation binding | Restricted operational metadata; deleted with document and never logged with an object key |
+| `DocumentScan.outcome`, `DocumentScan.engine`, `DocumentScan.engineVersion`, `DocumentScan.definitionVersion`, `DocumentScan.errorCode`, `DocumentScan.completedAt`, `DocumentScan.createdAt` | Sanitized scanner verdict, version, failure code, and lifecycle evidence | Restricted operational metadata; deleted with document; raw scanner output is never stored |
+| `DocumentScan.document` | Prisma relationship helper | No separate stored value |
 | `DocumentPage.id`, `DocumentPage.documentId`, `DocumentPage.pageNumber` | Page identity and ordering | Exported; cascaded with document |
 | `DocumentPage.ocrText` | Restricted extracted document content; future capability, currently not populated | Exported if present; deleted with document |
 | `DocumentPage.createdAt`, `DocumentPage.updatedAt` | Lifecycle metadata | Exported; deleted with document |
@@ -63,6 +69,7 @@ This inventory describes the code currently deployed for the fictional-data Alph
 | `StorageReconciliationTask.entityId` | Internal cleanup subject | Exported to owner; never logged |
 | `StorageReconciliationTask.storageKey` | Private object locator required for retry | Never exported or logged; removed with task |
 | `StorageReconciliationTask.storageProvider` | Private-object provider routing metadata | Exported to owner; never combined with an object key in logs; removed with task |
+| `StorageReconciliationTask.storageZone` | Private storage-zone routing metadata used to delete quarantine and clean objects correctly | Exported to owner; never combined with an object key in logs; removed with task |
 | `StorageReconciliationTask.lastAttemptAt`, `StorageReconciliationTask.resolvedAt`, `StorageReconciliationTask.createdAt`, `StorageReconciliationTask.updatedAt` | Cleanup lifecycle metadata | Exported to owner; removed with task |
 | `Claim.id`, `Claim.userId` | Workspace identity and authorization key | Exported; deleted with workspace/account |
 | `Claim.title`, `Claim.branch`, `Claim.mosRate`, `Claim.symptomStart`, `Claim.deploymentHistory`, `Claim.exposures`, `Claim.treatment` | Restricted claim and service information | Exported; deleted with workspace/account |

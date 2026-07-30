@@ -1,6 +1,7 @@
 import type { StorageProvider } from "@/lib/storage";
+import type { DocumentStorageZone } from "@/lib/malware-scanning";
 
-export type StoredObjectReference={storageKey:string;storageProvider?:string|null};
+export type StoredObjectReference={storageKey:string;storageProvider?:string|null;storageZone?:DocumentStorageZone};
 
 export class ActiveStorageDeletionError extends Error {
   readonly failedObjects:StoredObjectReference[];
@@ -22,12 +23,12 @@ export async function deleteStoredObjectsAndVerify(storage:StorageProvider,keys:
   return unique.length;
 }
 
-export async function deleteStoredObjectReferencesAndVerify(resolve:(provider?:string|null)=>StorageProvider,references:readonly StoredObjectReference[]){
-  const unique=[...new Map(references.filter(item=>item.storageKey).map(item=>[`${item.storageProvider||"configured"}\0${item.storageKey}`,item])).values()];
+export async function deleteStoredObjectReferencesAndVerify(resolve:(provider?:string|null,zone?:DocumentStorageZone)=>StorageProvider,references:readonly StoredObjectReference[]){
+  const unique=[...new Map(references.filter(item=>item.storageKey).map(item=>[`${item.storageProvider||"configured"}\0${item.storageZone||"primary"}\0${item.storageKey}`,item])).values()];
   const failed:StoredObjectReference[]=[];
   for(const item of unique){
     try{
-      const storage=resolve(item.storageProvider);
+      const storage=resolve(item.storageProvider,item.storageZone);
       await storage.delete(item.storageKey);
       if(await storage.get(item.storageKey))failed.push(item);
     }catch{failed.push(item)}

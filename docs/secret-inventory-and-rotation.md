@@ -19,11 +19,13 @@ Never record a secret value in this file, Git, issues, chat, screenshots, build 
 | `BLOB_READ_WRITE_TOKEN` or integration-managed Blob credential | Secret | Vercel Blob/Vercel integration | Matching environment only; Production scope | Private document storage | Alpha administrator |
 | `BLOB_STORE_ID` | Identifier, not secret | Vercel Blob | Matching environment only | Vercel integration | Alpha administrator |
 | `BLOB_WEBHOOK_PUBLIC_KEY` | Public verification material | Vercel Blob | Matching environment only | Vercel integration | Vercel/integration owner |
+| `DOCUMENT_SCAN_CALLBACK_SECRET` | Critical secret | Vercel sensitive variable and matching Google Secret Manager secret | Separate Staging/Production value; never Preview | HMAC-authenticated scanner callback | Alpha administrator + Engineering |
+| `DEFINITION_REFRESH_SECRET` | Critical scanner-only secret | Matching Google Secret Manager secret | Separate Staging/Production value; never Vercel or browser | Authenticates the Cloud Scheduler definition-mirror refresh request | Alpha administrator + Engineering |
 | Vercel OIDC token | Ephemeral workload credential; never configured manually | Vercel request/build context | Matching team, project, and environment; maximum provider-controlled lifetime | Google Workload Identity Federation | Vercel/Google |
 | `OPENAI_API_KEY` | Secret; currently expected unset | OpenAI/Vercel | Server-side only; add separately only after AI approval | Personal-statement AI route | Alpha administrator |
 | GitHub, Vercel, Google, Supabase, and OpenAI administrator sessions/MFA | Privileged account secret | Each provider | Named administrators only; never application environment variables | Administrative access | Product owner |
 
-Configuration values such as `APP_ENV`, `DATA_ENVIRONMENT`, `RELEASE_ID`, `AUTH_URL`, `AUTH_CANONICAL_HOST`, `PRIVACY_CONTACT_EMAIL`, `OPENAI_MODEL`, `DOCUMENT_STORAGE_PROVIDER`, `GCS_AUTH_MODE`, `GCS_BUCKET`, `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`, `DEBRIEF_UPLOADS_ENABLED`, `DEBRIEF_AI_GENERATION_ENABLED`, `DEBRIEF_AI_POLICY_VERSION`, `DEBRIEF_AI_DAILY_USER_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_LIMIT`, `DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT`, `DEBRIEF_AI_MAX_OUTPUT_TOKENS`, `DEBRIEF_AI_MAX_REQUEST_COST_CENTS`, `DEBRIEF_AI_DAILY_SPEND_CAP_CENTS`, and `DEBRIEF_REGISTRATIONS_ENABLED` are not secrets. They still require environment review because incorrect values can weaken isolation, availability, or cost containment.
+Configuration values such as `APP_ENV`, `DATA_ENVIRONMENT`, `RELEASE_ID`, `AUTH_URL`, `AUTH_CANONICAL_HOST`, `PRIVACY_CONTACT_EMAIL`, `OPENAI_MODEL`, `DOCUMENT_STORAGE_PROVIDER`, `GCS_AUTH_MODE`, `GCS_BUCKET`, `GCS_QUARANTINE_BUCKET`, `GCS_CLEAN_BUCKET`, `GCS_REJECTED_BUCKET`, `GCS_DEFINITIONS_BUCKET`, `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`, `DEBRIEF_UPLOADS_ENABLED`, `DEBRIEF_MALWARE_SCANNING_ENABLED`, `DEBRIEF_REAL_DOCUMENTS_ENABLED`, `DEBRIEF_SCAN_PROVIDER`, `DEBRIEF_AI_GENERATION_ENABLED`, `DEBRIEF_AI_POLICY_VERSION`, `DEBRIEF_AI_DAILY_USER_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_LIMIT`, `DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT`, `DEBRIEF_AI_MAX_OUTPUT_TOKENS`, `DEBRIEF_AI_MAX_REQUEST_COST_CENTS`, `DEBRIEF_AI_DAILY_SPEND_CAP_CENTS`, and `DEBRIEF_REGISTRATIONS_ENABLED` are not secrets. They still require environment review because incorrect values can weaken isolation, availability, or cost containment.
 
 ## Required inventory review
 
@@ -78,6 +80,10 @@ Rotate or reconnect it through the matching Vercel Blob integration, update only
 ### Google Cloud workload identity
 
 No persistent Google service-account private key is permitted. To revoke access, pause uploads, remove or restrict the matching Workload Identity Provider binding or service-account impersonation grant, inspect Google and Vercel activity, correct the trust condition, and redeploy before a fictional upload/download/delete smoke check. Treat changes to the Vercel team/project/environment subject, Google pool/provider, service account, bucket IAM, or OIDC issuer mode as a credential-boundary change. Follow `docs/google-cloud-storage.md`; keep the prior object provider available for verified deletion until migration reconciliation is complete.
+
+### Malware-scanner callback and definition refresh secrets
+
+Pause uploads before rotation. Rotate the callback and refresh secrets independently through the matching environment's Vercel Sensitive Variables and Google Secret Manager, redeploy the scanner, verify a fictional clean-file scan and a deliberately failed callback, then revoke the old Secret Manager versions. Never share a scanner secret between Staging and Production or place `DEFINITION_REFRESH_SECRET` in the Vercel application environment.
 
 ### Future OpenAI key
 
