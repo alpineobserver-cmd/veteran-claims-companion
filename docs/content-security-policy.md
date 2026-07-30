@@ -4,10 +4,11 @@ Debrief defines its CSP through `lib/content-security-policy.ts` and applies it 
 
 ## Enforced controls
 
-- Same-origin defaults for scripts, styles, connections, and manifests.
+- Same-origin defaults for scripts, styles, connections, images, and manifests. Images may be embedded only as data URLs; the broad external-image allowance is not used.
 - No objects, frames, media, foreign form targets, foreign base URLs, or framing ancestors.
 - No inline browser event-handler attributes through `script-src-attr 'none'`.
 - Workers limited to same-origin and Blob URLs.
+- Cross-origin opener, embedder, and resource policies isolate the application from foreign browsing contexts and cross-origin resources.
 - Insecure subresource requests upgraded in Production.
 - Development alone permits `unsafe-eval`, which Next.js/React debugging requires.
 

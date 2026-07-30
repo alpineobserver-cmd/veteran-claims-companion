@@ -4,7 +4,7 @@ export function contentSecurityPolicy(isDevelopment:boolean){
     `script-src 'self' 'unsafe-inline'${isDevelopment?" 'unsafe-eval'":""}`,
     "script-src-attr 'none'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https:",
+    "img-src 'self' data:",
     "font-src 'self' data:",
     "connect-src 'self'",
     "media-src 'none'",
