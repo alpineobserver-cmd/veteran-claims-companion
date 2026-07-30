@@ -32,6 +32,22 @@ async function callback(payload){
 function safeError(error){const message=error instanceof Error?error.message:"UNKNOWN_SCANNER_RESPONSE";return new Set(["MALWARE_DETECTED","SCANNER_TIMEOUT","SCANNER_UNAVAILABLE","STALE_DEFINITIONS","UNKNOWN_SCANNER_RESPONSE","PROMOTION_FAILED","SOURCE_MISSING","SOURCE_GENERATION_MISMATCH","CLEAN_OBJECT_MISSING","CLEAN_OBJECT_CHECKSUM_MISMATCH"]).has(message)?message:"UNKNOWN_SCANNER_RESPONSE"}
 function cleanKeyFor(bucket,name,generation){return `clean/${createHash("sha256").update(`${bucket}\0${name}\0${generation}`).digest("hex")}${extname(name).toLowerCase()||".bin"}`}
 function definitionVersion(files){return createHash("sha256").update(files.sort().join("\n")).digest("hex").slice(0,32)}
+function parsedEventCandidate(value){
+  if(!value||typeof value!=="object")return null;
+  if(typeof value.bucket==="string")return value;
+  if(typeof value.data==="object"&&value.data)return parsedEventCandidate(value.data);
+  if(typeof value.message?.data==="string"){
+    try{return parsedEventCandidate(JSON.parse(Buffer.from(value.message.data,"base64").toString("utf8")))}catch{return null}
+  }
+  return null;
+}
+function eventShape(data){return {
+  payload:Boolean(data),
+  expectedBucket:Boolean(data&&data.bucket===config.quarantineBucket),
+  keyPresent:Boolean(data&&typeof data.name==="string"&&data.name.length),
+  generationValid:Boolean(data&&/^\d+$/.test(String(data.generation||""))),
+  sizeValid:Boolean(data&&Number.isSafeInteger(Number(data.size))&&Number(data.size)>0&&Number(data.size)<=maxFileBytes),
+}}
 
 async function loadDefinitions(directory){
   await mkdir(directory,{recursive:true});
@@ -131,7 +147,8 @@ createServer(async(request,response)=>{
   try{event=JSON.parse(Buffer.concat(chunks).toString("utf8"))}catch{return sendJson(response,400,{error:"invalid_event"})}
   // Eventarc sends CloudEvents in binary HTTP mode to Cloud Run: the request
   // body is the Storage event data and `ce-*` metadata is in request headers.
-  // Accept a structured envelope as well for controlled local verification.
-  const data=event&&typeof event==="object"&&"data" in event?event.data:event;
+  // Also accept structured and Pub/Sub-wrapped fixtures for controlled testing.
+  const data=parsedEventCandidate(event);const shape=eventShape(data);
+  if(!shape.payload||!shape.expectedBucket||!shape.keyPresent||!shape.generationValid||!shape.sizeValid){console.warn("scanner_event_ignored",shape);return sendJson(response,204)}
   try{await processObject({id:request.headers["ce-id"],bucket:data.bucket,name:data.name,generation:data.generation,size:data.size});return sendJson(response,204)}catch{return sendJson(response,503,{error:"scan_unavailable"})}
 }).listen(Number(process.env.PORT||8080));
