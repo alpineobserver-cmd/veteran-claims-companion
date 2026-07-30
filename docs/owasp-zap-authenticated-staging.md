@@ -4,7 +4,7 @@ This procedure is for an authenticated **passive** ZAP review of the isolated De
 
 ## Purpose and scope
 
-- Target only `https://debrief-staging-khaki.vercel.app`.
+- Target only the exact HTTPS Staging origin held in the protected `STAGING_HEALTH_URL` repository variable. Obtain it from the Staging release owner at the start of the review; do not copy a Vercel deployment alias into this runbook, a report, or a ticket.
 - Use a new Google or Microsoft account dedicated to this test. Its display name must be fictional and it must not be used for any other service or personal communications.
 - Enter only the supplied Debrief fictional test records and fictional questionnaire answers.
 - Start with a proxy-based passive review while a human operator completes the normal Staging workflow. Do not use ZAP's Full Scan, API Scan, fuzzer, forced browse, or active rules.
