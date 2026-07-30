@@ -111,6 +111,7 @@ async function processObject(event){
       await source.delete({ifGenerationMatch:Number(generation)});
       return;
     }
+    console.warn("scanner_engine_unavailable",{exitCode});
     throw new Error("SCANNER_UNAVAILABLE");
   }catch(error){
     await callback({...base,outcome:"FAILED",errorCode:safeError(error)}).catch(()=>{});
