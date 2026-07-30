@@ -129,6 +129,9 @@ createServer(async(request,response)=>{
   if(request.url!=="/events")return sendJson(response,404,{error:"not_found"});
   const chunks=[];for await(const chunk of request)chunks.push(chunk);let event;
   try{event=JSON.parse(Buffer.concat(chunks).toString("utf8"))}catch{return sendJson(response,400,{error:"invalid_event"})}
-  const data=event.data||{};
+  // Eventarc sends CloudEvents in binary HTTP mode to Cloud Run: the request
+  // body is the Storage event data and `ce-*` metadata is in request headers.
+  // Accept a structured envelope as well for controlled local verification.
+  const data=event&&typeof event==="object"&&"data" in event?event.data:event;
   try{await processObject({id:request.headers["ce-id"],bucket:data.bucket,name:data.name,generation:data.generation,size:data.size});return sendJson(response,204)}catch{return sendJson(response,503,{error:"scan_unavailable"})}
 }).listen(Number(process.env.PORT||8080));
