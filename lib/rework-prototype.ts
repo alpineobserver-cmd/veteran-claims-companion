@@ -1,6 +1,7 @@
-export type PrototypeScreen="intake"|"documents"|"leads"|"dashboard"|"workspace"|"package";
+export type PrototypeScreen="intent"|"intake"|"documents"|"leads"|"dashboard"|"workspace"|"package";
 export type Confidence="high"|"medium"|"low";
 export type VerificationState="unreviewed"|"confirmed"|"corrected";
+export type ClaimPath="original"|"increase"|"supplemental"|"contested"|"unsure";
 
 export type SourceReference={
   id:string;
@@ -15,6 +16,7 @@ export type SourceReference={
 
 export type ServicePeriod={
   id:string;
+  service:string;
   kind:"Duty station"|"Deployment"|"TDY";
   location:string;
   role:string;
@@ -31,6 +33,8 @@ export type HealthEvent={
   date:string;
   approximate:boolean;
   details:string;
+  care:string;
+  impact:string;
 };
 
 export type DocumentInsight={
@@ -66,12 +70,13 @@ export type ClaimLead={
 export type ClaimWorkspace={
   id:string;
   title:string;
-  path:string;
+  path:ClaimPath;
   progress:number;
   sourceIds:string[];
   documentIds:string[];
   updated:string;
   milestone:"Needs foundation"|"Foundation captured"|"Statement reviewed";
+  draft:WorkspaceDraft;
 };
 
 export type WorkspaceDraft={
@@ -80,6 +85,7 @@ export type WorkspaceDraft={
   diagnosis:string;
   relationship:string;
   dailyImpact:string;
+  treatmentHistory:string;
   verifiedSourceIds:string[];
   statementReviewed:boolean;
 };
