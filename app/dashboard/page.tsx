@@ -11,7 +11,8 @@ export const metadata:Metadata={title:"Dashboard",description:"Open, continue, a
 export default async function Dashboard() {
   const session=await auth();
   const user=session?.user;
-  const [claims,archivedClaims]=user?await Promise.all([prisma.claim.findMany({where:{userId:user.id,status:{not:"ARCHIVED"}},orderBy:{updatedAt:"desc"},select:{id:true,title:true,status:true,progress:true,updatedAt:true}}),prisma.claim.findMany({where:{userId:user.id,status:"ARCHIVED"},orderBy:{updatedAt:"desc"},select:{id:true,title:true,updatedAt:true}})]):[[],[]];
+  const persistentUser=user&&user.id!=="fictional-browser-tester";
+  const [claims,archivedClaims]=persistentUser?await Promise.all([prisma.claim.findMany({where:{userId:user.id,status:{not:"ARCHIVED"}},orderBy:{updatedAt:"desc"},select:{id:true,title:true,status:true,progress:true,updatedAt:true}}),prisma.claim.findMany({where:{userId:user.id,status:"ARCHIVED"},orderBy:{updatedAt:"desc"},select:{id:true,title:true,updatedAt:true}})]):[[],[]];
   const first=claims[0];
   const average=claims.length?Math.round(claims.reduce((sum,claim)=>sum+claim.progress,0)/claims.length):0;
   const shellUser=user?{id:user.id,name:user.name,email:user.email,image:user.image}:undefined;

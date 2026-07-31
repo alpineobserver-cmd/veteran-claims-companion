@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { captureBrowserErrors } from "./fixtures";
+import { captureBrowserErrors, enableBrowserTestProfile } from "./fixtures";
+
+test.beforeEach(async({page})=>enableBrowserTestProfile(page));
 
 test("public navigation search, sidebar preference, and mobile menu remain usable", async ({ page }) => {
   const browserErrors = captureBrowserErrors(page);
