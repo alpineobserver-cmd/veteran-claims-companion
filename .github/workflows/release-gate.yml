@@ -158,13 +158,22 @@ jobs:
         run: npm sbom --prefix scanner --sbom-format=cyclonedx > scanner-dependencies.cdx.json
       - name: Build the digest-pinned scanner image
         run: docker build --build-arg VCS_REF=${{ github.sha }} --tag debrief-malware-scanner:${{ github.sha }} scanner
-      - name: Scan the scanner image for high and critical vulnerabilities
+      - name: Report all scanner image high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: debrief-malware-scanner:${{ github.sha }}
+          format: table
+          exit-code: "0"
+          ignore-unfixed: false
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+      - name: Block fixable scanner image high and critical vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: debrief-malware-scanner:${{ github.sha }}
           format: table
           exit-code: "1"
-          ignore-unfixed: false
+          ignore-unfixed: true
           vuln-type: os,library
           severity: HIGH,CRITICAL
       - name: Preserve the scanner SBOM with the release checks

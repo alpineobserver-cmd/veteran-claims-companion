@@ -8,6 +8,8 @@ LABEL org.opencontainers.image.title="Debrief malware scanner" \
 RUN apt-get update \
   && apt-get install --no-install-recommends -y ca-certificates clamav clamav-freshclam \
   && rm -rf /var/lib/apt/lists/* \
+  && npm install --global npm@11.19.0 \
+  && npm cache clean --force \
   && mkdir -p /tmp/clamav-definitions /tmp/debrief-scan \
   && chown -R node:node /tmp/clamav-definitions /tmp/debrief-scan
 
