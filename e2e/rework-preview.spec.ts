@@ -1,194 +1,163 @@
 import {expect,test} from "@playwright/test";
 import {captureBrowserErrors} from "./fixtures";
 
+const previewPath="/rework-preview?fictionalTester=1";
+
 async function expectNoOverflow(page:import("@playwright/test").Page){
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
-async function acceptKneeLead(page:import("@playwright/test").Page){
-  await page.getByRole("button",{name:/Claim leads/}).click();
-  await page.locator(".rw-lead").filter({hasText:"Right knee symptoms"}).getByRole("button",{name:/Create claim workspace/}).click();
+async function startCleanIntake(page:import("@playwright/test").Page){
+  const briefing=page.getByRole("dialog",{name:"A well-supported original claim connects three things."});
+  await briefing.getByRole("button",{name:"Start intake"}).click();
+}
+
+async function addKneeIntake(page:import("@playwright/test").Page){
+  await page.getByRole("button",{name:"Add service period"}).first().click();
+  const service=page.getByRole("dialog",{name:"Add a service period"});
+  await service.getByLabel("Period type: duty station, deployment, or TDY").fill("Duty station");
+  await service.getByLabel("Location or unit").fill("Fictional duty station");
+  await service.getByLabel("Role or duty").fill("Aircraft maintenance");
+  await service.getByLabel("Duties, conditions, or exposures to remember").fill("Flight-line noise and equipment lifting");
+  await service.getByLabel("Start date").fill("2011");
+  await service.getByLabel("End date").fill("2015");
+  await service.getByRole("button",{name:"Save item"}).click();
+
+  await page.getByRole("button",{name:"Add health event"}).first().click();
+  const event=page.getByRole("dialog",{name:"Add a health event"});
+  await event.getByLabel("Injury, illness, surgery, or treatment").fill("Right knee injury");
+  await event.getByLabel("What happened").fill("Pain after a fictional training exercise.");
+  await event.getByRole("textbox",{name:"Date",exact:true}).fill("2013");
+  await event.getByRole("button",{name:"Save item"}).click();
+}
+
+async function completeSetup(page:import("@playwright/test").Page,{upload=false}:{upload?:boolean}={}){
+  await page.getByRole("button",{name:"Continue to documents"}).click();
+  if(upload){
+    await page.getByRole("button",{name:"Simulate upload"}).click();
+    await expect(page.getByText("Fictional document added. Analysis is being simulated.")).toBeVisible();
+  }
+  await page.getByRole("button",{name:"Finish setup"}).click();
 }
 
 test.beforeEach(async({page})=>{
-  await page.goto("/rework-preview");
-  await page.evaluate(()=>localStorage.removeItem("debrief.rework-preview.v1"));
+  await page.goto(previewPath);
+  await page.evaluate(()=>localStorage.removeItem("debrief.rework-preview.v2"));
   await page.reload();
 });
 
-test("guided rework preview completes from briefing to linked follow-up",async({page})=>{
+test("signed-out visitors are redirected to authentication",async({page})=>{
+  await page.goto("/rework-preview");
+  await expect(page).toHaveURL(/\/login\?redirectTo=%2Frework-preview|\/login\?redirectTo=\/rework-preview/);
+  await expect(page.getByRole("heading",{name:"Sign in before adding case details."})).toBeVisible();
+  await expect(page.getByText("New accounts begin with a clean service and health intake.")).toBeVisible();
+});
+
+test("related case tools also require authentication",async({page})=>{
+  for(const path of ["/conditions","/forms","/exposure-record-check","/claim-builder"]){
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/login\?redirectTo=/);
+    await expect(page.getByRole("heading",{name:"Sign in before adding case details."})).toBeVisible();
+  }
+});
+
+test("new profile starts empty and orientation is not permanent navigation",async({page})=>{
   const errors=captureBrowserErrors(page);
-  await expect(page.getByRole("heading",{name:"Bring the mission details together. Build from what you know."})).toBeVisible();
-  await expect(page.getByRole("link",{name:"Sign in"})).toHaveAttribute("href","/login?redirectTo=/rework-preview");
   const journey=page.getByRole("complementary",{name:"Case journey navigation"});
-  await expect(journey.getByRole("link",{name:"Exposure Checker"})).toHaveAttribute("href","/exposure-record-check");
-  await expect(journey.getByRole("link",{name:"Conditions library"})).toHaveAttribute("href","/conditions");
-  await expect(journey.getByRole("link",{name:"Help & guide"})).toHaveAttribute("href","/support");
-  await expect(journey.getByRole("link",{name:"Send feedback"})).toHaveAttribute("href","/support#content-correction");
+  await expect(journey.getByRole("button",{name:/Orientation/})).toHaveCount(0);
+  await expect(journey.getByRole("button",{name:/Service & health/})).toBeVisible();
+  await expect(journey.getByRole("button",{name:/My Documents/})).toBeVisible();
+  await expect(journey.getByRole("button",{name:/Case overview/})).toHaveCount(0);
 
-  const briefing=page.getByRole("dialog",{name:"A well-supported original claim connects three things."});
-  await expect(briefing).toBeVisible();
-  await expect(briefing.getByRole("heading",{name:"A well-supported original claim connects three things."})).toBeFocused();
-  await expect(briefing.getByText("How they may be related")).toBeVisible();
-  await expect(briefing.getByRole("checkbox",{name:"Do not show this briefing again"})).not.toBeChecked();
-  await briefing.getByRole("checkbox",{name:"Do not show this briefing again"}).check();
-  await briefing.getByRole("button",{name:/Begin your debrief/}).click();
+  await startCleanIntake(page);
+  await expect(page.getByText("No service history yet")).toBeVisible();
+  await expect(page.getByText("No health events yet")).toBeVisible();
+  await expect(page.getByText("Naval Air Station Lemoore")).toHaveCount(0);
+  await expect(page.getByText("Community clinic summary.pdf")).toHaveCount(0);
 
-  await expect(page.getByRole("heading",{name:"Start with what only you know."})).toBeVisible();
-  await page.getByRole("button",{name:"Add health event"}).click();
-  const addEvent=page.getByRole("dialog",{name:"Add a health event"});
-  await addEvent.getByLabel("Injury, illness, surgery, or treatment").fill("Fictional ankle injury");
-  await addEvent.getByLabel("What happened").fill("Fictional training event.");
-  await addEvent.getByRole("textbox",{name:"Date",exact:true}).fill("Spring 2016");
-  await expect(addEvent.getByLabel("These dates are approximate")).toBeChecked();
-  await addEvent.getByRole("button",{name:"Save item"}).click();
-  await expect(page.getByText("Fictional ankle injury")).toBeVisible();
-  await page.getByRole("button",{name:/Continue to documents/}).click();
-
-  await expect(page.getByRole("heading",{name:"Turn records into findable facts."})).toBeVisible();
-  await page.getByRole("button",{name:"Retry analysis"}).click();
-  await expect(page.getByText("Analysis retry started.")).toBeVisible();
-  await page.getByRole("button",{name:"Review claim leads"}).click();
-
-  await expect(page.getByRole("heading",{name:"Connect patterns without losing the source."})).toBeVisible();
-  await page.locator(".rw-lead").filter({hasText:"Right knee symptoms"}).getByRole("button",{name:/Create claim workspace/}).click();
-  await expect(page.getByText("Right knee symptoms added as a claim workspace.")).toBeVisible();
-  await page.getByRole("button",{name:"Open case dashboard"}).click();
+  await addKneeIntake(page);
+  await completeSetup(page);
   await expect(page.getByRole("heading",{name:"Your debrief, organized into action."})).toBeVisible();
-  await page.getByRole("button",{name:/Open workspace/}).click();
+  await expect(journey.getByRole("button",{name:/Case overview/})).toBeVisible();
+  await expect(journey.getByRole("button",{name:/Orientation/})).toHaveCount(0);
+  await expect(page.getByText("No records added yet")).toBeVisible();
+  expect(errors).toEqual([]);
+});
 
-  await expect(page.getByRole("heading",{name:"Build the statement from facts you can trace."})).toBeVisible();
-  await page.getByRole("button",{name:/Service treatment record Page 18/}).click();
-  const source=page.getByRole("dialog",{name:"Service treatment record"});
-  await expect(source.getByText("Follow-up for right knee pain after field exercise.")).toBeVisible();
-  await source.getByRole("button",{name:"Confirm source"}).click();
+test("returning users land on case overview instead of onboarding",async({page})=>{
+  await startCleanIntake(page);
+  await addKneeIntake(page);
+  await completeSetup(page);
+  await page.getByRole("button",{name:/Service & health/}).click();
+  await expect(page.getByRole("heading",{name:"Start with what only you know."})).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading",{name:"Your debrief, organized into action."})).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("clean-profile journey reaches a reviewed package",async({page})=>{
+  await startCleanIntake(page);
+  await addKneeIntake(page);
+  await completeSetup(page,{upload:true});
+  await page.getByRole("button",{name:/Claim leads/}).click();
+  const kneeLead=page.locator(".rw-lead").filter({hasText:"Right knee symptoms"});
+  await kneeLead.getByRole("button",{name:"Create claim workspace"}).click();
+  await page.getByRole("button",{name:"Open case dashboard"}).click();
+  await page.getByRole("button",{name:"Open workspace"}).click();
+
+  await page.getByRole("textbox",{name:/Service event/}).fill("Right knee pain began after a fictional training exercise in 2013.");
+  await page.getByRole("textbox",{name:/Current symptoms/}).fill("Intermittent pain when using stairs and standing.");
+  await page.getByRole("textbox",{name:/Relationship to service/}).fill("Symptoms began after the training event and continued afterward.");
+  await page.getByRole("textbox",{name:/Daily impact/}).fill("Pain limits stairs, kneeling, and prolonged standing.");
   await page.getByRole("button",{name:"Mark statement reviewed"}).click();
   await page.getByRole("button",{name:"Check package readiness"}).click();
-
   await expect(page.getByRole("heading",{name:"Required reviews complete"})).toBeVisible();
   await page.getByRole("radio",{name:"Not for this package"}).check();
   await page.getByRole("tab",{name:/Final approval/}).click();
   await page.getByRole("button",{name:"Approve entire package"}).click();
-  await expect(page.getByText("Download here. Submit through an official VA channel.")).toBeVisible();
   await page.getByRole("button",{name:"Preview download package"}).click();
-  const download=page.getByRole("dialog",{name:"Your package is ready to download"});
-  await expect(download.getByText("debrief-case-package.zip")).toBeVisible();
-  await download.getByRole("button",{name:"Preview follow-up"}).click();
-  await expect(page.getByRole("dialog",{name:"Start new work without changing the prior package."}).getByText("Supplemental claim")).toBeVisible();
-
-  await page.getByRole("button",{name:"Return to package"}).click();
-  await page.reload();
-  await expect(page.getByRole("heading",{name:"Turn verified information into a reviewable package."})).toBeVisible();
-  await expect(briefing).toBeHidden();
-  expect(errors).toEqual([]);
+  await expect(page.getByRole("dialog",{name:"Your package is ready to download"})).toBeVisible();
 });
 
-test("lead controls preserve user choice without blocking uncertain topics",async({page})=>{
-  await page.getByRole("dialog").getByRole("button",{name:"View orientation"}).click();
+test("documents can be skipped and users can add their own claim",async({page})=>{
+  await startCleanIntake(page);
+  await completeSetup(page);
   await page.getByRole("button",{name:/Claim leads/}).click();
-
-  const lowLead=page.locator(".rw-lead").filter({hasText:"Lower-back symptoms"});
-  await expect(lowLead.getByText("Limited information")).toBeVisible();
-  await lowLead.getByRole("button",{name:/Create claim workspace/}).click();
-  await expect(page.getByText("Lower-back symptoms added as a claim workspace.")).toBeVisible();
-  await lowLead.getByRole("button",{name:"Dismiss"}).click();
-  await page.getByRole("button",{name:/Dismissed/}).click();
-  await page.getByRole("button",{name:"Restore lead"}).click();
-  await expect(page.getByText("Lead restored.")).toBeVisible();
-
+  await expect(page.getByText("No claim leads yet")).toBeVisible();
   await page.getByRole("button",{name:"Add a claim not shown"}).click();
-  await page.getByRole("dialog").getByLabel("Condition or symptom").fill("Fictional shoulder symptoms");
-  await page.getByRole("button",{name:"Save item"}).click();
-  await page.getByRole("button",{name:/Case dashboard/}).click();
-  await expect(page.getByText("Fictional shoulder symptoms")).toBeVisible();
+  const custom=page.getByRole("dialog",{name:"Add your own claim topic"});
+  await custom.getByLabel("Condition or symptom").fill("Fictional shoulder symptoms");
+  await custom.getByRole("button",{name:"Save item"}).click();
+  await page.getByRole("button",{name:/Case overview/}).click();
+  await expect(page.getByText("Fictional shoulder symptoms",{exact:true})).toBeVisible();
 });
 
-test("package approval is blocked and editing a reviewed statement clears readiness",async({page})=>{
-  await page.getByRole("dialog").getByRole("button",{name:"View orientation"}).click();
-  await acceptKneeLead(page);
-  await page.getByRole("button",{name:/Package review/}).click();
-  await page.getByRole("tab",{name:/Final approval/}).click();
-  await expect(page.getByText("Approval is blocked.")).toBeVisible();
-  await expect(page.getByRole("button",{name:"Approve entire package"})).toBeDisabled();
-
-  await page.getByRole("tab",{name:/Package readiness/}).click();
-  await page.getByRole("button",{name:"Review statement"}).click();
-  await page.getByRole("button",{name:"Mark statement reviewed"}).click();
-  await page.getByRole("button",{name:/Service treatment record Page 18/}).click();
-  await page.getByRole("dialog",{name:"Service treatment record"}).getByRole("button",{name:"Confirm source"}).click();
-  await page.getByRole("button",{name:"Check package readiness"}).click();
-  await expect(page.getByRole("heading",{name:"Required reviews complete"})).toBeVisible();
-
-  await page.getByRole("button",{name:"Review again"}).first().click();
-  await page.getByRole("textbox",{name:/Current symptoms/}).fill("Edited fictional symptoms.");
-  await page.getByRole("button",{name:"Check package readiness"}).click();
-  await expect(page.getByRole("heading",{name:"1 remaining"})).toBeVisible();
+test("How Debrief works remains available without an orientation step",async({page})=>{
+  await startCleanIntake(page);
+  await completeSetup(page);
+  await page.getByRole("button",{name:"How Debrief works"}).click();
+  const briefing=page.getByRole("dialog",{name:"A well-supported original claim connects three things."});
+  await expect(briefing.getByRole("button",{name:"Return to case"})).toBeVisible();
+  await expect(briefing.getByText("without occupying a permanent case step")).toBeVisible();
+  await briefing.getByRole("button",{name:"Return to case"}).click();
+  await expect(page.getByRole("button",{name:/Orientation/})).toHaveCount(0);
 });
 
-test("preview remains usable at mobile and desktop widths",async({page})=>{
+test("clean onboarding remains usable at mobile and desktop widths",async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await expectNoOverflow(page);
-  const mobileBriefing=page.getByRole("dialog",{name:"A well-supported original claim connects three things."});
-  await expect(mobileBriefing.getByRole("button",{name:"Begin your debrief"})).toBeVisible();
-  expect(await mobileBriefing.evaluate(element=>element.scrollWidth-element.clientWidth)).toBeLessThanOrEqual(1);
-  await mobileBriefing.getByRole("button",{name:"View orientation"}).click();
+  const briefing=page.getByRole("dialog",{name:"A well-supported original claim connects three things."});
+  await expect(briefing.getByRole("button",{name:"Start intake"})).toBeVisible();
+  await briefing.getByRole("button",{name:"Start intake"}).click();
+  await page.getByRole("button",{name:"Open navigation"}).click();
+  const journey=page.getByRole("complementary",{name:"Case journey navigation"});
+  await expect(journey.getByRole("button",{name:/Service & health/})).toBeVisible();
+  await expect(journey.getByRole("button",{name:/Orientation/})).toHaveCount(0);
+  await journey.getByRole("button",{name:"Close navigation"}).click();
   for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
     await page.setViewportSize(viewport);
     await expectNoOverflow(page);
-    await expect(page.getByRole("heading",{name:"Bring the mission details together. Build from what you know."})).toBeVisible();
-    if(viewport.width===390){
-      await page.getByRole("button",{name:"Open navigation"}).click();
-      const journey=page.getByRole("complementary",{name:"Case journey navigation"});
-      await expect(journey).toHaveClass(/open/);
-      await expect(journey.getByRole("button",{name:/Claim workspace/})).toBeVisible();
-      await expect(journey.getByRole("link",{name:"Forms guide"})).toBeVisible();
-      await journey.getByRole("button",{name:"Close navigation"}).click();
-    }
+    await expect(page.getByRole("heading",{name:"Start with what only you know."})).toBeVisible();
   }
-});
-
-test("direct navigation records visited screens and keeps empty states honest",async({page})=>{
-  await page.getByRole("dialog").getByRole("button",{name:"View orientation"}).click();
-  const journey=page.getByRole("complementary",{name:"Case journey navigation"});
-  await journey.getByRole("button",{name:/Claim workspace/}).click();
-  await expect(page.getByRole("heading",{name:"Create a claim workspace first."})).toBeVisible();
-  await journey.getByRole("button",{name:/Package review/}).click();
-  await expect(page.getByRole("heading",{name:"Build a claim workspace before package review."})).toBeVisible();
-  await expect(page.getByRole("tab",{name:/Package readiness/})).toBeHidden();
-  await expect(journey.getByRole("button",{name:/Service & health/})).toContainText("Available anytime");
-  await page.getByRole("button",{name:/Review claim leads/}).click();
-  await expect(page.getByRole("heading",{name:"Connect patterns without losing the source."})).toBeVisible();
-});
-
-test("intake entries can be edited and document search explains empty results",async({page})=>{
-  await page.getByRole("dialog").getByRole("button",{name:/Begin your debrief/}).click();
-  await page.getByRole("button",{name:"Edit Right knee injury during unit training"}).click();
-  const editor=page.getByRole("dialog",{name:"Edit health event"});
-  await expect(editor.getByLabel("Injury, illness, surgery, or treatment")).toHaveValue("Right knee injury during unit training");
-  await editor.getByLabel("Injury, illness, surgery, or treatment").fill("Updated fictional knee event");
-  await editor.getByRole("button",{name:"Save item"}).click();
-  await expect(page.getByText("Updated fictional knee event")).toBeVisible();
-  await page.getByRole("button",{name:/My Documents/}).click();
-  await page.getByLabel("Search documents").fill("not-a-document");
-  await expect(page.getByRole("heading",{name:"No matching documents"})).toBeVisible();
-});
-
-test("mission briefing traps focus, saves preference, and returns to the active case",async({page})=>{
-  const briefing=page.getByRole("dialog",{name:"A well-supported original claim connects three things."});
-  await expect(briefing.getByRole("heading",{name:"A well-supported original claim connects three things."})).toBeFocused();
-  await page.keyboard.press("Shift+Tab");
-  await expect(briefing.getByRole("button",{name:/Begin your debrief/})).toBeFocused();
-
-  await briefing.getByRole("button",{name:"View orientation"}).click();
-  await page.reload();
-  await expect(briefing).toBeVisible();
-  await briefing.getByRole("checkbox",{name:"Do not show this briefing again"}).check();
-  await briefing.getByRole("button",{name:"View orientation"}).click();
-  await page.getByRole("button",{name:/Package review/}).click();
-  await page.getByRole("button",{name:"How Debrief works"}).click();
-  await expect(briefing.getByRole("button",{name:/Return to case/})).toBeVisible();
-  await expect(briefing.getByRole("button",{name:/Begin your debrief/})).toBeHidden();
-  await briefing.getByRole("button",{name:/Return to case/}).click();
-  await expect(page.getByRole("heading",{name:"Build a claim workspace before package review."})).toBeVisible();
 });
