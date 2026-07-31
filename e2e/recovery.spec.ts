@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { captureBrowserErrors, continueClaim, expectStep, fictionalAnswers, installDraft, savedDraft } from "./fixtures";
+import { captureBrowserErrors, continueClaim, enableBrowserTestProfile, expectStep, fictionalAnswers, installDraft, savedDraft } from "./fixtures";
+
+test.beforeEach(async({page})=>enableBrowserTestProfile(page));
 
 test("browser-only work survives offline progress, refresh, and browser navigation",async({page,context})=>{
   const browserErrors=captureBrowserErrors(page);

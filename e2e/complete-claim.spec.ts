@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { captureBrowserErrors, completeQuestionnaireToStatement, continueClaim, expectStep } from "./fixtures";
+import { captureBrowserErrors, completeQuestionnaireToStatement, continueClaim, enableBrowserTestProfile, expectStep } from "./fixtures";
+
+test.beforeEach(async({page})=>enableBrowserTestProfile(page));
 
 test("a fictional veteran can complete, export, save, and resume a full guided claim",async({page})=>{
   const browserErrors=captureBrowserErrors(page);

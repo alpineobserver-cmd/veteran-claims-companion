@@ -39,6 +39,7 @@ async function callback(payload){
   const body=JSON.stringify(payload);const timestamp=String(Date.now());
   const response=await fetch(config.callbackUrl,{method:"POST",headers:{"Content-Type":"application/json","X-Debrief-Scan-Timestamp":timestamp,"X-Debrief-Scan-Signature":callbackSignature(timestamp,body)},body,signal:AbortSignal.timeout(10000)});
   if(!response.ok)throw new Error("SCAN_CALLBACK_FAILED");
+  const value=await response.json().catch(()=>null);if(!value||!["accepted","already_committed","discard"].includes(value.disposition))throw new Error("SCAN_CALLBACK_FAILED");return value.disposition;
 }
 function safeError(error){const message=error instanceof Error?error.message:"UNKNOWN_SCANNER_RESPONSE";return new Set(["MALWARE_DETECTED","SCANNER_TIMEOUT","SCANNER_UNAVAILABLE","STALE_DEFINITIONS","UNKNOWN_SCANNER_RESPONSE","PROMOTION_FAILED","SOURCE_MISSING","SOURCE_GENERATION_MISMATCH","CLEAN_OBJECT_MISSING","CLEAN_OBJECT_CHECKSUM_MISMATCH","TASK_AUTH_FAILED","TASK_HTTP_400","TASK_HTTP_401","TASK_HTTP_403","TASK_HTTP_404","TASK_HTTP_409","TASK_HTTP_429","TASK_HTTP_500","TASK_HTTP_503"]).has(message)?message:"UNKNOWN_SCANNER_RESPONSE"}
 function cleanKeyFor(bucket,name,generation){return `clean/${createHash("sha256").update(`${bucket}\0${name}\0${generation}`).digest("hex")}${extname(name).toLowerCase()||".bin"}`}
@@ -64,6 +65,7 @@ async function deleteSourceOnce(source,generation){
     const code=storageErrorCode(error);if(code!==404&&code!==412)throw error;
   }
 }
+async function deleteDestinationOnce(file){try{await file.delete()}catch(error){if(storageErrorCode(error)!==404)throw error}}
 function parsedEventCandidate(value){
   if(!value||typeof value!=="object")return null;
   if(typeof value.bucket==="string")return value;
@@ -109,7 +111,7 @@ async function processObject(event){
   const working=await mkdtemp(join(tmpdir(),"debrief-scan-"));
   try{
     const definitions=await loadDefinitions(join(working,"definitions"));
-    await callback({...base,outcome:"STARTED",definitionVersion:definitions});
+    const startDisposition=await callback({...base,outcome:"STARTED",definitionVersion:definitions});if(startDisposition==="discard")return;
     const source=storage.bucket(bucket).file(name,{generation:String(generation)});
     const [metadata]=await source.getMetadata();
     if(String(metadata.generation)!==String(generation))throw new Error("SOURCE_GENERATION_MISMATCH");
@@ -122,16 +124,19 @@ async function processObject(event){
       await saveExactlyOnce(clean,bytes,{resumable:false,validation:"crc32c",contentType:metadata.contentType||"application/octet-stream",metadata:{cacheControl:"private, no-store"},preconditionOpts:{ifGenerationMatch:0}});
       const [cleanMetadata]=await clean.getMetadata();
       if(Number(cleanMetadata.size)!==bytes.length||String(cleanMetadata.md5Hash||"")!==String(metadata.md5Hash||""))throw new Error("PROMOTION_FAILED");
-      await callback({...base,outcome:"CLEAN",cleanKey,definitionVersion:definitions});
+      const disposition=await callback({...base,outcome:"CLEAN",cleanKey,definitionVersion:definitions});
+      if(disposition==="discard"){await deleteDestinationOnce(clean);return;}
       await deleteSourceOnce(source,generation);
       return;
     }
     if(exitCode===1){
+      let rejected;let rejectedKey;
       if(config.rejectedBucket){
-        const [bytes]=await source.download({validation:"crc32c"});const rejected=storage.bucket(config.rejectedBucket).file(`rejected/${createHash("sha256").update(`${bucket}\0${name}\0${generation}`).digest("hex")}`);
+        const [bytes]=await source.download({validation:"crc32c"});rejectedKey=`rejected/${createHash("sha256").update(`${bucket}\0${name}\0${generation}`).digest("hex")}`;rejected=storage.bucket(config.rejectedBucket).file(rejectedKey);
         await saveExactlyOnce(rejected,bytes,{resumable:false,validation:"crc32c",contentType:"application/octet-stream",metadata:{cacheControl:"private, no-store"},preconditionOpts:{ifGenerationMatch:0}});
       }
-      await callback({...base,outcome:"REJECTED_MALWARE",definitionVersion:definitions,errorCode:"MALWARE_DETECTED"});
+      const disposition=await callback({...base,outcome:"REJECTED_MALWARE",rejectedKey,definitionVersion:definitions,errorCode:"MALWARE_DETECTED"});
+      if(disposition==="discard"){if(rejected)await deleteDestinationOnce(rejected);return;}
       await deleteSourceOnce(source,generation);
       return;
     }

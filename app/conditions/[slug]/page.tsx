@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import {auth} from "@/auth";
+import { notFound,redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { RatingSchemeExplorer } from "@/components/rating-scheme-explorer";
 import { conditions, getCondition } from "@/lib/conditions";
@@ -13,8 +14,8 @@ import "./ratings.css";
 
 export function generateStaticParams(){return conditions.map(c=>({slug:c.slug}))}
 export default async function ConditionPage({params}:{params:Promise<{slug:string}>}){
-  const {slug}=await params; const c=getCondition(slug); if(!c)notFound(); const codes=codesForCondition(slug); const schemes=schemesForCondition(slug); const provenance=conditionProvenance(slug)!;
-  return <AppShell current="conditions"><div className="condition-detail">
+  const [session,{slug}]=await Promise.all([auth(),params]);if(!session?.user?.id)redirect(`/login?redirectTo=/conditions/${encodeURIComponent(slug)}`);const c=getCondition(slug); if(!c)notFound(); const codes=codesForCondition(slug); const schemes=schemesForCondition(slug); const provenance=conditionProvenance(slug)!;
+  return <AppShell current="conditions" user={{id:session.user.id,name:session.user.name,email:session.user.email,image:session.user.image}}><div className="condition-detail">
     <Link href="/conditions" className="back-link"><ArrowLeft size={15}/>All conditions</Link>
     <header className="detail-hero"><span className="condition-category">{c.category}</span><h1>{c.name}</h1><p>{c.short}</p><div className="verified"><CalendarDays size={14}/>Regulatory summaries checked against eCFR current through {CATALOG_VERIFIED_THROUGH} · {provenance.contentVersion} · <Link href="/sources">record {provenance.localRecordSha256.slice(0,12)}</Link></div></header>
     <RatingSchemeExplorer conditionName={c.name} schemes={schemes}/>

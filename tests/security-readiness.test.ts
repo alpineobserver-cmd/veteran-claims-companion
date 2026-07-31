@@ -130,3 +130,23 @@ test("application responses opt into cross-origin resource isolation",async()=>{
   assert.match(config,/Cross-Origin-Embedder-Policy",value:"require-corp/);
   assert.match(config,/Cross-Origin-Resource-Policy",value:"same-origin/);
 });
+
+test("security discovery and crawler controls are explicit",async()=>{
+  const [security,robots]=await Promise.all([read("public/.well-known/security.txt"),read("app/robots.ts")]);
+  for(const field of["Contact: mailto:","Expires:","Preferred-Languages: en","Canonical: https://debriefclaims.com/.well-known/security.txt","Policy: https://debriefclaims.com/support"])assert.match(security,new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
+  assert.match(robots,/userAgent:"\*",disallow:"\/"/);
+});
+
+test("the synthetic browser identity is restricted to the local browser-test runtime",async()=>{
+  const [authSource,browserConfig]=await Promise.all([read("auth.ts"),read("playwright.config.ts")]);
+  assert.match(authSource,/NODE_ENV!=="production"/);
+  assert.match(authSource,/APP_ENV==="development"/);
+  assert.match(authSource,/RELEASE_ID==="browser-test"/);
+  assert.match(authSource,/DEBRIEF_BROWSER_TEST_PROFILE==="enabled"/);
+  assert.match(authSource,/debrief-browser-test-profile/);
+  assert.match(browserConfig,/DEBRIEF_BROWSER_TEST_PROFILE:"enabled"/);
+  const dashboard=await read("app/dashboard/page.tsx");
+  assert.match(dashboard,/user\.id!=="fictional-browser-tester"/);
+  const builder=await read("app/claim-builder/page.tsx");
+  assert.match(builder,/browserTest\?undefined/);
+});

@@ -44,6 +44,7 @@ test("account deletion covers current and legacy objects and verifies database r
   assert.match(route,/deleteStoredObjectReferencesAndVerify/);
   assert.match(route,/\(provider,zone\)=>documentStorage\(provider,zone\)/);
   assert.match(route,/documentStorageReferences\(item\)/);
+  assert.match(route,/rejectedStorageKey:true/);
   assert.match(route,/transaction\.rateLimitBucket\.deleteMany/);
   assert.match(route,/transaction\.user\.deleteMany/);
   assert.match(route,/prisma\.user\.findUnique/);
