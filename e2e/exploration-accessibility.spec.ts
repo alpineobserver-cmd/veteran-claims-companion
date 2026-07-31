@@ -75,7 +75,7 @@ test("exposure record check validates required history, shows cautious matches, 
   await expect(page.getByRole("heading", { name: "Individual Longitudinal Exposure Record" })).toBeVisible();
 
   await page.getByRole("button", { name: "Start over" }).click();
-  await expect(page.getByRole("heading", { name: "Start with your service history" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Debrief where and when you served" })).toBeFocused();
   await expect(page.getByLabel(/Post-9\/11/)).not.toBeChecked();
   await expect(page.getByLabel("Afghanistan or a nearby qualifying area")).not.toBeChecked();
   expect(browserErrors).toEqual([]);
