@@ -63,6 +63,7 @@ test("storage adapters prohibit public object access and list responses omit sto
   assert.doesNotMatch(storage,/access:\s*["']public["']/);
   assert.match(contentRoute,/documentStorage\(document\.provider,"clean"\)/);
   assert.match(deleteRoute,/documentStorageReferences\(document\)/);
+  assert.match(deleteRoute,/rejectedStorageKey:true/);
   assert.match(deleteRoute,/documentStorage\(item\.storageProvider,item\.storageZone\)/);
   const publicSelect=documentsRoute.match(/const documentSelect=\{([^;]+)\} as const;/)?.[1]||"";
   assert.ok(publicSelect.length>0);

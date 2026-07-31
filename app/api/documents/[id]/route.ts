@@ -14,7 +14,7 @@ export async function DELETE(request:Request,context:Context){
   const rejected=rejectCrossOriginMutation(request);if(rejected)return rejected;
   const session=await auth();if(!session?.user?.id)return NextResponse.json({error:"Sign in to delete this document."},{status:401});
   const limited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.documentAccess]);if(limited)return limited;
-  const {id}=await context.params;const document=await prisma.document.findFirst({where:{id,userId:session.user.id},select:{id:true,claimId:true,storageKey:true,quarantineKey:true,cleanStorageKey:true,mimeType:true,size:true,provider:true}});
+  const {id}=await context.params;const document=await prisma.document.findFirst({where:{id,userId:session.user.id},select:{id:true,claimId:true,storageKey:true,quarantineKey:true,cleanStorageKey:true,rejectedStorageKey:true,mimeType:true,size:true,provider:true}});
   if(!document)return NextResponse.json({error:"Document not found."},{status:404});
   const references=documentStorageReferences(document);
   const results=await Promise.allSettled(references.map(item=>deleteObjectAndVerify(documentStorage(item.storageProvider,item.storageZone),item.storageKey)));
