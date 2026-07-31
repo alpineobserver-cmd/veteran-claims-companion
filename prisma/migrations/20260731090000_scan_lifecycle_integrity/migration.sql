@@ -1,0 +1,2 @@
+ALTER TYPE "DocumentStatus" ADD VALUE IF NOT EXISTS 'SCAN_RETRY_PENDING';
+ALTER TABLE "Document" ADD COLUMN "rejectedStorageKey" TEXT;

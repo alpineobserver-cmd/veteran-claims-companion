@@ -16,7 +16,7 @@ export async function DELETE(request:Request){
   const session=await auth();if(!session?.user?.id)return NextResponse.json({error:"Sign in to delete this account."},{status:401});
   const limited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.accountDelete]);if(limited)return limited;
   const principalHash=rateLimitPrincipalHash(`user:${session.user.id}`);
-  const [documents,legacyUploads,orphanedUploads]=await Promise.all([prisma.document.findMany({where:{userId:session.user.id},select:{storageKey:true,quarantineKey:true,cleanStorageKey:true,provider:true}}),prisma.upload.findMany({where:{userId:session.user.id},select:{storageKey:true,provider:true}}),prisma.storageReconciliationTask.findMany({where:{principalHash,operation:"DELETE_OBJECT",status:"PENDING",storageKey:{not:null}},select:{storageKey:true,storageProvider:true,storageZone:true}})]);
+  const [documents,legacyUploads,orphanedUploads]=await Promise.all([prisma.document.findMany({where:{userId:session.user.id},select:{storageKey:true,quarantineKey:true,cleanStorageKey:true,rejectedStorageKey:true,provider:true}}),prisma.upload.findMany({where:{userId:session.user.id},select:{storageKey:true,provider:true}}),prisma.storageReconciliationTask.findMany({where:{principalHash,operation:"DELETE_OBJECT",status:"PENDING",storageKey:{not:null}},select:{storageKey:true,storageProvider:true,storageZone:true}})]);
   const storageObjects:StoredObjectReference[]=[
     ...documents.flatMap(item=>documentStorageReferences(item)),
     ...legacyUploads.map(item=>({storageKey:item.storageKey,storageProvider:item.provider})),

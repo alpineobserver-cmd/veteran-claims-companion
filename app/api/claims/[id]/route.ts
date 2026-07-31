@@ -66,7 +66,7 @@ export async function DELETE(request: Request, context: Context) {
   const { id } = await context.params;
   const principalHash=rateLimitPrincipalHash(`user:${session.user.id}`);
   const [documents,orphanedUploads]=await Promise.all([
-    prisma.document.findMany({ where: { claimId: id, userId: session.user.id }, select: { storageKey: true, quarantineKey:true, cleanStorageKey:true, provider: true } }),
+    prisma.document.findMany({ where: { claimId: id, userId: session.user.id }, select: { storageKey: true, quarantineKey:true, cleanStorageKey:true,rejectedStorageKey:true, provider: true } }),
     prisma.storageReconciliationTask.findMany({where:{principalHash,operation:"DELETE_OBJECT",entityId:id,status:"PENDING",storageKey:{not:null}},select:{storageKey:true,storageProvider:true,storageZone:true}})
   ]);
   const storageObjects:StoredObjectReference[]=[

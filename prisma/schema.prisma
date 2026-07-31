@@ -38,6 +38,7 @@ model Document {
   status DocumentStatus @default(PENDING_SCAN)
   quarantineKey String?
   cleanStorageKey String?
+  rejectedStorageKey String?
   objectGeneration String?
   scanEngine String?
   scanEngineVersion String?
@@ -390,6 +391,7 @@ enum DocumentStatus {
   SCANNING
   CLEAN
   REJECTED_MALWARE
+  SCAN_RETRY_PENDING
   SCAN_FAILED
   DELETING
 }
