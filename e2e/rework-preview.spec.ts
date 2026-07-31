@@ -50,26 +50,26 @@ test.beforeEach(async({page})=>{
 test("signed-out visitors are redirected to authentication",async({page})=>{
   await page.goto("/rework-preview");
   await expect(page).toHaveURL(/\/login\?redirectTo=%2Frework-preview|\/login\?redirectTo=\/rework-preview/);
-  await expect(page.getByRole("heading",{name:"Sign in before adding case details."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Sign in before adding claim information."})).toBeVisible();
   await expect(page.getByText("New accounts begin with a clean service and health intake.")).toBeVisible();
 });
 
-test("related case tools also require authentication",async({page})=>{
+test("related claim tools also require authentication",async({page})=>{
   for(const path of ["/conditions","/forms","/exposure-record-check","/claim-builder"]){
     await page.goto(path);
     await expect(page).toHaveURL(/\/login\?redirectTo=/);
-    await expect(page.getByRole("heading",{name:"Sign in before adding case details."})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Sign in before adding claim information."})).toBeVisible();
   }
 });
 
 test("new profile starts empty and orientation is not permanent navigation",async({page})=>{
   const errors=captureBrowserErrors(page);
-  const journey=page.getByRole("complementary",{name:"Case journey navigation"});
+  const journey=page.getByRole("complementary",{name:"Claim package navigation"});
   await expect(journey.getByRole("button",{name:/Orientation/})).toHaveCount(0);
   await expect(journey.getByRole("link",{name:"Debrief home"})).toHaveAttribute("href","/");
   await expect(journey.getByRole("button",{name:/Service & Health/})).toBeVisible();
   await expect(journey.getByRole("button",{name:/My Documents/})).toBeVisible();
-  await expect(journey.getByRole("button",{name:/Case Overview/})).toHaveCount(0);
+  await expect(journey.getByRole("button",{name:/Package Overview/})).toHaveCount(0);
   await expect(journey.getByText("Completed or visited")).toHaveCount(0);
   await expect(journey.getByText("Available",{exact:true})).toHaveCount(0);
 
@@ -81,23 +81,24 @@ test("new profile starts empty and orientation is not permanent navigation",asyn
 
   await addKneeIntake(page);
   await completeSetup(page);
-  await expect(page.getByRole("heading",{name:"Your debrief, organized into action."})).toBeVisible();
-  await expect(journey.getByRole("button",{name:/Case Overview/})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Your claim package, organized into action."})).toBeVisible();
+  await expect(journey.getByRole("button",{name:/Package Overview/})).toBeVisible();
   await expect(journey.getByRole("button",{name:/Orientation/})).toHaveCount(0);
-  await expect(journey.getByText("Build Your Case")).toBeVisible();
+  await expect(journey.getByText("Build Your Foundation")).toBeVisible();
+  await expect(journey.getByText("Claims in This Package")).toBeVisible();
   await expect(journey.getByText("Finalize")).toBeVisible();
   await expect(page.getByText("No records added yet")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
-test("returning users land on case overview instead of onboarding",async({page})=>{
+test("returning users land on package overview instead of onboarding",async({page})=>{
   await startCleanIntake(page);
   await addKneeIntake(page);
   await completeSetup(page);
   await page.getByRole("button",{name:/Service & Health/}).click();
   await expect(page.getByRole("heading",{name:"Start with what only you know."})).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("heading",{name:"Your debrief, organized into action."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Your claim package, organized into action."})).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
@@ -108,13 +109,13 @@ test("clean-profile journey reaches a reviewed package",async({page})=>{
   await page.getByRole("button",{name:/Claim Leads/}).click();
   const kneeLead=page.locator(".rw-lead").filter({hasText:"Right knee symptoms"});
   await kneeLead.getByRole("button",{name:"Add to Your Claims"}).click();
-  await page.getByRole("button",{name:"Open case dashboard"}).click();
-  const journey=page.getByRole("complementary",{name:"Case journey navigation"});
+  await page.getByRole("button",{name:"Open Package Overview"}).click();
+  const journey=page.getByRole("complementary",{name:"Claim package navigation"});
   await expect(journey.getByRole("button",{name:"Right knee symptoms"})).toBeVisible();
   await expect(journey.getByRole("button",{name:/Claim Workspace/})).toHaveCount(0);
   await page.getByRole("button",{name:"Open Claim"}).click();
   await expect(page.getByRole("heading",{name:"Right knee symptoms Claim"})).toBeVisible();
-  await expect(page.getByRole("button",{name:/Case Overview \/ Right knee symptoms/})).toBeVisible();
+  await expect(page.getByRole("button",{name:/Package Overview \/ Right knee symptoms/})).toBeVisible();
 
   await page.getByRole("textbox",{name:/Service event/}).fill("Right knee pain began after a fictional training exercise in 2013.");
   await page.getByRole("textbox",{name:/Current symptoms/}).fill("Intermittent pain when using stairs and standing.");
@@ -139,7 +140,7 @@ test("documents can be skipped and users can add their own claim",async({page})=
   const custom=page.getByRole("dialog",{name:"Add your own claim topic"});
   await custom.getByLabel("Condition or symptom").fill("Fictional shoulder symptoms");
   await custom.getByRole("button",{name:"Save item"}).click();
-  await page.getByRole("button",{name:/Case Overview/}).click();
+  await page.getByRole("button",{name:"Package Overview",exact:true}).click();
   await expect(page.locator("#rework-main").getByText("Fictional shoulder symptoms",{exact:true})).toBeVisible();
 });
 
@@ -148,9 +149,9 @@ test("How Debrief works remains available without an orientation step",async({pa
   await completeSetup(page);
   await page.getByRole("button",{name:"How Debrief works"}).click();
   const briefing=page.getByRole("dialog",{name:"A well-supported original claim connects three things."});
-  await expect(briefing.getByRole("button",{name:"Return to case"})).toBeVisible();
-  await expect(briefing.getByText("without occupying a permanent case step")).toBeVisible();
-  await briefing.getByRole("button",{name:"Return to case"}).click();
+  await expect(briefing.getByRole("button",{name:"Return to package"})).toBeVisible();
+  await expect(briefing.getByText("without occupying a permanent navigation item")).toBeVisible();
+  await briefing.getByRole("button",{name:"Return to package"}).click();
   await expect(page.getByRole("button",{name:/Orientation/})).toHaveCount(0);
 });
 
@@ -161,7 +162,7 @@ test("clean onboarding remains usable at mobile and desktop widths",async({page}
   await expect(briefing.getByRole("button",{name:"Start intake"})).toBeVisible();
   await briefing.getByRole("button",{name:"Start intake"}).click();
   await page.getByRole("button",{name:"Open navigation"}).click();
-  const journey=page.getByRole("complementary",{name:"Case journey navigation"});
+  const journey=page.getByRole("complementary",{name:"Claim package navigation"});
   await expect(journey.getByRole("button",{name:/Service & Health/})).toBeVisible();
   await expect(journey.getByRole("button",{name:/Orientation/})).toHaveCount(0);
   await journey.getByRole("button",{name:"Close navigation"}).click();
