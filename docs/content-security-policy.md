@@ -22,4 +22,6 @@ For those compatibility reasons, `script-src 'unsafe-inline'` and `style-src 'un
 
 Re-evaluate a nonce-based dynamic deployment or stable hash/SRI support before real-data authorization, after a major Next.js upgrade, or if static rendering is otherwise removed. The evaluation must compare build/runtime compatibility, authenticated and public routes, OAuth, downloads, PDF/export actions, caching, latency, cost, browser console violations, and rollback. Do not weaken directives merely to silence a violation; identify the required resource and add the smallest reviewed allowance.
 
+The Level 1 remediation review on July 31, 2026 confirmed that the production build still emits Next.js inline bootstrap scripts and that three application progress indicators use narrowly scoped dynamic inline widths. Removing either inline allowance without a nonce/hash rendering migration would break hydration or progress display. The enforced policy was therefore left unchanged rather than creating an untested availability regression; this residual remains a real-data authorization gate.
+
 Framework reference: [Next.js Content Security Policy guide](https://nextjs.org/docs/app/guides/content-security-policy).

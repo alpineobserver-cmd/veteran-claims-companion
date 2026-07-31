@@ -140,6 +140,41 @@ jobs:
       - name: Validate the dependency tree and block high-severity advisories
         run: npm run check:dependencies
 
+  scanner-supply-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: scanner/package-lock.json
+      - name: Install and audit scanner dependencies
+        run: |
+          npm ci --prefix scanner
+          npm audit --prefix scanner --audit-level=low
+      - name: Generate the scanner dependency SBOM
+        run: npm sbom --prefix scanner --sbom-format=cyclonedx > scanner-dependencies.cdx.json
+      - name: Build the digest-pinned scanner image
+        run: docker build --build-arg VCS_REF=${{ github.sha }} --tag debrief-malware-scanner:${{ github.sha }} scanner
+      - name: Scan the scanner image for high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: debrief-malware-scanner:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: false
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+      - name: Preserve the scanner SBOM with the release checks
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: scanner-sbom-${{ github.sha }}
+          path: scanner-dependencies.cdx.json
+          if-no-files-found: error
+          retention-days: 90
+
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -193,7 +228,7 @@ jobs:
 
   verify:
     if: always()
-    needs: [lint, typecheck, build, unit, integration, migration, dependencies, security, browser, content-governance]
+    needs: [lint, typecheck, build, unit, integration, migration, dependencies, scanner-supply-chain, security, browser, content-governance]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -206,6 +241,7 @@ jobs:
           test "${{ needs.integration.result }}" = "success"
           test "${{ needs.migration.result }}" = "success"
           test "${{ needs.dependencies.result }}" = "success"
+          test "${{ needs.scanner-supply-chain.result }}" = "success"
           test "${{ needs.security.result }}" = "success"
           test "${{ needs.browser.result }}" = "success"
           test "${{ needs.content-governance.result }}" = "success"

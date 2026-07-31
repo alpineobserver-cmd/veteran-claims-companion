@@ -130,3 +130,9 @@ test("application responses opt into cross-origin resource isolation",async()=>{
   assert.match(config,/Cross-Origin-Embedder-Policy",value:"require-corp/);
   assert.match(config,/Cross-Origin-Resource-Policy",value:"same-origin/);
 });
+
+test("security discovery and crawler controls are explicit",async()=>{
+  const [security,robots]=await Promise.all([read("public/.well-known/security.txt"),read("app/robots.ts")]);
+  for(const field of["Contact: mailto:","Expires:","Preferred-Languages: en","Canonical: https://debriefclaims.com/.well-known/security.txt","Policy: https://debriefclaims.com/support"])assert.match(security,new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
+  assert.match(robots,/userAgent:"\*",disallow:"\/"/);
+});

@@ -31,6 +31,16 @@ test("production rejects a staging data label",()=>{
   assert.match(result.stderr,/Production must use DATA_ENVIRONMENT=production/);
 });
 
+test("hosted releases require the protected environment branch and a recorded commit",()=>{
+  const base={VERCEL_ENV:"production",APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"false",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"true",DEBRIEF_MALWARE_SCANNING_ENABLED:"false",DEBRIEF_REAL_DOCUMENTS_ENABLED:"false"};
+  const wrongBranch=validate({...base,VERCEL_GIT_COMMIT_REF:"feature",VERCEL_GIT_COMMIT_SHA:"a".repeat(40)});
+  assert.notEqual(wrongBranch.status,0);assert.match(wrongBranch.stderr,/staging branch/);
+  const missingSha=validate({...base,VERCEL_GIT_COMMIT_REF:"staging"});
+  assert.notEqual(missingSha.status,0);assert.match(missingSha.stderr,/full Git commit SHA/);
+  const release=validate({...base,VERCEL_GIT_COMMIT_REF:"staging",VERCEL_GIT_COMMIT_SHA:"a".repeat(40)});
+  assert.equal(release.status,0,release.stderr);
+});
+
 test("deployment rejects unsafe AI cost ceilings",()=>{
   for(const overrides of [
     {DEBRIEF_AI_DAILY_USER_LIMIT:"0"},
