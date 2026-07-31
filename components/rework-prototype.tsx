@@ -14,13 +14,10 @@ import {
   type PackageReadinessItem,type PrototypeScreen,type ServicePeriod,type SourceReference,type WorkspaceDraft
 } from "@/lib/rework-prototype";
 
-const screens:Array<{id:PrototypeScreen;label:string;short:string}>=[
-  {id:"dashboard",label:"Case overview",short:"Overview"},
-  {id:"intake",label:"Service & health",short:"Intake"},
-  {id:"documents",label:"My Documents",short:"Documents"},
-  {id:"leads",label:"Claim leads",short:"Leads"},
-  {id:"workspace",label:"Claim workspace",short:"Workspace"},
-  {id:"package",label:"Package review",short:"Review"}
+const buildScreens:Array<{id:PrototypeScreen;label:string;icon:typeof History}>=[
+  {id:"intake",label:"Service & Health",icon:History},
+  {id:"documents",label:"My Documents",icon:Files},
+  {id:"leads",label:"Claim Leads",icon:FolderSearch}
 ];
 const storageKey="debrief.rework-preview.v2";
 
@@ -34,10 +31,10 @@ type SavedState={
   checks:PackageReadinessItem[];
   approved:boolean;
   briefingSeen?:boolean;
-  visitedScreens?:PrototypeScreen[];
   workspaceDraft?:WorkspaceDraft;
   buddyDecision?:BuddyDecision;
   onboardingComplete?:boolean;
+  selectedClaimId?:string|null;
 };
 
 type BuddyDecision="undecided"|"add"|"not-available"|"not-needed";
@@ -69,31 +66,33 @@ export function ReworkPrototype({user}:{user:{name:string|null;localTestProfile:
   const [downloadOpen,setDownloadOpen]=useState(false);
   const [briefingOpen,setBriefingOpen]=useState(false);
   const [briefingSeen,setBriefingSeen]=useState(false);
-  const [visitedScreens,setVisitedScreens]=useState<PrototypeScreen[]>(["intake"]);
   const [workspaceDraft,setWorkspaceDraft]=useState<WorkspaceDraft>(initialWorkspaceDraft);
   const [buddyDecision,setBuddyDecision]=useState<BuddyDecision>("undecided");
   const [inspectedSource,setInspectedSource]=useState<SourceReference|null>(null);
   const [followUpOpen,setFollowUpOpen]=useState(false);
   const [onboardingComplete,setOnboardingComplete]=useState(false);
+  const [selectedClaimId,setSelectedClaimId]=useState<string|null>(null);
+  const activeClaimId=claims.some(claim=>claim.id===selectedClaimId)?selectedClaimId:claims[0]?.id||null;
 
   useEffect(()=>{
     try{
       const saved=JSON.parse(localStorage.getItem(storageKey)||"null") as SavedState|null;
-      if(saved){const completed=Boolean(saved.onboardingComplete);setScreen(completed?"dashboard":saved.screen);setServices(saved.services||[]);setEvents(saved.events||[]);setDocuments(saved.documents||[]);setLeads(saved.leads||[]);setClaims((saved.claims||[]).map(claim=>({...claim,milestone:claim.milestone||"Foundation captured"})));setChecks(saved.checks||initialChecks);setApproved(saved.approved);setBriefingSeen(Boolean(saved.briefingSeen));setBriefingOpen(!saved.briefingSeen);setVisitedScreens(saved.visitedScreens?.length?saved.visitedScreens:[saved.screen]);setWorkspaceDraft(saved.workspaceDraft||initialWorkspaceDraft);setBuddyDecision(saved.buddyDecision||"undecided");setOnboardingComplete(completed)}
+      if(saved){const completed=Boolean(saved.onboardingComplete);const savedClaims=(saved.claims||[]).map(claim=>({...claim,milestone:claim.milestone||"Foundation captured"}));setScreen(completed?"dashboard":saved.screen);setServices(saved.services||[]);setEvents(saved.events||[]);setDocuments(saved.documents||[]);setLeads(saved.leads||[]);setClaims(savedClaims);setChecks(saved.checks||initialChecks);setApproved(saved.approved);setBriefingSeen(Boolean(saved.briefingSeen));setBriefingOpen(!saved.briefingSeen);setWorkspaceDraft(saved.workspaceDraft||initialWorkspaceDraft);setBuddyDecision(saved.buddyDecision||"undecided");setOnboardingComplete(completed);setSelectedClaimId(saved.selectedClaimId||savedClaims[0]?.id||null)}
       else setBriefingOpen(true);
     }catch{}
     setLoaded(true);
   },[]);
   useEffect(()=>{
     if(!loaded)return;
-    localStorage.setItem(storageKey,JSON.stringify({screen,services,events,documents,leads,claims,checks,approved,briefingSeen,visitedScreens,workspaceDraft,buddyDecision,onboardingComplete}));
-  },[screen,services,events,documents,leads,claims,checks,approved,briefingSeen,visitedScreens,workspaceDraft,buddyDecision,onboardingComplete,loaded]);
+    localStorage.setItem(storageKey,JSON.stringify({screen,services,events,documents,leads,claims,checks,approved,briefingSeen,workspaceDraft,buddyDecision,onboardingComplete,selectedClaimId}));
+  },[screen,services,events,documents,leads,claims,checks,approved,briefingSeen,workspaceDraft,buddyDecision,onboardingComplete,selectedClaimId,loaded]);
 
   const unresolved=checks.filter(item=>item.required&&!item.resolved);
-  function navigate(next:PrototypeScreen){setScreen(next);setVisitedScreens(current=>current.includes(next)?current:[...current,next]);setMenuOpen(false);setNotice("");window.scrollTo({top:0,behavior:"smooth"})}
+  function navigate(next:PrototypeScreen){setScreen(next);setMenuOpen(false);setNotice("");window.scrollTo({top:0,behavior:"smooth"})}
+  function openClaim(claimId:string){setSelectedClaimId(claimId);navigate("workspace")}
   function reset(){
     localStorage.removeItem(storageKey);setScreen("intake");setServices([]);setEvents([]);
-    setDocuments([]);setLeads([]);setClaims([]);setChecks(initialChecks);setApproved(false);setBriefingSeen(false);setBriefingOpen(true);setVisitedScreens(["intake"]);setWorkspaceDraft(initialWorkspaceDraft);setBuddyDecision("undecided");setInspectedSource(null);setFollowUpOpen(false);setOnboardingComplete(false);setNotice("Preview data cleared. Your test profile is empty again.");
+    setDocuments([]);setLeads([]);setClaims([]);setChecks(initialChecks);setApproved(false);setBriefingSeen(false);setBriefingOpen(true);setWorkspaceDraft(initialWorkspaceDraft);setBuddyDecision("undecided");setInspectedSource(null);setFollowUpOpen(false);setOnboardingComplete(false);setSelectedClaimId(null);setNotice("Preview data cleared. Your test profile is empty again.");
   }
   function closeBriefing(doNotShowAgain:boolean,start:boolean){
     setBriefingSeen(doNotShowAgain);
@@ -109,21 +108,26 @@ export function ReworkPrototype({user}:{user:{name:string|null;localTestProfile:
   function confirmSource(sourceId:string){
     setWorkspaceDraft(current=>({...current,verifiedSourceIds:current.verifiedSourceIds.includes(sourceId)?current.verifiedSourceIds:[...current.verifiedSourceIds,sourceId]}));
     if(sourceId==="src-knee-record")setChecks(current=>current.map(item=>item.id==="check-citation"?{...item,resolved:true}:item));
-    invalidateApproval("Source confirmed and connected to the workspace.");setInspectedSource(null);
+    invalidateApproval("Source confirmed and connected to the claim.");setInspectedSource(null);
   }
 
   return <div className="rw-shell">
     <a className="rw-skip" href="#rework-main">Skip to main content</a>
     <aside className={menuOpen?"open":""} aria-label="Case journey navigation" inert={briefingOpen?true:undefined}>
-      <div className="rw-brand"><span><ShieldCheck size={21}/></span><div><strong>Debrief</strong><small>Guided case preview</small></div><button type="button" onClick={()=>setMenuOpen(false)} aria-label="Close navigation"><X size={18}/></button></div>
-      <nav>{screens.filter(item=>onboardingComplete||item.id==="intake"||item.id==="documents").map((item,index)=><button type="button" className={screen===item.id?"active":""} aria-current={screen===item.id?"page":undefined} onClick={()=>navigate(item.id)} key={item.id}><span>{index+1}</span><div><strong>{item.label}</strong><small>{screen===item.id?"Current":visitedScreens.includes(item.id)?"Completed or visited":"Available"}</small></div></button>)}</nav>
+      <div className="rw-brand"><Link href="/" aria-label="Debrief home"><span><ShieldCheck size={21}/></span><div><strong>Debrief</strong><small>Guided case preview</small></div></Link><button type="button" onClick={()=>setMenuOpen(false)} aria-label="Close navigation"><X size={18}/></button></div>
+      <nav className="rw-primary-nav">
+        {onboardingComplete&&<button type="button" className={`rw-nav-home ${screen==="dashboard"?"active":""}`} aria-current={screen==="dashboard"?"page":undefined} onClick={()=>navigate("dashboard")}><span><ClipboardCheck size={17}/></span><div><strong>Case Overview</strong></div></button>}
+        <div className="rw-nav-group"><span>{onboardingComplete?"Build Your Case":"Start Your Case"}</span>{buildScreens.filter(item=>onboardingComplete||item.id!=="leads").map(item=><button type="button" className={screen===item.id?"active":""} aria-current={screen===item.id?"page":undefined} onClick={()=>navigate(item.id)} key={item.id}><span><item.icon size={16}/></span><div><strong>{item.label}</strong></div></button>)}</div>
+        {onboardingComplete&&<div className="rw-nav-group"><span>Your Claims</span>{claims.map(claim=><button type="button" className={screen==="workspace"&&activeClaimId===claim.id?"active":""} aria-current={screen==="workspace"&&activeClaimId===claim.id?"page":undefined} onClick={()=>openClaim(claim.id)} key={claim.id}><span><FileText size={16}/></span><div><strong>{claim.title}</strong></div></button>)}<button type="button" className="rw-nav-add" onClick={()=>navigate("leads")}><span><Plus size={16}/></span><div><strong>Add a Claim</strong></div></button></div>}
+        {onboardingComplete&&<div className="rw-nav-group rw-nav-finalize"><span>Finalize</span><button type="button" className={screen==="package"?"active":""} aria-current={screen==="package"?"page":undefined} onClick={()=>navigate("package")}><span><ClipboardCheck size={16}/></span><div><strong>Package Review</strong></div></button></div>}
+      </nav>
       <div className="rw-utility-nav">
-        <span>Reference &amp; support</span>
+        <span>Reference &amp; Support</span>
         <Link href="/exposure-record-check"><Radar size={16}/><strong>Exposure Checker</strong></Link>
-        <Link href="/conditions"><BookOpenCheck size={16}/><strong>Conditions library</strong></Link>
-        <Link href="/forms"><Files size={16}/><strong>Forms guide</strong></Link>
-        <Link href="/support"><LifeBuoy size={16}/><strong>Help &amp; guide</strong></Link>
-        <Link href="/support#content-correction"><MessageSquareText size={16}/><strong>Send feedback</strong></Link>
+        <Link href="/conditions"><BookOpenCheck size={16}/><strong>Conditions Library</strong></Link>
+        <Link href="/forms"><Files size={16}/><strong>Forms Guide</strong></Link>
+        <Link href="/support"><LifeBuoy size={16}/><strong>Help &amp; Guide</strong></Link>
+        <Link href="/support#content-correction"><MessageSquareText size={16}/><strong>Send Feedback</strong></Link>
       </div>
       <div className="rw-boundary"><ShieldCheck size={16}/><p><strong>Fictional preview only</strong>Do not upload or enter real personal, medical, or military information.</p></div>
       <button className="rw-reset" type="button" onClick={reset}><RotateCcw size={14}/> Clear preview data</button>
@@ -140,8 +144,8 @@ export function ReworkPrototype({user}:{user:{name:string|null;localTestProfile:
         {screen==="intake"&&<Intake services={services} setServices={setServices} events={events} setEvents={setEvents} onContinue={()=>navigate("documents")} setNotice={setNotice}/>}
         {screen==="documents"&&<Documents documents={documents} setDocuments={setDocuments} onContinue={finishOnboarding} setNotice={setNotice} onInspectSource={inspectSource}/>}
         {screen==="leads"&&<Leads leads={leads} setLeads={setLeads} documents={documents} claims={claims} setClaims={setClaims} setChecks={setChecks} onContinue={()=>navigate("dashboard")} setNotice={setNotice} onInspectSource={inspectSource}/>}
-        {screen==="dashboard"&&<Dashboard services={services} documents={documents} leads={leads} claims={claims} onNavigate={navigate}/>}
-        {screen==="workspace"&&<ClaimWorkspaceView claims={claims} setClaims={setClaims} draft={workspaceDraft} setDraft={setWorkspaceDraft} checks={checks} setChecks={setChecks} onNavigate={navigate} onInspectSource={inspectSource} invalidateApproval={invalidateApproval} setNotice={setNotice}/>}
+        {screen==="dashboard"&&<Dashboard services={services} documents={documents} leads={leads} claims={claims} onNavigate={navigate} onOpenClaim={openClaim}/>}
+        {screen==="workspace"&&<ClaimWorkspaceView claims={claims} selectedClaimId={activeClaimId} setClaims={setClaims} draft={workspaceDraft} setDraft={setWorkspaceDraft} checks={checks} setChecks={setChecks} onNavigate={navigate} onInspectSource={inspectSource} invalidateApproval={invalidateApproval} setNotice={setNotice}/>}
         {screen==="package"&&<PackageReview claims={claims} checks={checks} approved={approved} setApproved={setApproved} unresolved={unresolved} invalidateApproval={invalidateApproval} setDownloadOpen={setDownloadOpen} onNavigate={navigate} onInspectSource={inspectSource} buddyDecision={buddyDecision} setBuddyDecision={setBuddyDecision}/>}
       </main>
     </div>
@@ -259,54 +263,55 @@ function Leads({leads,setLeads,documents,claims,setClaims,setChecks,onContinue,s
     setLeads(leads.map(item=>item.id===lead.id?{...item,status:"accepted"}:item));
     if(!claims.some(item=>item.id===`claim-${lead.id}`))setClaims([...claims,{id:`claim-${lead.id}`,title:lead.title,path:"Original claim",progress:0,milestone:"Foundation captured",sourceIds:lead.sourceIds,documentIds:documents.filter(doc=>lead.sourceIds.some(id=>prototypeSources.find(source=>source.id===id)?.documentId===doc.id)).map(doc=>doc.id),updated:"Just now"}]);
     setChecks([{id:"check-statement",claimId:`claim-${lead.id}`,title:`Approve the ${lead.title.toLowerCase()} personal statement`,detail:"Review every section before including it in the package.",required:true,resolved:false},{id:"check-buddy",claimId:`claim-${lead.id}`,title:"Decide whether to include a buddy statement",detail:"Record your choice so the package does not leave this question unresolved.",required:false,resolved:false}]);
-    setNotice(`${lead.title} added as a claim workspace.`);
+    setNotice(`${lead.title} added to Your Claims.`);
   }
   function dismiss(id:string){setLeads(leads.map(item=>item.id===id?{...item,status:"dismissed"}:item));setNotice("Lead dismissed. You can restore it at any time.")}
   function restore(id:string){setLeads(leads.map(item=>item.id===id?{...item,status:"open"}:item));setNotice("Lead restored.")}
-  function merge(id:string){setLeads(leads.map(item=>item.id===id?{...item,status:"merged"}:item));setNotice("Lead merged into the right knee workspace. Its sources remain linked.")}
+  function merge(id:string){setLeads(leads.map(item=>item.id===id?{...item,status:"merged"}:item));setNotice("Lead merged into the right knee claim. Its sources remain linked.")}
   return <div className="rw-page">
-    <PageHead kicker="Claim leads" title="Connect patterns without losing the source." copy="Review why each topic appeared, verify the supporting information, and decide what deserves a workspace."/>
+    <PageHead kicker="Claim Leads" title="Connect patterns without losing the source." copy="Review why each topic appeared, verify the supporting information, and decide what belongs in Your Claims."/>
     <div className="rw-advisory"><Info size={17}/><p><strong>A lead is a topic to review.</strong> It is not a recommendation to file and does not predict eligibility, rating, or outcome.</p></div>
     <div className="rw-lead-actions"><div><button type="button" className={!showDismissed?"active":""} onClick={()=>setShowDismissed(false)}>Active leads</button><button type="button" className={showDismissed?"active":""} onClick={()=>setShowDismissed(true)}>Dismissed ({leads.filter(item=>item.status==="dismissed").length})</button></div><button type="button" onClick={()=>setCustomOpen(true)}><Plus size={14}/> Add a claim not shown</button></div>
-    <section className="rw-leads">{visible.length?visible.map(item=><LeadCard key={item.id} lead={item} canMerge={claims.some(claim=>claim.title.includes("knee"))} onAccept={()=>accept(item)} onDismiss={()=>dismiss(item.id)} onRestore={()=>restore(item.id)} onMerge={()=>merge(item.id)} onInspectSource={onInspectSource} onMissing={missing=>setNotice(`Create a workspace to add: ${missing}.`)}/>):<div className="rw-empty"><FolderSearch size={28}/><h2>{showDismissed?"No dismissed leads":"No claim leads yet"}</h2><p>{showDismissed?"When you dismiss a lead, it will remain available here.":"Debrief will place evidence-linked topics here after you add relevant intake details or documents. You can still add your own claim topic."}</p>{!showDismissed&&<button className="rw-secondary" type="button" onClick={()=>setCustomOpen(true)}>Add your own claim topic</button>}</div>}</section>
+    <section className="rw-leads">{visible.length?visible.map(item=><LeadCard key={item.id} lead={item} canMerge={claims.some(claim=>claim.title.includes("knee"))} onAccept={()=>accept(item)} onDismiss={()=>dismiss(item.id)} onRestore={()=>restore(item.id)} onMerge={()=>merge(item.id)} onInspectSource={onInspectSource} onMissing={missing=>setNotice(`Add this information inside the claim: ${missing}.`)}/>):<div className="rw-empty"><FolderSearch size={28}/><h2>{showDismissed?"No dismissed leads":"No claim leads yet"}</h2><p>{showDismissed?"When you dismiss a lead, it will remain available here.":"Debrief will place evidence-linked topics here after you add relevant intake details or documents. You can still add your own claim topic."}</p>{!showDismissed&&<button className="rw-secondary" type="button" onClick={()=>setCustomOpen(true)}>Add your own claim topic</button>}</div>}</section>
     <FooterActions next={onContinue} nextLabel="Open case dashboard"/>
     {customOpen&&<QuickAdd title="Add your own claim topic" fields={["Condition or symptom","Why you want to review it"]} onClose={()=>setCustomOpen(false)} onSave={(values)=>{const title=values[0]||"User-added claim";const id=`claim-custom-${Date.now()}`;setClaims([...claims,{id,title,path:"Path not selected",progress:0,milestone:"Needs foundation",sourceIds:[],documentIds:[],updated:"Just now"}]);setChecks([{id:"check-statement",claimId:id,title:`Approve the ${title.toLowerCase()} personal statement`,detail:"Review every section before including it in the package.",required:true,resolved:false},{id:"check-buddy",claimId:id,title:"Decide whether to include a buddy statement",detail:"Record your choice so the package does not leave this question unresolved.",required:false,resolved:false}]);setCustomOpen(false);setNotice(`${title} added without a system lead.`)}}/>}
   </div>;
 }
 
-function Dashboard({services,documents,leads,claims,onNavigate}:{services:ServicePeriod[];documents:DocumentRecord[];leads:ClaimLead[];claims:ClaimWorkspace[];onNavigate:(screen:PrototypeScreen)=>void}){
+function Dashboard({services,documents,leads,claims,onNavigate,onOpenClaim}:{services:ServicePeriod[];documents:DocumentRecord[];leads:ClaimLead[];claims:ClaimWorkspace[];onNavigate:(screen:PrototypeScreen)=>void;onOpenClaim:(claimId:string)=>void}){
   const accepted=leads.filter(item=>item.status==="accepted").length;
-  const next=claims.length?{title:`Continue ${claims[0].title}`,copy:"Review the statement details and any linked sources before package preparation.",screen:"workspace" as PrototypeScreen,label:"Open workspace"}:leads.some(item=>item.status==="open")?{title:"Review a claim lead",copy:"A topic appeared from information you added. Inspect its source before deciding whether to create a workspace.",screen:"leads" as PrototypeScreen,label:"Review leads"}:documents.length===0?{title:"Add records when you are ready",copy:"Your intake is saved. Adding military or medical records can help Debrief identify facts that deserve your review.",screen:"documents" as PrototypeScreen,label:"Open documents"}:{title:"Add a claim topic",copy:"No evidence-linked topics have appeared yet. You can add a condition or symptom without waiting for a lead.",screen:"leads" as PrototypeScreen,label:"Add a claim"};
+  const next=claims.length?{title:`Continue ${claims[0].title}`,copy:"Review the statement details and any linked sources before package preparation.",screen:"workspace" as PrototypeScreen,label:"Open Claim"}:leads.some(item=>item.status==="open")?{title:"Review a claim lead",copy:"A topic appeared from information you added. Inspect its source before deciding whether to add a claim.",screen:"leads" as PrototypeScreen,label:"Review Leads"}:documents.length===0?{title:"Add records when you are ready",copy:"Your intake is saved. Adding military or medical records can help Debrief identify facts that deserve your review.",screen:"documents" as PrototypeScreen,label:"Open Documents"}:{title:"Add a claim topic",copy:"No evidence-linked topics have appeared yet. You can add a condition or symptom without waiting for a lead.",screen:"leads" as PrototypeScreen,label:"Add a Claim"};
   return <div className="rw-page">
     <PageHead kicker="Initial disability claim" title="Your debrief, organized into action." copy="See what you have established, what still needs your input, and where each fact will be used."/>
-    <section className="rw-next"><span><ListChecks size={21}/></span><div><small>YOUR NEXT ACTION</small><h2>{next.title}</h2><p>{next.copy}</p></div><button className="rw-primary" type="button" onClick={()=>onNavigate(next.screen)}>{next.label} <ArrowRight size={15}/></button></section>
+    <section className="rw-next"><span><ListChecks size={21}/></span><div><small>YOUR NEXT ACTION</small><h2>{next.title}</h2><p>{next.copy}</p></div><button className="rw-primary" type="button" onClick={()=>next.screen==="workspace"?onOpenClaim(claims[0].id):onNavigate(next.screen)}>{next.label} <ArrowRight size={15}/></button></section>
     <div className="rw-metrics"><div><span>Case foundation</span><strong>{services.length} service periods</strong><small>Reusable across this case</small></div><div><span>Document analysis</span><strong>{documents.filter(item=>item.status==="ready").length} of {documents.length} ready</strong><small>{documents.some(item=>item.status==="failed")?"One needs attention":"All processing complete"}</small></div><div><span>Claim leads</span><strong>{accepted} accepted</strong><small>{leads.filter(item=>item.status==="open").length} still to review</small></div><div><span>Package status</span><strong>{claims.length?"Needs review":"Not started"}</strong><small>Approval comes after readiness</small></div></div>
     <div className="rw-dashboard-grid">
-      <section className="rw-panel"><div className="rw-section-title"><div><span className="rw-kicker">Claim workspaces</span><h2>{claims.length?`${claims.length} condition workspace${claims.length===1?"":"s"}`:"No workspaces yet"}</h2></div><button type="button" onClick={()=>onNavigate("leads")}><Plus size={14}/> Add condition</button></div>{claims.length?claims.map(item=><article className="rw-claim" key={item.id}><div><strong>{item.title}</strong><small>{item.path}. Updated {item.updated}</small><em><CheckCircle2 size={13}/> {item.milestone}</em></div><button type="button" onClick={()=>onNavigate("workspace")}>Continue <ArrowRight size={14}/></button></article>):<div className="rw-empty compact"><ClipboardCheck size={24}/><p>Accept a claim lead or add a condition yourself.</p></div>}</section>
-      <aside className="rw-panel"><span className="rw-kicker">Open questions</span><h2>What still needs your input</h2>{documents.some(item=>item.status==="failed")&&<button type="button" onClick={()=>onNavigate("documents")}><AlertTriangle size={16}/><span><strong>A document needs attention</strong><small>Retry analysis or continue without it.</small></span><ArrowRight size={14}/></button>}{documents.length===0&&<button type="button" onClick={()=>onNavigate("documents")}><Files size={16}/><span><strong>No records added yet</strong><small>Add documents now or return when they are available.</small></span><ArrowRight size={14}/></button>}{leads.some(item=>item.status==="open")?<button type="button" onClick={()=>onNavigate("leads")}><CircleHelp size={16}/><span><strong>Review an evidence-linked topic</strong><small>Inspect the source before creating a workspace.</small></span><ArrowRight size={14}/></button>:<button type="button" onClick={()=>onNavigate("leads")}><Plus size={16}/><span><strong>Add a condition or symptom</strong><small>You do not need a Debrief-generated lead.</small></span><ArrowRight size={14}/></button>}</aside>
+      <section className="rw-panel"><div className="rw-section-title"><div><span className="rw-kicker">Your Claims</span><h2>{claims.length?`${claims.length} active claim${claims.length===1?"":"s"}`:"No claims yet"}</h2></div><button type="button" onClick={()=>onNavigate("leads")}><Plus size={14}/> Add a Claim</button></div>{claims.length?claims.map(item=><article className="rw-claim" key={item.id}><div><strong>{item.title}</strong><small>{item.path}. Updated {item.updated}</small><em><CheckCircle2 size={13}/> {item.milestone}</em></div><button type="button" aria-label={`Open ${item.title}`} onClick={()=>onOpenClaim(item.id)}>Open Claim <ArrowRight size={14}/></button></article>):<div className="rw-empty compact"><ClipboardCheck size={24}/><p>Accept a claim lead or add a condition yourself.</p></div>}</section>
+      <aside className="rw-panel"><span className="rw-kicker">Open questions</span><h2>What still needs your input</h2>{documents.some(item=>item.status==="failed")&&<button type="button" onClick={()=>onNavigate("documents")}><AlertTriangle size={16}/><span><strong>A document needs attention</strong><small>Retry analysis or continue without it.</small></span><ArrowRight size={14}/></button>}{documents.length===0&&<button type="button" onClick={()=>onNavigate("documents")}><Files size={16}/><span><strong>No records added yet</strong><small>Add documents now or return when they are available.</small></span><ArrowRight size={14}/></button>}{leads.some(item=>item.status==="open")?<button type="button" onClick={()=>onNavigate("leads")}><CircleHelp size={16}/><span><strong>Review an evidence-linked topic</strong><small>Inspect the source before adding a claim.</small></span><ArrowRight size={14}/></button>:<button type="button" onClick={()=>onNavigate("leads")}><Plus size={16}/><span><strong>Add a condition or symptom</strong><small>You do not need a Debrief-generated lead.</small></span><ArrowRight size={14}/></button>}</aside>
     </div>
     <section className="rw-tools"><div><span className="rw-kicker">Connected case tools</span><h2>Your details travel with you</h2><p>These guides can use the service periods and claim topics you entered. Nothing is added to the case without your review.</p></div><nav aria-label="Debrief guides"><Link href="/exposure-record-check"><Radar size={18}/><span><strong>Exposure Checker</strong><small>Starts with {services.length} saved service {services.length===1?"period":"periods"}.</small></span><ArrowRight size={14}/></Link><Link href="/conditions"><BookOpenCheck size={18}/><span><strong>Conditions library</strong><small>Explore conditions without adding them to your case.</small></span><ArrowRight size={14}/></Link><Link href="/forms"><Files size={18}/><span><strong>Forms guide</strong><small>Shows forms relevant to an original claim.</small></span><ArrowRight size={14}/></Link></nav></section>
   </div>;
 }
 
-function ClaimWorkspaceView({claims,setClaims,draft,setDraft,checks,setChecks,onNavigate,onInspectSource,invalidateApproval,setNotice}:{claims:ClaimWorkspace[];setClaims:(value:ClaimWorkspace[])=>void;draft:WorkspaceDraft;setDraft:(value:WorkspaceDraft)=>void;checks:PackageReadinessItem[];setChecks:(value:PackageReadinessItem[])=>void;onNavigate:(screen:PrototypeScreen)=>void;onInspectSource:(sourceId:string)=>void;invalidateApproval:(message:string)=>void;setNotice:(value:string)=>void}){
-  const claim=claims[0];
+function ClaimWorkspaceView({claims,selectedClaimId,setClaims,draft,setDraft,checks,setChecks,onNavigate,onInspectSource,invalidateApproval,setNotice}:{claims:ClaimWorkspace[];selectedClaimId:string|null;setClaims:(value:ClaimWorkspace[])=>void;draft:WorkspaceDraft;setDraft:(value:WorkspaceDraft)=>void;checks:PackageReadinessItem[];setChecks:(value:PackageReadinessItem[])=>void;onNavigate:(screen:PrototypeScreen)=>void;onInspectSource:(sourceId:string)=>void;invalidateApproval:(message:string)=>void;setNotice:(value:string)=>void}){
+  const claim=claims.find(item=>item.id===selectedClaimId)||claims[0];
   const sources=claim?prototypeSources.filter(source=>claim.sourceIds.includes(source.id)):[];
   const statementHasFoundation=Boolean(draft.serviceEvent.trim()&&draft.currentSymptoms.trim()&&draft.relationship.trim()&&draft.dailyImpact.trim());
   function update<K extends keyof WorkspaceDraft>(field:K,value:WorkspaceDraft[K]){
     const next={...draft,[field]:value,statementReviewed:false};setDraft(next);
     setChecks(checks.map(item=>item.id==="check-statement"?{...item,resolved:false}:item));
-    setClaims(claims.map(item=>({...item,milestone:"Foundation captured",updated:"Just now"})));
-    invalidateApproval("Workspace content updated. Review the statement again before approval.");
+    setClaims(claims.map(item=>item.id===claim?.id?{...item,milestone:"Foundation captured",updated:"Just now"}:item));
+    invalidateApproval("Claim information updated. Review the statement again before approval.");
   }
   function markReviewed(){
     if(!statementHasFoundation){setNotice("Add the service event, current symptoms, relationship, and daily impact before reviewing the statement.");return}
     setDraft({...draft,statementReviewed:true});setChecks(checks.map(item=>item.id==="check-statement"?{...item,resolved:true}:item));
-    setClaims(claims.map(item=>({...item,milestone:"Statement reviewed",updated:"Just now"})));invalidateApproval("Statement review recorded.");setNotice("Statement reviewed. Later edits will clear this review.");
+    setClaims(claims.map(item=>item.id===claim?.id?{...item,milestone:"Statement reviewed",updated:"Just now"}:item));invalidateApproval("Statement review recorded.");setNotice("Statement reviewed. Later edits will clear this review.");
   }
-  if(!claim)return <div className="rw-page"><PageHead kicker="Claim workspace" title="Create a claim workspace first." copy="Return to Claim leads and choose a topic, or add one yourself."/><section className="rw-package-empty"><span><FileText size={25}/></span><h2>No condition is open yet.</h2><p>A claim workspace gives your verified facts, statement, and sources one place to work together.</p><button className="rw-primary" type="button" onClick={()=>onNavigate("leads")}>Review claim leads <ArrowRight size={15}/></button></section></div>;
+  if(!claim)return <div className="rw-page"><PageHead kicker="Your Claims" title="Select or add a claim first." copy="Return to Claim Leads and choose a topic, or add one yourself."/><section className="rw-package-empty"><span><FileText size={25}/></span><h2>No claim is open yet.</h2><p>Each claim keeps its statement, verified facts, and linked sources together.</p><button className="rw-primary" type="button" onClick={()=>onNavigate("leads")}>Review Claim Leads <ArrowRight size={15}/></button></section></div>;
   return <div className="rw-page">
-    <PageHead kicker={`${claim.title} workspace`} title="Build the statement from facts you can trace." copy="Add what only you know, and verify every source before using it."/>
+    <button className="rw-breadcrumb" type="button" onClick={()=>onNavigate("dashboard")}><ArrowLeft size={14}/> Case Overview <span>/</span> {claim.title}</button>
+    <PageHead kicker="Individual Claim" title={`${claim.title} Claim`} copy="Build this claim from facts you can trace, then verify every source before it enters the package."/>
     <div className="rw-workspace-layout">
       <section className="rw-workspace-form">
         <div className="rw-workspace-status"><span><LockKeyhole size={17}/></span><div><strong>Nothing is silently inferred</strong><p>Intake, record, and user-entered information stay labeled throughout the statement.</p></div></div>
@@ -319,7 +324,7 @@ function ClaimWorkspaceView({claims,setClaims,draft,setDraft,checks,setChecks,on
       </section>
       <aside className="rw-source-tray"><span className="rw-kicker">Linked sources</span><h2>Verify before using</h2><p>Open the original location and confirm the extracted wording.</p>{sources.map(source=><button type="button" key={source.id} onClick={()=>onInspectSource(source.id)}><span>{source.kind==="document"?<FileCheck2 size={17}/>:<History size={17}/>}</span><div><strong>{source.label}</strong><small>{source.location||"Intake answer"}</small></div><em className={draft.verifiedSourceIds.includes(source.id)?"verified":"review"}>{draft.verifiedSourceIds.includes(source.id)?"Verified":"Review"}</em></button>)}<div className="rw-source-boundary"><Info size={15}/><p>Source wording is supporting information. Debrief does not decide whether it proves service connection.</p></div></aside>
     </div>
-    <div className="rw-workspace-actions"><button className="rw-secondary" type="button" onClick={()=>onNavigate("dashboard")}><ArrowLeft size={15}/> Return to dashboard</button><button className="rw-primary" type="button" onClick={()=>onNavigate("package")}>Check package readiness <ArrowRight size={15}/></button></div>
+    <div className="rw-workspace-actions"><button className="rw-secondary" type="button" onClick={()=>onNavigate("dashboard")}><ArrowLeft size={15}/> Return to Case Overview</button><button className="rw-primary" type="button" onClick={()=>onNavigate("package")}>Check Package Readiness <ArrowRight size={15}/></button></div>
   </div>;
 }
 
@@ -334,13 +339,13 @@ function PackageReview({claims,checks,approved,setApproved,unresolved,invalidate
   const citationReady=!citationCheck||citationCheck.resolved;
   if(!claims.length)return <div className="rw-page">
     <PageHead kicker="Package and final review" title="Turn verified information into a reviewable package." copy="Resolve missing details first. Then approve exactly what will be included in the download."/>
-    <section className="rw-package-empty"><span><ClipboardCheck size={25}/></span><h2>Build a claim workspace before package review.</h2><p>Accept a claim lead or add a condition yourself. Readiness checks and package files will appear after a workspace exists.</p><button className="rw-primary" type="button" onClick={()=>onNavigate("leads")}>Review claim leads <ArrowRight size={15}/></button></section>
+    <section className="rw-package-empty"><span><ClipboardCheck size={25}/></span><h2>Add a claim before package review.</h2><p>Accept a claim lead or add a condition yourself. Readiness checks and package files will appear after a claim exists.</p><button className="rw-primary" type="button" onClick={()=>onNavigate("leads")}>Review Claim Leads <ArrowRight size={15}/></button></section>
   </div>;
   return <div className="rw-page">
     <PageHead kicker="Package and final review" title="Turn verified information into a reviewable package." copy="Resolve missing details first. Then approve exactly what will be included in the download."/>
     <div className="rw-review-tabs" role="tablist" aria-label="Package review stages"><button role="tab" aria-selected={tab==="readiness"} className={tab==="readiness"?"active":""} onClick={()=>setTab("readiness")}><span>1</span> Package readiness</button><button role="tab" aria-selected={tab==="approval"} className={tab==="approval"?"active":""} onClick={()=>setTab("approval")}><span>2</span> Final approval</button></div>
     {tab==="readiness"?<div className="rw-review-grid">
-      <section className="rw-panel"><div className="rw-readiness-head"><div><span className="rw-kicker">Required reviews</span><h2>{unresolved.length?`${unresolved.length} remaining`:"Required reviews complete"}</h2></div><span className={unresolved.length?"attention":"ready"}>{unresolved.length?"Needs attention":"Ready for approval"}</span></div><div className="rw-readiness-list"><ReadinessAction ready={statementReady} title={`${claims[0].title} personal statement`} detail="Open the workspace and review the complete statement wording." action="Review statement" onAction={()=>onNavigate("workspace")}/>{citationCheck&&<ReadinessAction ready={citationReady} title="Linked record reference" detail="Open the source location and confirm the extracted wording." action="View source" onAction={()=>onInspectSource("src-knee-record")}/>}<fieldset className="rw-buddy-choice"><legend>Buddy statement decision <span>Optional evidence</span></legend><p>Record what you want to do so this question does not disappear from the package.</p>{[["add","I plan to add one"],["not-available","Not available"],["not-needed","Not for this package"]].map(([value,label])=><label key={value}><input type="radio" name="buddy-decision" value={value} checked={buddyDecision===value} onChange={()=>{setBuddyDecision(value as BuddyDecision);invalidateApproval("Buddy statement decision updated.")}}/><span>{label}</span></label>)}</fieldset></div></section>
+      <section className="rw-panel"><div className="rw-readiness-head"><div><span className="rw-kicker">Required reviews</span><h2>{unresolved.length?`${unresolved.length} remaining`:"Required reviews complete"}</h2></div><span className={unresolved.length?"attention":"ready"}>{unresolved.length?"Needs attention":"Ready for approval"}</span></div><div className="rw-readiness-list"><ReadinessAction ready={statementReady} title={`${claims[0].title} personal statement`} detail="Open the claim and review the complete statement wording." action="Review statement" onAction={()=>onNavigate("workspace")}/>{citationCheck&&<ReadinessAction ready={citationReady} title="Linked record reference" detail="Open the source location and confirm the extracted wording." action="View source" onAction={()=>onInspectSource("src-knee-record")}/>}<fieldset className="rw-buddy-choice"><legend>Buddy statement decision <span>Optional evidence</span></legend><p>Record what you want to do so this question does not disappear from the package.</p>{[["add","I plan to add one"],["not-available","Not available"],["not-needed","Not for this package"]].map(([value,label])=><label key={value}><input type="radio" name="buddy-decision" value={value} checked={buddyDecision===value} onChange={()=>{setBuddyDecision(value as BuddyDecision);invalidateApproval("Buddy statement decision updated.")}}/><span>{label}</span></label>)}</fieldset></div></section>
       <aside className="rw-panel rw-package-files"><span className="rw-kicker">Package contents</span><h2>Files assembled for review</h2><FileRow name="Package index.pdf" meta="Case overview and file checklist" ready={statementReady&&citationReady}/>{claims.map(item=><FileRow key={item.id} name={`${item.title} review.pdf`} meta="Statement, source trace, and open questions" ready={statementReady&&citationReady}/>)}<FileRow name="Supporting records/" meta="Linked documents, without duplicate copies" ready={citationReady}/><p><Info size={14}/> Neutral file status becomes ready only after the related review is complete.</p></aside>
     </div>:<section className="rw-approval">
       <div className="rw-approval-status">{approved?<CheckCircle2 size={29}/>:<ClipboardCheck size={29}/>}<div><span className="rw-kicker">Final approval</span><h2>{approved?"Package approved":"Your approval is still required"}</h2><p>{approved?"Every required section was approved in this fictional preview. Any later package change will clear this approval.":"Review the package index, each condition statement, and every linked document before approving."}</p></div></div>
@@ -363,7 +368,7 @@ function LeadCard({lead,canMerge,onAccept,onDismiss,onRestore,onMerge,onInspectS
   const sources=prototypeSources.filter(source=>lead.sourceIds.includes(source.id));
   const [open,setOpen]=useState(lead.confidence==="high");
   const strength=lead.confidence==="high"?"Strong record pattern":lead.confidence==="medium"?"Some supporting information":"Limited information";
-  return <article className={`rw-lead ${lead.confidence}`}><header><span className={`rw-confidence ${lead.confidence}`}>{strength}</span><div><h2>{lead.title}</h2><p>{lead.summary}</p></div>{lead.status==="accepted"&&<span className="rw-added"><Check size={13}/> Workspace added</span>}</header><button className="rw-source-toggle" type="button" aria-expanded={open} onClick={()=>setOpen(!open)}><Link2 size={15}/> Why this appeared: {sources.length} source{sources.length===1?"":"s"} <ChevronDown size={15}/></button>{open&&<div className="rw-sources">{sources.map(source=><button type="button" key={source.id} onClick={()=>onInspectSource(source.id)}><span>{source.kind==="document"?<FileCheck2 size={15}/>:<History size={15}/>}</span><div><strong>{source.label}{source.location?`, ${source.location}`:""}</strong><p>“{source.excerpt}”</p><small>{source.kind==="document"?"Open the page reference and verify the wording.":"Confirmed intake answer."}</small></div><Eye size={15}/></button>)}</div>}<div className="rw-missing"><strong>Still needed</strong>{lead.missing.map(item=><button type="button" key={item} onClick={()=>onMissing(item)}>{item} <Plus size={12}/></button>)}</div><footer>{lead.status==="dismissed"?<button className="rw-secondary" type="button" onClick={onRestore}><RotateCcw size={14}/> Restore lead</button>:<><button className="rw-secondary" type="button" onClick={onDismiss}>Dismiss</button>{lead.title.includes("Lower")&&canMerge&&<button className="rw-secondary" type="button" onClick={onMerge}>Merge with knee workspace</button>}<button className="rw-primary" type="button" disabled={lead.status==="accepted"} onClick={onAccept}>{lead.status==="accepted"?"Workspace added":"Create claim workspace"} <ArrowRight size={14}/></button></>}</footer></article>
+  return <article className={`rw-lead ${lead.confidence}`}><header><span className={`rw-confidence ${lead.confidence}`}>{strength}</span><div><h2>{lead.title}</h2><p>{lead.summary}</p></div>{lead.status==="accepted"&&<span className="rw-added"><Check size={13}/> Claim added</span>}</header><button className="rw-source-toggle" type="button" aria-expanded={open} onClick={()=>setOpen(!open)}><Link2 size={15}/> Why this appeared: {sources.length} source{sources.length===1?"":"s"} <ChevronDown size={15}/></button>{open&&<div className="rw-sources">{sources.map(source=><button type="button" key={source.id} onClick={()=>onInspectSource(source.id)}><span>{source.kind==="document"?<FileCheck2 size={15}/>:<History size={15}/>}</span><div><strong>{source.label}{source.location?`, ${source.location}`:""}</strong><p>“{source.excerpt}”</p><small>{source.kind==="document"?"Open the page reference and verify the wording.":"Confirmed intake answer."}</small></div><Eye size={15}/></button>)}</div>}<div className="rw-missing"><strong>Still needed</strong>{lead.missing.map(item=><button type="button" key={item} onClick={()=>onMissing(item)}>{item} <Plus size={12}/></button>)}</div><footer>{lead.status==="dismissed"?<button className="rw-secondary" type="button" onClick={onRestore}><RotateCcw size={14}/> Restore lead</button>:<><button className="rw-secondary" type="button" onClick={onDismiss}>Dismiss</button>{lead.title.includes("Lower")&&canMerge&&<button className="rw-secondary" type="button" onClick={onMerge}>Merge with knee claim</button>}<button className="rw-primary" type="button" disabled={lead.status==="accepted"} onClick={onAccept}>{lead.status==="accepted"?"Claim added":"Add to Your Claims"} <ArrowRight size={14}/></button></>}</footer></article>
 }
 function FileRow({name,meta,ready=true}:{name:string;meta:string;ready?:boolean}){return <div className="rw-file-row"><FileCheck2 size={17}/><span><strong>{name}</strong><small>{meta}</small></span>{ready?<Check size={14}/>:<Clock3 size={14}/>}</div>}
 function QuickAdd({title,fields,initialValues,showApproximate=false,initialApproximate=true,onClose,onSave}:{title:string;fields:string[];initialValues?:string[];showApproximate?:boolean;initialApproximate?:boolean;onClose:()=>void;onSave:(values:string[],approximate:boolean)=>void}){
