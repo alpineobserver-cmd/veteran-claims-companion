@@ -2,6 +2,7 @@ export type PrototypeScreen="intent"|"intake"|"documents"|"leads"|"dashboard"|"w
 export type Confidence="high"|"medium"|"low";
 export type VerificationState="unreviewed"|"confirmed"|"corrected";
 export type ClaimPath="original"|"increase"|"supplemental"|"contested"|"unsure";
+export type BuddyDecision="undecided"|"add"|"not-available"|"not-needed";
 
 export type SourceReference={
   id:string;
@@ -112,12 +113,25 @@ export type Case={
 };
 
 export type PackageNextAction={
-  code:"foundation"|"claim-review"|"lead-review"|"add-claim"|"package-review";
+  code:"foundation"|"document-review"|"claim-review"|"lead-review"|"add-claim"|"package-review";
   title:string;
   copy:string;
   label:string;
   screen:PrototypeScreen;
   claimId?:string;
+};
+
+export type PackageReadiness={
+  foundationReady:boolean;
+  packagePathReady:boolean;
+  documentsReady:boolean;
+  claimsReady:boolean;
+  buddyDecisionReady:boolean;
+  linkedDocuments:DocumentRecord[];
+  blockedDocuments:DocumentRecord[];
+  claimIssueCount:number;
+  unresolved:number;
+  allReady:boolean;
 };
 
 export function claimReviewIssueCount(claim:ClaimWorkspace,sources:SourceReference[]){
@@ -128,8 +142,23 @@ export function claimReviewIssueCount(claim:ClaimWorkspace,sources:SourceReferen
   return (claim.path==="unsure"?1:0)+(claim.draft.statementReviewed?0:1)+sourceIssues;
 }
 
-export function getPackageNextAction({services,events,leads,claims,sources}:{services:ServicePeriod[];events:HealthEvent[];leads:ClaimLead[];claims:ClaimWorkspace[];sources:SourceReference[]}):PackageNextAction{
+export function getPackageReadiness({services,events,documents=[],claims,sources,packageKind="original",buddyDecision="not-needed"}:{services:ServicePeriod[];events:HealthEvent[];documents?:DocumentRecord[];claims:ClaimWorkspace[];sources:SourceReference[];packageKind?:ClaimPath;buddyDecision?:BuddyDecision}):PackageReadiness{
+  const linkedDocuments=documents.filter(document=>document.caseIds.includes("case-1"));
+  const blockedDocuments=linkedDocuments.filter(document=>document.status!=="ready");
+  const claimIssueCount=claims.reduce((total,claim)=>total+claimReviewIssueCount(claim,sources),0);
+  const foundationReady=services.length>0&&events.length>0;
+  const packagePathReady=packageKind!=="unsure";
+  const documentsReady=blockedDocuments.length===0;
+  const claimsReady=claims.length>0&&claimIssueCount===0;
+  const buddyDecisionReady=buddyDecision!=="undecided";
+  const unresolved=(foundationReady?0:1)+(packagePathReady?0:1)+(documentsReady?0:blockedDocuments.length)+(claimsReady?0:Math.max(1,claimIssueCount))+(buddyDecisionReady?0:1);
+  return {foundationReady,packagePathReady,documentsReady,claimsReady,buddyDecisionReady,linkedDocuments,blockedDocuments,claimIssueCount,unresolved,allReady:unresolved===0};
+}
+
+export function getPackageNextAction({services,events,documents=[],leads,claims,sources}:{services:ServicePeriod[];events:HealthEvent[];documents?:DocumentRecord[];leads:ClaimLead[];claims:ClaimWorkspace[];sources:SourceReference[]}):PackageNextAction{
   if(!services.length||!events.length)return {code:"foundation",title:"Complete your service and health foundation",copy:"Add at least one service period and one health event. Debrief will reuse these details across your claims.",label:"Complete Service & Health",screen:"intake"};
+  const blockedDocument=documents.find(document=>document.caseIds.includes("case-1")&&document.status!=="ready");
+  if(blockedDocument)return {code:"document-review",title:blockedDocument.status==="failed"?"Resolve a document analysis problem":"Review a document still being analyzed",copy:blockedDocument.status==="failed"?"Retry the analysis, unlink the record, or continue without it before final package approval.":"Wait for analysis to finish or unlink the record if you want to continue without it.",label:"Review My Documents",screen:"documents"};
   const claim=claims.find(item=>claimReviewIssueCount(item,sources)>0);
   if(claim)return {code:"claim-review",title:`Resolve review items for ${claim.title}`,copy:"This claim still has a statement, claim path, or linked source that needs your review.",label:"Resolve Claim Review",screen:"workspace",claimId:claim.id};
   if(leads.some(item=>item.status==="open"))return {code:"lead-review",title:"Review an evidence-linked claim lead",copy:"Inspect why the topic appeared, then add, dismiss, or merge it.",label:"Review Claim Lead",screen:"leads"};

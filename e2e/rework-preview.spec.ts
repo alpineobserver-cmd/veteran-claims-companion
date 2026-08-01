@@ -4,8 +4,8 @@ import {captureBrowserErrors} from "./fixtures";
 const previewPath="/rework-preview?fictionalTester=1";
 
 async function expectNoOverflow(page:import("@playwright/test").Page){
-  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
-  expect(overflow).toBeLessThanOrEqual(1);
+  const result=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,metrics:{innerWidth:window.innerWidth,documentClient:document.documentElement.clientWidth,documentScroll:document.documentElement.scrollWidth,bodyClient:document.body.clientWidth,bodyScroll:document.body.scrollWidth},elements:Array.from(document.querySelectorAll<HTMLElement>("body *")).map(element=>({tag:element.tagName,className:element.className?.toString().slice(0,100),text:(element.textContent||"").trim().slice(0,80),right:Math.round(element.getBoundingClientRect().right),width:Math.round(element.getBoundingClientRect().width)})).filter(item=>item.right>window.innerWidth+1).slice(0,12)}));
+  expect(result.overflow,JSON.stringify({metrics:result.metrics,elements:result.elements},null,2)).toBeLessThanOrEqual(1);
 }
 
 async function startCleanIntake(page:import("@playwright/test").Page){
@@ -42,7 +42,7 @@ async function completeSetup(page:import("@playwright/test").Page,{upload=false}
     await page.getByRole("button",{name:"Simulate upload"}).click();
     await expect(page.getByText("Fictional document added. Analysis is being simulated.")).toBeVisible();
   }
-  await page.getByRole("button",{name:"Finish setup"}).click();
+  await page.getByRole("button",{name:"Go to Package Overview"}).click();
 }
 
 async function addOtherClaim(page:import("@playwright/test").Page,title:string){
@@ -146,12 +146,22 @@ test("clean-profile journey reaches a reviewed package",async({page})=>{
   await page.getByRole("textbox",{name:/Daily impact/}).fill("Pain limits stairs, kneeling, and prolonged standing.");
   await page.getByRole("button",{name:"Mark statement reviewed"}).click();
   await page.getByRole("button",{name:"Check package readiness"}).click();
-  await expect(page.getByRole("heading",{name:"Required reviews complete"})).toBeVisible();
   await page.getByRole("radio",{name:"Not for this package"}).check();
+  await expect(page.getByRole("heading",{name:"Required reviews complete"})).toBeVisible();
   await page.getByRole("tab",{name:/Final approval/}).click();
+  for(const name of ["Account foundation","Claim statements","Records and source references","Package index and submission boundary"]){
+    await page.getByRole("checkbox",{name:new RegExp(name)}).check();
+  }
   await page.getByRole("button",{name:"Approve entire package"}).click();
   await page.getByRole("button",{name:"Preview download package"}).click();
-  await expect(page.getByRole("dialog",{name:"Your package is ready to download"})).toBeVisible();
+  const download=page.getByRole("dialog",{name:"Your package is ready to download"});
+  await expect(download).toBeVisible();
+  await download.getByRole("button",{name:"Start linked follow-up"}).click();
+  const followUp=page.getByRole("dialog",{name:"Start a new package without changing the prior package."});
+  await followUp.getByRole("button",{name:/Supplemental claim/}).click();
+  await expect(page.getByText("Linked supplemental claim started.")).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Prior approved packages remain unchanged"})).toBeVisible();
+  await expect(page.getByText("No claims yet")).toBeVisible();
 });
 
 test("a claim can be safely deleted from Package Overview",async({page})=>{
@@ -217,6 +227,42 @@ test("an unlisted claim accepts free text and prevents a duplicate",async({page}
   await custom.getByLabel("Condition or symptom name").fill("Shoulder symptoms");
   await expect(custom.getByText("Possible duplicate claim")).toBeVisible();
   await expect(custom.getByRole("button",{name:"Add Claim"})).toBeDisabled();
+});
+
+test("all dialogs move focus inside, close with Escape, and restore focus",async({page})=>{
+  await startCleanIntake(page);
+  await completeSetup(page);
+  await page.getByRole("button",{name:/Claim Leads/}).click();
+  const trigger=page.getByRole("button",{name:"Add a claim not shown"});
+  await trigger.focus();
+  await trigger.click();
+  const dialog=page.getByRole("dialog",{name:"Add a claim to your package"});
+  await expect(dialog).toBeFocused();
+  await expect(page.locator(".rw-stage")).toHaveJSProperty("inert",true);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  await expect(page.locator(".rw-stage")).toHaveJSProperty("inert",false);
+});
+
+test("linked document failures become the primary action and block approval",async({page})=>{
+  await startCleanIntake(page);
+  await addKneeIntake(page);
+  await completeSetup(page);
+  await page.evaluate(()=>{
+    const key="debrief.rework-preview.v2";
+    const saved=JSON.parse(localStorage.getItem(key)||"{}");
+    saved.documents=[{id:"failed-document",name:"Fictional failed analysis.pdf",type:"Medical record",dateRange:"2022",status:"failed",caseIds:["case-1"],claimIds:[],insights:[]}];
+    localStorage.setItem(key,JSON.stringify(saved));
+  });
+  await page.reload();
+  await expect(page.getByRole("heading",{name:"Resolve a document analysis problem"})).toBeVisible();
+  await page.getByRole("button",{name:"Review My Documents"}).click();
+  await expect(page.getByRole("button",{name:"Retry analysis"})).toBeVisible();
+  await page.getByRole("button",{name:"Linked to package"}).click();
+  await page.getByRole("button",{name:"Go to Package Overview"}).click();
+  await expect(page.getByRole("heading",{name:"Resolve a document analysis problem"})).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Review Claim Lead"})).toBeVisible();
 });
 
 test("How Debrief works remains available without an orientation step",async({page})=>{
@@ -309,7 +355,7 @@ test("uploaded findings open a durable source and can link to a claim",async({pa
   await page.getByRole("button",{name:/Right knee/}).click();
   await expect(page.getByRole("dialog",{name:"Fictional orthopedic visit.pdf"})).toContainText("Page 3");
   await page.getByRole("dialog",{name:"Fictional orthopedic visit.pdf"}).getByRole("button",{name:"Confirm source"}).click();
-  await page.getByRole("button",{name:"Finish setup"}).click();
+  await page.getByRole("button",{name:"Go to Package Overview"}).click();
   await page.getByRole("button",{name:/Claim Leads/}).click();
   await addOtherClaim(page,"Fictional knee claim");
   await page.getByRole("button",{name:"Open Package Overview"}).click();
