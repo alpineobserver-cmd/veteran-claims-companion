@@ -49,6 +49,19 @@ test("global accessibility styles preserve focus, contrast, touch targets, and r
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
 });
 
+test("rework dialogs share focus containment, Escape handling, and background inertness",async()=>{
+  const prototype=await read("components/rework-prototype.tsx");
+  assert.match(prototype,/function AccessibleDialog/);
+  assert.match(prototype,/event\.key==="Escape"/);
+  assert.match(prototype,/event\.key!=="Tab"/);
+  assert.match(prototype,/element\.inert=true/);
+  assert.match(prototype,/element\.inert=false/);
+  assert.match(prototype,/previouslyFocused\?\.focus\(\)/);
+  for(const dialog of ["MissionBriefing","DeleteClaimDialog","AddClaimDialog","QuickAdd","SourceInspector","DownloadPreview","FollowUpPreview"]){
+    assert.match(prototype,new RegExp(`function ${dialog}[\\s\\S]*?<AccessibleDialog`),dialog);
+  }
+});
+
 test("mobile application chrome does not force horizontal overflow",async()=>{
   const [shell,banner]=await Promise.all([read("app/shell.css"),read("app/deployment-banner.css")]);
   assert.match(shell,/\.search-wrap\{min-width:0\}/);
