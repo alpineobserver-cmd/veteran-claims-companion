@@ -31,6 +31,16 @@ test("production rejects a staging data label",()=>{
   assert.match(result.stderr,/Production must use DATA_ENVIRONMENT=production/);
 });
 
+test("Google MFA enforcement accepts only explicit rollout modes",()=>{
+  const invalid=validate({DEBRIEF_GOOGLE_MFA_ENFORCEMENT:"sometimes"});
+  assert.notEqual(invalid.status,0);
+  assert.match(invalid.stderr,/must be disabled, audit, or enforced/);
+  for(const mode of ["disabled","audit","enforced"]){
+    const result=validate({DEBRIEF_GOOGLE_MFA_ENFORCEMENT:mode});
+    assert.equal(result.status,0,result.stderr);
+  }
+});
+
 test("hosted releases require the protected environment branch and a recorded commit",()=>{
   const base={VERCEL_ENV:"production",APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"false",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"true",DEBRIEF_MALWARE_SCANNING_ENABLED:"false",DEBRIEF_REAL_DOCUMENTS_ENABLED:"false"};
   const wrongBranch=validate({...base,VERCEL_GIT_COMMIT_REF:"feature",VERCEL_GIT_COMMIT_SHA:"a".repeat(40)});

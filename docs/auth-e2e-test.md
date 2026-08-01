@@ -12,6 +12,8 @@ This procedure verifies the complete Google callback without placing a Google pa
 
 Google account login remains a human verification step. Automating a Google password or MFA flow would create a reusable credential in the test system and is intentionally prohibited.
 
+When Google strong-authentication enforcement is being rolled out, follow [Google strong-authentication enforcement](google-mfa-enforcement.md) before completing this callback check.
+
 ## Automated boundary test
 
 Run a built Debrief server locally, then execute:
