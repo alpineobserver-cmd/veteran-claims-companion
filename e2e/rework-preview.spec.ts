@@ -45,6 +45,14 @@ async function completeSetup(page:import("@playwright/test").Page,{upload=false}
   await page.getByRole("button",{name:"Finish setup"}).click();
 }
 
+async function addOtherClaim(page:import("@playwright/test").Page,title:string){
+  await page.getByRole("button",{name:"Add a claim not shown"}).click();
+  const dialog=page.getByRole("dialog",{name:"Add a claim to your package"});
+  await dialog.getByLabel("Condition or symptom").selectOption("Other / condition not listed");
+  await dialog.getByLabel("Condition or symptom name").fill(title);
+  await dialog.getByRole("button",{name:"Add Claim"}).click();
+}
+
 test.beforeEach(async({page})=>{
   await page.goto(previewPath);
   await page.evaluate(()=>localStorage.removeItem("debrief.rework-preview.v2"));
@@ -152,11 +160,33 @@ test("documents can be skipped and users can add their own claim",async({page})=
   await page.getByRole("button",{name:/Claim Leads/}).click();
   await expect(page.getByText("No claim leads yet")).toBeVisible();
   await page.getByRole("button",{name:"Add a claim not shown"}).click();
-  const custom=page.getByRole("dialog",{name:"Add your own claim topic"});
-  await custom.getByLabel("Condition or symptom").fill("Fictional shoulder symptoms");
-  await custom.getByRole("button",{name:"Save item"}).click();
+  const custom=page.getByRole("dialog",{name:"Add a claim to your package"});
+  await custom.getByLabel("Condition or symptom").selectOption("Shoulder or arm condition");
+  await custom.getByRole("button",{name:"Add Claim"}).click();
   await page.getByRole("button",{name:"Package Overview",exact:true}).click();
-  await expect(page.locator("#rework-main").getByText("Fictional shoulder symptoms",{exact:true})).toBeVisible();
+  await expect(page.locator("#rework-main").getByText("Shoulder or arm condition",{exact:true})).toBeVisible();
+});
+
+test("an unlisted claim accepts free text and prevents a duplicate",async({page})=>{
+  await startCleanIntake(page);
+  await completeSetup(page);
+  await page.getByRole("button",{name:/Claim Leads/}).click();
+  await page.setViewportSize({width:390,height:844});
+  await page.getByRole("button",{name:"Add a claim not shown"}).click();
+  let custom=page.getByRole("dialog",{name:"Add a claim to your package"});
+  await expectNoOverflow(page);
+  await custom.getByLabel("Condition or symptom").selectOption("Other / condition not listed");
+  await expect(custom.getByLabel("Condition or symptom name")).toBeVisible();
+  await expect(custom.getByRole("button",{name:"Add Claim"})).toBeDisabled();
+  await custom.getByLabel("Condition or symptom name").fill("Fictional shoulder symptoms");
+  await custom.getByRole("button",{name:"Add Claim"}).click();
+
+  await page.getByRole("button",{name:"Add a claim not shown"}).click();
+  custom=page.getByRole("dialog",{name:"Add a claim to your package"});
+  await custom.getByLabel("Condition or symptom").selectOption("Other / condition not listed");
+  await custom.getByLabel("Condition or symptom name").fill("Shoulder symptoms");
+  await expect(custom.getByText("Possible duplicate claim")).toBeVisible();
+  await expect(custom.getByRole("button",{name:"Add Claim"})).toBeDisabled();
 });
 
 test("How Debrief works remains available without an orientation step",async({page})=>{
@@ -225,10 +255,7 @@ test("two claims keep separate drafts and readiness",async({page})=>{
   await completeSetup(page);
   await page.getByRole("button",{name:/Claim Leads/}).click();
   for(const title of ["Fictional shoulder symptoms","Fictional hearing symptoms"]){
-    await page.getByRole("button",{name:"Add a claim not shown"}).click();
-    const dialog=page.getByRole("dialog",{name:"Add your own claim topic"});
-    await dialog.getByLabel("Condition or symptom").fill(title);
-    await dialog.getByRole("button",{name:"Save item"}).click();
+    await addOtherClaim(page,title);
   }
   await page.getByRole("button",{name:"Open Package Overview"}).click();
   await page.getByRole("button",{name:"Open Fictional shoulder symptoms"}).click();
@@ -254,10 +281,7 @@ test("uploaded findings open a durable source and can link to a claim",async({pa
   await page.getByRole("dialog",{name:"Fictional orthopedic visit.pdf"}).getByRole("button",{name:"Confirm source"}).click();
   await page.getByRole("button",{name:"Finish setup"}).click();
   await page.getByRole("button",{name:/Claim Leads/}).click();
-  await page.getByRole("button",{name:"Add a claim not shown"}).click();
-  const dialog=page.getByRole("dialog",{name:"Add your own claim topic"});
-  await dialog.getByLabel("Condition or symptom").fill("Fictional knee claim");
-  await dialog.getByRole("button",{name:"Save item"}).click();
+  await addOtherClaim(page,"Fictional knee claim");
   await page.getByRole("button",{name:"Open Package Overview"}).click();
   await page.getByRole("button",{name:"Open Fictional knee claim"}).click();
   await page.getByRole("button",{name:/Link Fictional orthopedic visit.pdf to Fictional knee claim/}).click();
@@ -271,10 +295,7 @@ test("alternate package type changes claim prompts",async({page})=>{
   await page.getByRole("button",{name:"Continue to Service & Health"}).click();
   await completeSetup(page);
   await page.getByRole("button",{name:/Claim Leads/}).click();
-  await page.getByRole("button",{name:"Add a claim not shown"}).click();
-  const dialog=page.getByRole("dialog",{name:"Add your own claim topic"});
-  await dialog.getByLabel("Condition or symptom").fill("Fictional rated condition");
-  await dialog.getByRole("button",{name:"Save item"}).click();
+  await addOtherClaim(page,"Fictional rated condition");
   await page.getByRole("button",{name:"Open Package Overview"}).click();
   await page.getByRole("button",{name:"Open Fictional rated condition"}).click();
   await expect(page.getByLabel("Claim path")).toHaveValue("increase");

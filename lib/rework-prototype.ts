@@ -75,7 +75,7 @@ export type ClaimWorkspace={
   sourceIds:string[];
   documentIds:string[];
   updated:string;
-  milestone:"Needs foundation"|"Foundation captured"|"Statement reviewed";
+  milestone:"Needs foundation"|"Needs your review"|"Foundation captured"|"Statement reviewed";
   draft:WorkspaceDraft;
 };
 
