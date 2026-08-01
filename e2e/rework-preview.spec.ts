@@ -154,6 +154,36 @@ test("clean-profile journey reaches a reviewed package",async({page})=>{
   await expect(page.getByRole("dialog",{name:"Your package is ready to download"})).toBeVisible();
 });
 
+test("a claim can be safely deleted from Package Overview",async({page})=>{
+  await startCleanIntake(page);
+  await addKneeIntake(page);
+  await completeSetup(page);
+  await page.getByRole("button",{name:/Claim Leads/}).click();
+  const kneeLead=page.locator(".rw-lead").filter({hasText:"Right knee symptoms"});
+  await kneeLead.getByRole("button",{name:"Add to Your Claims"}).click();
+  await page.getByRole("button",{name:"Open Package Overview"}).click();
+
+  await page.setViewportSize({width:390,height:844});
+  await page.getByRole("button",{name:"Delete Right knee symptoms"}).click();
+  let confirmation=page.getByRole("dialog",{name:"Delete Right knee symptoms?"});
+  await expect(confirmation).toContainText("Documents and service history saved to your account will remain available.");
+  await expectNoOverflow(page);
+  await confirmation.getByRole("button",{name:"Keep claim"}).click();
+  await expect(page.getByText("1 active claim")).toBeVisible();
+
+  await page.getByRole("button",{name:"Delete Right knee symptoms"}).click();
+  confirmation=page.getByRole("dialog",{name:"Delete Right knee symptoms?"});
+  await confirmation.getByRole("button",{name:"Delete claim"}).click();
+  await expect(page.getByText("No claims yet")).toBeVisible();
+  await expect(page.locator(".rw-notice")).toContainText("Claim “Right knee symptoms” was removed from this package.");
+
+  await page.setViewportSize({width:1280,height:900});
+  const journey=page.getByRole("complementary",{name:"Claim package navigation"});
+  await expect(journey.getByRole("button",{name:"Right knee symptoms"})).toHaveCount(0);
+  await journey.getByRole("button",{name:/Claim Leads/}).click();
+  await expect(kneeLead.getByRole("button",{name:"Add to Your Claims"})).toBeEnabled();
+});
+
 test("documents can be skipped and users can add their own claim",async({page})=>{
   await startCleanIntake(page);
   await completeSetup(page);
