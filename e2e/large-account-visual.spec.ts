@@ -36,7 +36,7 @@ test("@visual landing page desktop baseline",async({page})=>{
   await expect(page).toHaveScreenshot("landing-desktop.png",{fullPage:true});
 });
 
-test("@visual claim builder mobile baseline",async({page})=>{
+test("@visual protected claim builder mobile baseline",async({page})=>{
   test.skip(Boolean(process.env.CI),"Pixel baselines are platform-specific; CI runs the structural browser suite.");
   await page.setViewportSize({width:390,height:844});
   await page.goto("/claim-builder?new=1");

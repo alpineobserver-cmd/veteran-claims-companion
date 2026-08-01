@@ -20,12 +20,10 @@ export default async function LandingPage() {
 
     <section className="landing-hero">
       <div className="landing-copy">
-        <p className="landing-kicker">Veteran claim preparation</p>
-        <h1>Prepare your claim, one condition at a time.</h1>
-        <p className="landing-lede">Answer guided questions, organize supporting information, and prepare a personal statement for your review.</p>
+        <h1>Debrief your service. Organize the facts that matter.</h1>
+        <p className="landing-lede">Capture mission context, health events, and supporting records so each claim begins with information only you can provide.</p>
         <div className="landing-actions">
           <Link className="landing-primary" href={signedIn?"/dashboard":"/login?redirectTo=/dashboard"}>{signedIn?"Open dashboard":"Log in to begin"} <ArrowRight size={17}/></Link>
-          {!signedIn&&<Link className="landing-secondary" href="/dashboard">Continue without an account</Link>}
         </div>
       </div>
 

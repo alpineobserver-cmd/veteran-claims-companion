@@ -111,6 +111,32 @@ export type Case={
   claimIds:string[];
 };
 
+export type PackageNextAction={
+  code:"foundation"|"claim-review"|"lead-review"|"add-claim"|"package-review";
+  title:string;
+  copy:string;
+  label:string;
+  screen:PrototypeScreen;
+  claimId?:string;
+};
+
+export function claimReviewIssueCount(claim:ClaimWorkspace,sources:SourceReference[]){
+  const sourceIssues=claim.sourceIds.filter(id=>{
+    const source=sources.find(item=>item.id===id);
+    return !source||(source.verification!=="confirmed"&&!claim.draft.verifiedSourceIds.includes(id));
+  }).length;
+  return (claim.path==="unsure"?1:0)+(claim.draft.statementReviewed?0:1)+sourceIssues;
+}
+
+export function getPackageNextAction({services,events,leads,claims,sources}:{services:ServicePeriod[];events:HealthEvent[];leads:ClaimLead[];claims:ClaimWorkspace[];sources:SourceReference[]}):PackageNextAction{
+  if(!services.length||!events.length)return {code:"foundation",title:"Complete your service and health foundation",copy:"Add at least one service period and one health event. Debrief will reuse these details across your claims.",label:"Complete Service & Health",screen:"intake"};
+  const claim=claims.find(item=>claimReviewIssueCount(item,sources)>0);
+  if(claim)return {code:"claim-review",title:`Resolve review items for ${claim.title}`,copy:"This claim still has a statement, claim path, or linked source that needs your review.",label:"Resolve Claim Review",screen:"workspace",claimId:claim.id};
+  if(leads.some(item=>item.status==="open"))return {code:"lead-review",title:"Review an evidence-linked claim lead",copy:"Inspect why the topic appeared, then add, dismiss, or merge it.",label:"Review Claim Lead",screen:"leads"};
+  if(!claims.length)return {code:"add-claim",title:"Add the first claim to your package",copy:"Choose a claim lead or add a condition or symptom yourself.",label:"Add Your First Claim",screen:"leads"};
+  return {code:"package-review",title:"Review package readiness",copy:"Your claim-level reviews are complete. Check the package before final approval.",label:"Review Package Readiness",screen:"package"};
+}
+
 export const prototypeSources:SourceReference[]=[
   {id:"src-knee-intake",kind:"intake",label:"Health timeline",excerpt:"A knee-related event was added during intake. Open your health timeline to review the original wording.",confidence:"medium",verification:"unreviewed"}
 ];

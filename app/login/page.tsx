@@ -18,10 +18,9 @@ export default async function Login({searchParams}:{searchParams:Promise<{redire
     <Link className="login-back" href="/"><ArrowLeft size={15} aria-hidden="true"/> Return to Debrief home</Link>
     <section className="login-card">
       <div className="login-emblem"><Fingerprint size={25} aria-hidden="true"/></div>
-      <div className="classification">SECURE ACCESS // AUTHENTICATION REQUIRED</div>
-      <span className="login-kicker">Your private Debrief account</span>
-      <h1>Sign in before adding claim information.</h1>
-      <p>New accounts begin with a clean service and health intake. Returning users resume their active claim package.</p>
+      <span className="login-kicker">Your Debrief account</span>
+      <h1>Sign in to continue your debrief.</h1>
+      <p>Your account keeps your service history, records, and claim package connected to you.</p>
       {params.retry==="1"&&<div className="login-retry-note" role="status"><strong>Fresh sign-in ready.</strong><span>Close any older Google sign-in tabs, then continue once below.</span></div>}
       <form action={async()=>{"use server";logAuthEvent("sign_in_started",{provider:"google"});await signIn("google",{redirectTo})}}><GoogleSignInButton/></form>
       {process.env.AUTH_MICROSOFT_ENTRA_ID_ID?.trim()&&process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET?.trim()?<form action={async()=>{"use server";logAuthEvent("sign_in_started",{provider:"microsoft-entra-id"});await signIn("microsoft-entra-id",{redirectTo})}}><MicrosoftSignInButton/></form>:null}

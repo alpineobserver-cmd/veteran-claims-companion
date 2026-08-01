@@ -18,13 +18,13 @@ async function startCleanIntake(page:import("@playwright/test").Page){
 async function addKneeIntake(page:import("@playwright/test").Page){
   await page.getByRole("button",{name:"Add service period"}).first().click();
   const service=page.getByRole("dialog",{name:"Add a service period"});
-  await service.getByLabel("Branch and service component").fill("Air Force, active duty");
-  await service.getByLabel("Period type: duty station, deployment, or TDY").fill("Duty station");
+  await service.getByLabel("Branch and service component").selectOption("Air Force");
+  await service.getByLabel("Period type").selectOption("Duty station");
   await service.getByLabel("Location or unit").fill("Fictional duty station");
   await service.getByLabel("Role, MOS, rate, or duty").fill("Aircraft maintenance");
   await service.getByLabel("Duties, conditions, or exposures to remember").fill("Flight-line noise and equipment lifting");
-  await service.getByLabel("Start date").fill("2011");
-  await service.getByLabel("End date").fill("2015");
+  await service.getByLabel("Start date").fill("2011-01-01");
+  await service.getByLabel("End date").fill("2015-01-01");
   await service.getByRole("button",{name:"Save item"}).click();
 
   await page.getByRole("button",{name:"Add health event"}).first().click();
@@ -51,18 +51,27 @@ test.beforeEach(async({page})=>{
   await page.reload();
 });
 
+test("public landing requires an account and uses Debrief mission language",async({page})=>{
+  await page.goto("/");
+  await expect(page.getByRole("heading",{name:"Debrief your service. Organize the facts that matter."})).toBeVisible();
+  await expect(page.getByText("Veteran claim preparation",{exact:true})).toHaveCount(1);
+  await expect(page.getByRole("link",{name:/Continue without an account/i})).toHaveCount(0);
+  await page.goto("/dashboard");
+  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fdashboard|\/login\?redirectTo=\/dashboard/);
+});
+
 test("signed-out visitors are redirected to authentication",async({page})=>{
   await page.goto("/rework-preview");
   await expect(page).toHaveURL(/\/login\?redirectTo=%2Frework-preview|\/login\?redirectTo=\/rework-preview/);
-  await expect(page.getByRole("heading",{name:"Sign in before adding claim information."})).toBeVisible();
-  await expect(page.getByText("New accounts begin with a clean service and health intake.")).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Sign in to continue your debrief."})).toBeVisible();
+  await expect(page.getByText("Your account keeps your service history, records, and claim package connected to you.")).toBeVisible();
 });
 
 test("related claim tools also require authentication",async({page})=>{
   for(const path of ["/conditions","/forms","/exposure-record-check","/claim-builder"]){
     await page.goto(path);
     await expect(page).toHaveURL(/\/login\?redirectTo=/);
-    await expect(page.getByRole("heading",{name:"Sign in before adding claim information."})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Sign in to continue your debrief."})).toBeVisible();
   }
 });
 
@@ -117,7 +126,7 @@ test("clean-profile journey reaches a reviewed package",async({page})=>{
   const journey=page.getByRole("complementary",{name:"Claim package navigation"});
   await expect(journey.getByRole("button",{name:"Right knee symptoms"})).toBeVisible();
   await expect(journey.getByRole("button",{name:/Claim Workspace/})).toHaveCount(0);
-  await page.getByRole("button",{name:"Open Claim"}).click();
+  await page.getByRole("button",{name:"Resolve Claim Review"}).click();
   await expect(page.getByRole("heading",{name:"Right knee symptoms Claim"})).toBeVisible();
   await expect(page.getByRole("button",{name:/Package Overview \/ Right knee symptoms/})).toBeVisible();
 
@@ -185,8 +194,29 @@ test("empty setup is saved honestly and points back to the foundation",async({pa
   await startCleanIntake(page);
   await completeSetup(page);
   await expect(page.getByText("Your package has started, but your foundation is still empty.")).toBeVisible();
-  await expect(page.getByRole("heading",{name:"Complete your foundation"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Complete your service and health foundation"})).toBeVisible();
   await expect(page.getByText("Not started",{exact:true})).toBeVisible();
+});
+
+test("service periods use structured type and calendar controls",async({page})=>{
+  await startCleanIntake(page);
+  await page.getByRole("button",{name:"Add service period"}).first().click();
+  const dialog=page.getByRole("dialog",{name:"Add a service period"});
+  await expect(dialog.getByLabel("Branch and service component")).toHaveJSProperty("tagName","SELECT");
+  await expect(dialog.getByLabel("Period type")).toHaveJSProperty("tagName","SELECT");
+  await expect(dialog.getByLabel("Start date")).toHaveAttribute("type","date");
+  await expect(dialog.getByLabel("End date")).toHaveAttribute("type","date");
+});
+
+test("package overview exposes one prominent action-required control",async({page})=>{
+  await startCleanIntake(page);
+  await completeSetup(page);
+  const next=page.locator(".rw-next");
+  await expect(next.getByText("ACTION REQUIRED",{exact:true})).toBeVisible();
+  await expect(next.getByRole("button")).toHaveCount(1);
+  await expect(next.getByRole("button",{name:"Complete Service & Health"})).toBeVisible();
+  await next.getByRole("button",{name:"Complete Service & Health"}).click();
+  await expect(page.getByRole("heading",{name:"Start with what only you know."})).toBeVisible();
 });
 
 test("two claims keep separate drafts and readiness",async({page})=>{
