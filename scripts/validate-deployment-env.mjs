@@ -12,9 +12,13 @@ const storageProviders=new Set(["gcs","google-cloud-storage","vercel","blob","ve
 const storageProvider=process.env.DOCUMENT_STORAGE_PROVIDER?.trim().toLowerCase();
 const malwareScanningEnabled=["1","true","on","enabled"].includes(process.env.DEBRIEF_MALWARE_SCANNING_ENABLED?.trim().toLowerCase());
 const realDocumentsEnabled=["1","true","on","enabled"].includes(process.env.DEBRIEF_REAL_DOCUMENTS_ENABLED?.trim().toLowerCase());
+const vercelGitRef=process.env.VERCEL_GIT_COMMIT_REF?.trim();
+const vercelGitSha=process.env.VERCEL_GIT_COMMIT_SHA?.trim();
+const googleMfaMode=(process.env.DEBRIEF_GOOGLE_MFA_ENFORCEMENT||"disabled").trim().toLowerCase();
 
 if(!allowed.has(appEnvironment))problems.push("APP_ENV must be development, preview, staging, or production.");
 if(dataEnvironment&&!allowed.has(dataEnvironment))problems.push("DATA_ENVIRONMENT must be development, preview, staging, or production.");
+if(!new Set(["disabled","audit","enforced"]).has(googleMfaMode))problems.push("DEBRIEF_GOOGLE_MFA_ENFORCEMENT must be disabled, audit, or enforced.");
 
 if(appEnvironment==="staging"){
   if(dataEnvironment!=="staging")problems.push("Staging requires DATA_ENVIRONMENT=staging so its data boundary is explicit.");
@@ -30,6 +34,12 @@ if(appEnvironment==="staging"){
 
 if(appEnvironment==="production"&&dataEnvironment&&dataEnvironment!=="production"){
   problems.push("Production must use DATA_ENVIRONMENT=production.");
+}
+
+if(process.env.VERCEL_ENV==="production"&&["staging","production"].includes(appEnvironment)){
+  const expectedRef=appEnvironment==="staging"?"staging":"main";
+  if(vercelGitRef!==expectedRef)problems.push(`${appEnvironment} Vercel releases must be built from the ${expectedRef} branch.`);
+  if(!/^[a-f0-9]{40}$/i.test(vercelGitSha||""))problems.push(`${appEnvironment} Vercel releases must record a full Git commit SHA.`);
 }
 
 if(storageProvider&&!storageProviders.has(storageProvider))problems.push("DOCUMENT_STORAGE_PROVIDER must be gcs, vercel, or local.");

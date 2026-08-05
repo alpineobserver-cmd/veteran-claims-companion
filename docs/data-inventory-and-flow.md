@@ -28,7 +28,7 @@ This inventory describes the code currently deployed for the fictional-data Alph
 | `Document.userId`, `Document.claimId` | Ownership and workspace authorization keys | Exported; cascaded with owner/workspace |
 | `Document.originalName` | Restricted user-supplied filename after normalization | Exported; never included in security logs; deleted with record |
 | `Document.storageKey` | Authentication-adjacent private object locator | Never exported or sent to the browser; deleted after verified object deletion |
-| `Document.quarantineKey`, `Document.cleanStorageKey` | Restricted private locators for the unscanned and verified-clean storage zones | Never exported or logged; deleted from every applicable zone during document/workspace/account cleanup |
+| `Document.quarantineKey`, `Document.cleanStorageKey`, `Document.rejectedStorageKey` | Restricted private locators for the unscanned, verified-clean, and malware-rejected storage zones | Never exported or logged; deleted from every applicable zone during document/workspace/account cleanup |
 | `Document.objectGeneration` | Immutable source-object generation used to bind an Eventarc scan result to the exact uploaded bytes | Never exported or logged; deleted with the document |
 | `Document.mimeType`, `Document.size` | File-validation and delivery metadata | Exported; permitted in account audit metadata |
 | `Document.sha256` | Security metadata for integrity/duplicate review | Exported; deleted with record |

@@ -2,6 +2,7 @@ import { AppShell } from "@/components/app-shell";
 import { ClaimQuestionnaire } from "@/components/claim-questionnaire";
 import { auth } from "@/auth";
 import type { Metadata } from "next";
+import {redirect} from "next/navigation";
 import "./claim-builder.css";
 import "./questionnaire-status.css";
 import "./personal-statement.css";
@@ -12,4 +13,4 @@ import "./statement-comparison.css";
 import "./smart-builder.css";
 import "./intent-to-file.css";
 export const metadata:Metadata={title:"Claim builder",description:"Build and verify a fictional condition statement in guided steps."};
-export default async function ClaimBuilderPage({searchParams}:{searchParams:Promise<{claim?:string;new?:string;section?:string}>}){const [session,params]=await Promise.all([auth(),searchParams]);const user=session?.user?{id:session.user.id,name:session.user.name}:undefined;const fresh=params.new==="1"&&!params.claim;const initialSection=params.section==="statement"||params.section==="package"?params.section:undefined;return <AppShell current="builder" user={user}><ClaimQuestionnaire user={user} initialClaimId={params.claim} initialSection={initialSection} fresh={fresh}/><footer className="disclaimer">Debrief is an independent educational resource and is not affiliated with the U.S. Department of Veterans Affairs.</footer></AppShell>}
+export default async function ClaimBuilderPage({searchParams}:{searchParams:Promise<{claim?:string;new?:string;section?:string}>}){const [session,params]=await Promise.all([auth(),searchParams]);if(!session?.user?.id)redirect("/login?redirectTo=/claim-builder");const browserTest=session.user.id==="fictional-browser-tester";const user=browserTest?undefined:{id:session.user.id,name:session.user.name};const fresh=params.new==="1"&&!params.claim;const initialSection=params.section==="statement"||params.section==="package"?params.section:undefined;return <AppShell current="builder" user={user}><ClaimQuestionnaire user={user} initialClaimId={params.claim} initialSection={initialSection} fresh={fresh}/><footer className="disclaimer">Debrief is an independent educational resource and is not affiliated with the U.S. Department of Veterans Affairs.</footer></AppShell>}
