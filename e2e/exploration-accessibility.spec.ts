@@ -9,9 +9,9 @@ test("public navigation search, sidebar preference, and mobile menu remain usabl
 
   const search = page.getByRole("textbox", { name: "Search conditions and forms" });
   await search.fill("tinnitus");
-  const results = page.getByRole("listbox", { name: "Search results" });
+  const results = page.getByRole("region", { name: "Search results" });
   await expect(results).toBeVisible();
-  await expect(results.getByRole("option", { name: /Tinnitus Hearing and sensory/ })).toBeVisible();
+  await expect(results.getByRole("link", { name: /Tinnitus Hearing and sensory Condition/ })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(results).toBeHidden();
   await expect(search).toHaveValue("");

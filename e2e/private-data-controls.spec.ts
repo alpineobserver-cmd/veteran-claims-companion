@@ -40,7 +40,7 @@ test("document intake shows an upload service failure without losing the selecte
   await page.getByLabel("Choose a fictional test document").setInputFiles({name:"fictional-note.pdf",mimeType:"application/pdf",buffer:Buffer.from("fictional")});
   await page.getByRole("checkbox").check();
   await page.getByRole("button",{name:"Upload document"}).click();
-  await expect(page.getByRole("alert")).toContainText("temporarily paused");
+  await expect(page.locator(".intake-message[role='alert']")).toContainText("temporarily paused");
   await expect(page.getByText("fictional-note.pdf")).toBeVisible();
 });
 
@@ -53,6 +53,7 @@ test("claim archive, restore, and permanent delete send their intended private m
   });
   await page.goto("/dashboard");
   await page.getByRole("button",{name:"Archive Fictional active workspace claim"}).click();
+  await page.getByText("1 archived workspace").click();
   await page.getByRole("button",{name:"Restore Fictional archived workspace claim"}).click();
   await page.getByRole("button",{name:"Permanently delete Fictional active workspace claim"}).click();
   expect(calls).toContain("POST /api/claims/fictional-active-claim/actions");
