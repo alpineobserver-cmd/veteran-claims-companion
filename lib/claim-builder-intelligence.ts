@@ -48,10 +48,9 @@ export const evidenceStatusLabel=(status:EvidenceStatus)=>evidenceStatuses.find(
 export const hasSupportingInformation=(link:EvidenceLink|undefined)=>Boolean(link&&(link.status==="personal_recollection"||link.status==="witness_statement"||(link.status==="record_available"&&link.source.trim())));
 export const hasAvailableRecord=(link:EvidenceLink|undefined)=>Boolean(link?.status==="record_available"&&link.source.trim());
 
-const unsupportedMedicalConclusion=/\b(?:caused by|definitely due to|proves? that)\b/i;
+import { hasUnsupportedMedicalConclusion } from "@/lib/ai-statement-safety";
 const narrativeFields:StatementField[]=["diagnosis","symptoms","symptomFrequency","symptomDuration","onset","serviceEvent","exposures","treatment","specificExamples","additionalContext","worsening","worseningDate","primaryCondition","secondaryRelationship","clinicianDiscussion","workImpact","dailyImpact","continuity","flareUps","conditionDetail1","conditionDetail2","conditionDetail3","conditionDetail4"];
-const attributedMedicalConclusion=/\b(?:doctor|clinician|provider|physician|specialist|neurologist|therapist|examiner|medical (?:record|opinion))\b.{0,100}\b(?:said|says|stated|states|documented|documents|wrote|concluded|concludes|opined|opines|found|finds|explained|explains)\b/i;
-const needsMedicalConclusionRewrite=(value:string)=>unsupportedMedicalConclusion.test(value)&&!attributedMedicalConclusion.test(value);
+const needsMedicalConclusionRewrite=(value:string)=>hasUnsupportedMedicalConclusion(value);
 const numberWords:Record<string,number>={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
 const frequencyRate=(value:string)=>{
   const match=value.toLowerCase().match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b[^.;]{0,35}\b(?:per|each|a)\s+(day|week|month|year)\b/);
@@ -128,7 +127,7 @@ export function qualityFindings(a:Answers,condition:string,timeline:TimelineEven
   if(relevantFacts.some(row=>map[row.id]?.status==="record_not_obtained"))add("evidence-pending","improve","Identified records are not yet available","Keep track of the records you identified but have not obtained. They are not counted as available supporting evidence.");
   const all=narrativeFields.map(field=>a[field]).join(" ");
   if(/\b(?:always|constantly|completely)\b|\bnever\s+(?:have|had|can|could|do|did|is|was|will|experience|experienced)\b/i.test(all))add("absolute","check","Review absolute wording","Confirm words such as always or never are accurate, or replace them with a measurable pattern.");
-  if(unsupportedMedicalConclusion.test(all))add("medical","check","Possible medical conclusion","Describe what happened and what you believe; attribute medical conclusions to a clinician or record.");
+  if(hasUnsupportedMedicalConclusion(all))add("medical","check","Possible medical conclusion","Describe what happened and what you believe; attribute medical conclusions to a clinician or record.");
   if(conflictingOnsetYear(a)||conflictingFrequency(a))add("contradiction","check","Answers may conflict","Review the highlighted timing or frequency answers before generating a statement.");
   return findings;
 }

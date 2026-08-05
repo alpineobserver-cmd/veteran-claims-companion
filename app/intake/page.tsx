@@ -10,7 +10,8 @@ export const metadata:Metadata={title:"Document upload",description:"Add and org
 
 export default async function IntakePage(){
   const session=await auth();if(!session?.user?.id)redirect("/login?redirectTo=/intake");
-  const [workspaces,documents]=await Promise.all([
+  const browserTest=session.user.id==="fictional-browser-tester";
+  const [workspaces,documents]=browserTest?[[],[]]:await Promise.all([
     prisma.claim.findMany({where:{userId:session.user.id,status:{not:"ARCHIVED"}},orderBy:{updatedAt:"desc"},select:{id:true,title:true,updatedAt:true,_count:{select:{documents:true}}}}),
     prisma.document.findMany({where:{userId:session.user.id},orderBy:{createdAt:"desc"},select:{id:true,claimId:true,originalName:true,mimeType:true,size:true,status:true,provider:true,scanErrorCode:true,scanCompletedAt:true,createdAt:true}})
   ]);

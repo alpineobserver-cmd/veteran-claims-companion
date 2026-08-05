@@ -24,9 +24,11 @@ export async function POST(request:Request,context:Context){
   const draft=claimDraftSchema.safeParse(claim.draftData);if(!draft.success)return NextResponse.json({error:"Open and save this claim before adding a buddy statement."},{status:409});
   const {version,statement:editedStatement,id:statementId,...input}=parsed.data;const gaps=buddyStatementGaps(input);
   if(gaps.length)return NextResponse.json({error:"More firsthand information is needed before drafting.",gaps},{status:400});
-  const now=new Date().toISOString();const existing=(draft.data.buddyStatements||[]).find(item=>item.id===statementId);const statement=editedStatement?.trim()||createBuddyStatement(claim.title,input);
+  const now=new Date().toISOString();const existing=(draft.data.buddyStatements||[]).find(item=>item.id===statementId);
+  if(!existing&&(draft.data.buddyStatements||[]).length>=10)return NextResponse.json({error:"This workspace already has 10 saved buddy statements. Delete an existing draft before saving another; Debrief will not remove a witness statement automatically."},{status:409});
+  const statement=editedStatement?.trim()||createBuddyStatement(claim.title,input);
   const buddy={id:existing?.id||crypto.randomUUID(),...input,statement,provenance:deriveBuddyStatementProvenance(claim.title,input,statement),createdAt:existing?.createdAt||now,updatedAt:now};
-  const buddies=[...(draft.data.buddyStatements||[]).filter(item=>item.id!==buddy.id),buddy].slice(-10);
+  const buddies=[...(draft.data.buddyStatements||[]).filter(item=>item.id!==buddy.id),buddy];
   const updated=await prisma.claim.updateMany({where:{id:claim.id,userId:session.user.id,draftVersion:version},data:{draftData:{...draft.data,buddyStatements:buddies} as Prisma.InputJsonValue,draftVersion:{increment:1}}});
   if(!updated.count)return NextResponse.json({error:"This claim changed in another window. Refresh before saving the buddy statement.",conflict:true},{status:409});
   return NextResponse.json({buddy,draftVersion:version+1},{status:existing?200:201});

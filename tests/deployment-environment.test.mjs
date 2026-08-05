@@ -21,7 +21,7 @@ test("staging cannot deploy without an explicit staging data boundary",()=>{
 });
 
 test("staging accepts its own data and authentication boundary",()=>{
-  const result=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"false",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"true",DEBRIEF_MALWARE_SCANNING_ENABLED:"false",DEBRIEF_REAL_DOCUMENTS_ENABLED:"false"});
+  const result=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"false",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"true",DEBRIEF_GOOGLE_LOGIN_ENABLED:"true",DEBRIEF_MALWARE_SCANNING_ENABLED:"false",DEBRIEF_REAL_DOCUMENTS_ENABLED:"false"});
   assert.equal(result.status,0,result.stderr);
 });
 
@@ -42,7 +42,7 @@ test("Google MFA enforcement accepts only explicit rollout modes",()=>{
 });
 
 test("hosted releases require the protected environment branch and a recorded commit",()=>{
-  const base={VERCEL_ENV:"production",APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"false",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"true",DEBRIEF_MALWARE_SCANNING_ENABLED:"false",DEBRIEF_REAL_DOCUMENTS_ENABLED:"false"};
+  const base={VERCEL_ENV:"production",APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"false",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"true",DEBRIEF_GOOGLE_LOGIN_ENABLED:"true",DEBRIEF_MALWARE_SCANNING_ENABLED:"false",DEBRIEF_REAL_DOCUMENTS_ENABLED:"false"};
   const wrongBranch=validate({...base,VERCEL_GIT_COMMIT_REF:"feature",VERCEL_GIT_COMMIT_SHA:"a".repeat(40)});
   assert.notEqual(wrongBranch.status,0);assert.match(wrongBranch.stderr,/staging branch/);
   const missingSha=validate({...base,VERCEL_GIT_COMMIT_REF:"staging"});
@@ -84,14 +84,14 @@ test("hosted Google Cloud Storage requires keyless workload identity configurati
   assert.notEqual(incomplete.status,0);
   assert.match(incomplete.stderr,/GCS_BUCKET/);
   assert.match(incomplete.stderr,/GCS_AUTH_MODE=vercel-oidc/);
-  const complete=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"true",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"true",DEBRIEF_MALWARE_SCANNING_ENABLED:"false",DEBRIEF_REAL_DOCUMENTS_ENABLED:"false",DOCUMENT_STORAGE_PROVIDER:"gcs",GCS_AUTH_MODE:"vercel-oidc",GCS_BUCKET:"fictional-staging",GCP_PROJECT_ID:"fictional-project",GCP_PROJECT_NUMBER:"123456789",GCP_SERVICE_ACCOUNT_EMAIL:"debrief-staging@fictional-project.iam.gserviceaccount.com",GCP_WORKLOAD_IDENTITY_POOL_ID:"vercel-staging",GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:"vercel"});
+  const complete=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"true",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"true",DEBRIEF_GOOGLE_LOGIN_ENABLED:"true",DEBRIEF_MALWARE_SCANNING_ENABLED:"false",DEBRIEF_REAL_DOCUMENTS_ENABLED:"false",DOCUMENT_STORAGE_PROVIDER:"gcs",GCS_AUTH_MODE:"vercel-oidc",GCS_BUCKET:"fictional-staging",GCP_PROJECT_ID:"fictional-project",GCP_PROJECT_NUMBER:"123456789",GCP_SERVICE_ACCOUNT_EMAIL:"debrief-staging@fictional-project.iam.gserviceaccount.com",GCP_WORKLOAD_IDENTITY_POOL_ID:"vercel-staging",GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:"vercel"});
   assert.equal(complete.status,0,complete.stderr);
 });
 
 test("real documents and quarantine scanning cannot be enabled partially",()=>{
   const missing=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"true",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"false",DEBRIEF_MALWARE_SCANNING_ENABLED:"true",DEBRIEF_REAL_DOCUMENTS_ENABLED:"true",DOCUMENT_STORAGE_PROVIDER:"gcs",GCS_AUTH_MODE:"vercel-oidc",GCS_BUCKET:"fictional-staging",GCP_PROJECT_ID:"fictional-project",GCP_PROJECT_NUMBER:"123456789",GCP_SERVICE_ACCOUNT_EMAIL:"debrief-staging@fictional-project.iam.gserviceaccount.com",GCP_WORKLOAD_IDENTITY_POOL_ID:"vercel-staging",GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:"vercel"});
   assert.notEqual(missing.status,0);assert.match(missing.stderr,/GCS_QUARANTINE_BUCKET/);assert.match(missing.stderr,/DOCUMENT_SCAN_CALLBACK_SECRET/);
-  const complete=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"true",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"false",DEBRIEF_MALWARE_SCANNING_ENABLED:"true",DEBRIEF_REAL_DOCUMENTS_ENABLED:"true",DEBRIEF_SCAN_PROVIDER:"clamav",DOCUMENT_SCAN_CALLBACK_SECRET:"fictional-callback-secret-longer-than-thirty-two",DOCUMENT_STORAGE_PROVIDER:"gcs",GCS_AUTH_MODE:"vercel-oidc",GCS_BUCKET:"fictional-staging",GCS_QUARANTINE_BUCKET:"fictional-quarantine",GCS_CLEAN_BUCKET:"fictional-clean",GCP_PROJECT_ID:"fictional-project",GCP_PROJECT_NUMBER:"123456789",GCP_SERVICE_ACCOUNT_EMAIL:"debrief-staging@fictional-project.iam.gserviceaccount.com",GCP_WORKLOAD_IDENTITY_POOL_ID:"vercel-staging",GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:"vercel"});
+  const complete=validate({APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"true",DEBRIEF_AI_GENERATION_ENABLED:"false",DEBRIEF_REGISTRATIONS_ENABLED:"false",DEBRIEF_GOOGLE_LOGIN_ENABLED:"true",DEBRIEF_MALWARE_SCANNING_ENABLED:"true",DEBRIEF_REAL_DOCUMENTS_ENABLED:"true",DEBRIEF_SCAN_PROVIDER:"clamav",DOCUMENT_SCAN_CALLBACK_SECRET:"fictional-callback-secret-longer-than-thirty-two",DOCUMENT_STORAGE_PROVIDER:"gcs",GCS_AUTH_MODE:"vercel-oidc",GCS_BUCKET:"fictional-staging",GCS_QUARANTINE_BUCKET:"fictional-quarantine",GCS_CLEAN_BUCKET:"fictional-clean",GCP_PROJECT_ID:"fictional-project",GCP_PROJECT_NUMBER:"123456789",GCP_SERVICE_ACCOUNT_EMAIL:"debrief-staging@fictional-project.iam.gserviceaccount.com",GCP_WORKLOAD_IDENTITY_POOL_ID:"vercel-staging",GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:"vercel"});
   assert.equal(complete.status,0,complete.stderr);
 });
 

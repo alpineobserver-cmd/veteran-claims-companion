@@ -7,6 +7,7 @@ These environment controls let the Debrief administrator contain a risky functio
 | `DEBRIEF_UPLOADS_ENABLED` | Rejects new document uploads with a temporary-pause message | Authentication, existing-file download and deletion, claims, and account deletion |
 | `DEBRIEF_AI_GENERATION_ENABLED` | Prevents requests to the configured AI provider | The free deterministic guided narrative, saved work, editing, and export |
 | `DEBRIEF_REGISTRATIONS_ENABLED` | Rejects Google accounts that have never been linked to Debrief | Existing linked accounts can still sign in and delete or export their data |
+| `DEBRIEF_GOOGLE_LOGIN_ENABLED` | Removes Google from the available sign-in providers for emergency credential rotation | Microsoft Entra sign-in, if separately configured; account data remains protected |
 
 Accepted enabled values are `true`, `1`, `on`, and `enabled`. Accepted disabled values are `false`, `0`, `off`, `disabled`, `pause`, and `paused`.
 

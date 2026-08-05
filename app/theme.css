@@ -1,5 +1,4 @@
 /* Debrief visual system: operations-room chrome with readable dossier surfaces. */
-:root{--pine:#263e3a;--pine-dark:#101e22;--sage:#6f847b;--olive:#667b57;--clay:#a4674d;--sand:#d7d8ca;--cream:#e8ebe6;--paper:#f5f6f1;--ink:#172327;--muted:#65716d;--line:#c8cfca;--soft:#dde2dc;--gold:#b8893d}
 body{background:var(--cream)}
 .sidebar{background:#101c21;border-right-color:#26363c;color:#c9d3ce}
 .brand{border-bottom:1px solid #2a3a3f;margin:0 1px 18px;padding-bottom:22px}.brandmark{border-radius:3px;background:#a9c78e12;border:1px solid #a9c78e55;color:#a9c78e}.brandcopy strong{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#eef2ef;font-size:16px;letter-spacing:.18em;text-transform:uppercase}.brandcopy small{color:#758780;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:8px}

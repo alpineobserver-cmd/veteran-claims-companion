@@ -1,12 +1,23 @@
 # Debrief product backlog
 
-Last reviewed: July 24, 2026
+Last reviewed: August 5, 2026
 Current release: closed Alpha  
 Current data boundary: fictional information and fictional documents only
 
 Most recent reconciliation: July 24, 2026 — confirmed the operations/export/keyboard package and statement source/citation package reached Staging, completed the privacy-minimized personal-statement generation history and deterministic witness-source tracing, then added permanent complete-claim, interruption-recovery, large-workspace, and visual browser coverage. See `docs/generation-audit-trail.md`, `docs/browser-resilience-verification-2026-07-24.md`, `docs/releases/2026-07-23-production-promotion.md`, and `docs/export-and-keyboard-verification-2026-07-23.md`.
 
 This file is the working source of truth for product tasks. Update the checkbox and status when work changes, link the related pull request or decision record, and record user-facing releases in the public changelog.
+
+## August 5 code-review remediation
+
+- [x] **SEC-024 · P0** — Add a server-side output safety gate for AI statement drafting. The route now holds an AI result for factual follow-up when it contains an un-attributed medical-causation assertion; recorded fictional provider-shaped responses exercise the same guard in `npm run eval:ai`.
+- [x] **TEST-015 · P1** — Add local browser interaction coverage for fictional document upload success/failure/deletion, claim archive/restore/deletion requests, and typed account-deletion confirmation. `test:browser` is now part of `test:release`.
+- [x] **UX-019 · P1** — Replace silent removal of the eleventh buddy statement with an explicit ten-statement limit and a recoverable error. Preserve the existing statement when witness inputs change unless the user confirms discard.
+- [x] **A11Y-014 · P1** — Replace the invalid search listbox semantics with a standard keyboard-link results region and live result-count announcement.
+- [x] **SEC-025 · P1** — Add an emergency Google provider pause control and prevent a registration pause from being bypassed by signing in through a second provider on an existing user.
+- [x] **SEC-018 · P1** — Move Production script CSP from `unsafe-inline` to per-request nonces with `strict-dynamic`. The cost is dynamic HTML rendering; re-evaluate caching/performance before any real-data decision.
+- [x] **UX-020 · P1** — Replace the two native account-deletion confirmations with a labeled typed `DELETE` confirmation.
+- [ ] **TEST-016 · P1 · [Blocked]** — Run a disposable two-user authenticated Staging authorization test across claims, documents, tickets, account deletion, and scanner callbacks. Requires two user-created disposable OAuth identities and an approved cleanup window; do not use a tester account or Production.
 
 ## How to use this backlog
 

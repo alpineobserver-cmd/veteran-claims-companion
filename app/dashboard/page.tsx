@@ -13,8 +13,9 @@ export default async function Dashboard() {
   const session=await auth();
   const user=session?.user;
   if(!user?.id)redirect("/login?redirectTo=/dashboard");
-  const persistentUser=user&&user.id!=="fictional-browser-tester";
-  const [claims,archivedClaims]=persistentUser?await Promise.all([prisma.claim.findMany({where:{userId:user.id,status:{not:"ARCHIVED"}},orderBy:{updatedAt:"desc"},select:{id:true,title:true,status:true,progress:true,updatedAt:true}}),prisma.claim.findMany({where:{userId:user.id,status:"ARCHIVED"},orderBy:{updatedAt:"desc"},select:{id:true,title:true,updatedAt:true}})]):[[],[]];
+  const browserTest=user.id==="fictional-browser-tester";
+  const persistentUser=user&&!browserTest;
+  const [claims,archivedClaims]=browserTest?[[{id:"fictional-active-claim",title:"Fictional active workspace",status:"DRAFT" as const,progress:25,updatedAt:new Date("2026-08-05T12:00:00.000Z")}],[{id:"fictional-archived-claim",title:"Fictional archived workspace",updatedAt:new Date("2026-08-05T11:00:00.000Z")}]]:persistentUser?await Promise.all([prisma.claim.findMany({where:{userId:user.id,status:{not:"ARCHIVED"}},orderBy:{updatedAt:"desc"},select:{id:true,title:true,status:true,progress:true,updatedAt:true}}),prisma.claim.findMany({where:{userId:user.id,status:"ARCHIVED"},orderBy:{updatedAt:"desc"},select:{id:true,title:true,updatedAt:true}})]):[[],[]];
   const first=claims[0];
   const average=claims.length?Math.round(claims.reduce((sum,claim)=>sum+claim.progress,0)/claims.length):0;
   const shellUser={id:user.id,name:user.name,email:user.email,image:user.image};
