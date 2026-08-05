@@ -1,13 +1,9 @@
 import type { NextConfig } from "next";
-import { contentSecurityPolicy } from "./lib/content-security-policy";
-const isDevelopment=process.env.NODE_ENV!=="production";
-const csp=contentSecurityPolicy(isDevelopment);
 const nextConfig: NextConfig = {
   outputFileTracingRoot:process.cwd(),
   serverExternalPackages: ["@vercel/blob"],
   poweredByHeader:false,
   async headers(){return [{source:"/:path*",headers:[
-    {key:"Content-Security-Policy",value:csp},
     {key:"Referrer-Policy",value:"strict-origin-when-cross-origin"},
     {key:"X-Content-Type-Options",value:"nosniff"},
     {key:"X-Frame-Options",value:"DENY"},

@@ -109,19 +109,26 @@ test("security-relevant runtime output is routed through the single event format
   assert.doesNotMatch(contract,/userId\??:|accountId\??:|documentId\??:|claimId\??:|storageKey\??:|email\??:|token\??:/);
 });
 
-test("the CSP narrows production behavior while recording the framework compatibility residual",async()=>{
-  const production=contentSecurityPolicy(false);
-  const development=contentSecurityPolicy(true);
+test("the CSP uses a per-request nonce and excludes production inline-script execution",async()=>{
+  const production=contentSecurityPolicy(false,"fictional-production-nonce");
+  const development=contentSecurityPolicy(true,"fictional-development-nonce");
   for(const directive of["script-src-attr 'none'","media-src 'none'","manifest-src 'self'","frame-src 'none'","img-src 'self' data:","upgrade-insecure-requests"])
     assert.match(production,new RegExp(directive.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
   assert.doesNotMatch(production,/img-src[^;]*https:/);
   assert.doesNotMatch(production,/unsafe-eval/);
   assert.match(development,/unsafe-eval/);
   assert.doesNotMatch(development,/upgrade-insecure-requests/);
-  assert.match(production,/script-src[^;]*unsafe-inline/);
+  assert.match(production,/script-src[^;]*nonce-fictional-production-nonce/);
+  assert.match(production,/script-src[^;]*strict-dynamic/);
+  assert.doesNotMatch(production,/script-src[^;]*unsafe-inline/);
   const record=await read("docs/content-security-policy.md");
-  assert.match(record,/explicit residual risk/i);
-  assert.match(record,/nonces require[\s\S]*dynamic rendering/i);
+  assert.match(record,/nonce/i);
+  const middleware=await read("middleware.ts");
+  assert.match(middleware,/x-nonce/);
+  assert.match(middleware,/Content-Security-Policy/);
+  const layout=await read("app\/layout.tsx");
+  assert.match(layout,/await headers\(\)/);
+  assert.match(layout,/nonce=\{nonce\}/);
 });
 
 test("application responses opt into cross-origin resource isolation",async()=>{
@@ -146,7 +153,8 @@ test("the synthetic browser identity is restricted to the local browser-test run
   assert.match(authSource,/debrief-browser-test-profile/);
   assert.match(browserConfig,/DEBRIEF_BROWSER_TEST_PROFILE:"enabled"/);
   const dashboard=await read("app/dashboard/page.tsx");
-  assert.match(dashboard,/user\.id!=="fictional-browser-tester"/);
+  assert.match(dashboard,/user\.id==="fictional-browser-tester"/);
+  assert.match(dashboard,/persistentUser=user&&!browserTest/);
   const builder=await read("app/claim-builder/page.tsx");
   assert.match(builder,/browserTest\?undefined/);
 });

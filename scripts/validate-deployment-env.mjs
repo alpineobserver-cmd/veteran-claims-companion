@@ -4,7 +4,7 @@ const inferred=process.env.VERCEL_ENV==="production"?"production":process.env.VE
 const appEnvironment=(process.env.APP_ENV||inferred).trim().toLowerCase();
 const dataEnvironment=process.env.DATA_ENVIRONMENT?.trim().toLowerCase();
 const problems=[];
-const operationalControls=["DEBRIEF_UPLOADS_ENABLED","DEBRIEF_AI_GENERATION_ENABLED","DEBRIEF_REGISTRATIONS_ENABLED","DEBRIEF_MALWARE_SCANNING_ENABLED","DEBRIEF_REAL_DOCUMENTS_ENABLED"];
+const operationalControls=["DEBRIEF_UPLOADS_ENABLED","DEBRIEF_AI_GENERATION_ENABLED","DEBRIEF_REGISTRATIONS_ENABLED","DEBRIEF_GOOGLE_LOGIN_ENABLED","DEBRIEF_MALWARE_SCANNING_ENABLED","DEBRIEF_REAL_DOCUMENTS_ENABLED"];
 const operationalValues=new Set(["0","1","false","true","off","on","disabled","enabled","pause","paused"]);
 const boundedIntegerControls=[["DEBRIEF_AI_DAILY_USER_LIMIT",500],["DEBRIEF_AI_DAILY_GLOBAL_LIMIT",5000],["DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT",10_000_000],["DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT",100_000_000],["DEBRIEF_AI_DAILY_SPEND_CAP_CENTS",100_000],["DEBRIEF_AI_MAX_REQUEST_COST_CENTS",10_000],["DEBRIEF_AI_MAX_OUTPUT_TOKENS",8_000]];
 const aiPolicyVersions=new Set(["personal-statement-v0","personal-statement-v1"]);

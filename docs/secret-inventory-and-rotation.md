@@ -26,6 +26,8 @@ Never record a secret value in this file, Git, issues, chat, screenshots, build 
 
 Configuration values such as `APP_ENV`, `DATA_ENVIRONMENT`, `RELEASE_ID`, `AUTH_URL`, `AUTH_CANONICAL_HOST`, `PRIVACY_CONTACT_EMAIL`, `OPENAI_MODEL`, `DOCUMENT_STORAGE_PROVIDER`, `GCS_AUTH_MODE`, `GCS_BUCKET`, `GCS_QUARANTINE_BUCKET`, `GCS_CLEAN_BUCKET`, `GCS_REJECTED_BUCKET`, `GCS_DEFINITIONS_BUCKET`, `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`, `DEBRIEF_UPLOADS_ENABLED`, `DEBRIEF_MALWARE_SCANNING_ENABLED`, `DEBRIEF_REAL_DOCUMENTS_ENABLED`, `DEBRIEF_SCAN_PROVIDER`, `DEBRIEF_AI_GENERATION_ENABLED`, `DEBRIEF_AI_POLICY_VERSION`, `DEBRIEF_AI_DAILY_USER_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_LIMIT`, `DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT`, `DEBRIEF_AI_MAX_OUTPUT_TOKENS`, `DEBRIEF_AI_MAX_REQUEST_COST_CENTS`, `DEBRIEF_AI_DAILY_SPEND_CAP_CENTS`, `DEBRIEF_REGISTRATIONS_ENABLED`, and `DEBRIEF_GOOGLE_MFA_ENFORCEMENT` are not secrets. They still require environment review because incorrect values can weaken isolation, authentication, availability, or cost containment. Keep Google MFA enforcement `disabled` until the Google Security Bundle is configured, then use `audit` in Staging before `enforced`.
 
+`DEBRIEF_GOOGLE_LOGIN_ENABLED` is also a non-secret operational control. Set it to `false` only to pause the Google provider during a credential incident; retain a separately configured emergency sign-in path before using it.
+
 ## Required inventory review
 
 - [ ] Review quarterly, after any administrator change, and before a Production promotion.
