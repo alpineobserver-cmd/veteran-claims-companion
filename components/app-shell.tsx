@@ -140,8 +140,9 @@ export function AppShell({ children, current = "home", user }: { children: React
         <button ref={openMenuRef} className="iconbtn mobile-menu" aria-label="Open menu" aria-controls="app-sidebar" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}><Menu size={19}/></button>
         <div className="search-wrap">
           <label className="search"><Search size={18}/><input aria-label="Search conditions and forms" placeholder="Search conditions and forms…" value={query} onChange={event=>setQuery(event.target.value)} autoComplete="off"/></label>
-          {query && <div className="search-results" role="listbox" aria-label="Search results">
-            {results.length ? results.map(item => <a href={item.href} key={item.href} role="option" aria-selected="false"><span><strong>{item.label}</strong><small>{item.detail}</small></span><em>{item.type}</em></a>) : <p>No matching conditions or forms found.</p>}
+          {query && <div className="search-results" role="region" aria-label="Search results" aria-live="polite">
+            <p className="sr-only">{results.length?`${results.length} search result${results.length===1?"":"s"} available.`:"No matching conditions or forms found."}</p>
+            {results.length ? results.map(item => <a href={item.href} key={`${item.type}:${item.label}:${item.href}`}><span><strong>{item.label}</strong><small>{item.detail}</small></span><em>{item.type}</em></a>) : <p>No matching conditions or forms found.</p>}
           </div>}
         </div>
         <div className="top-actions">

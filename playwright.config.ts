@@ -35,6 +35,7 @@ export default defineConfig({
       AUTH_URL:baseURL,
       AUTH_CANONICAL_HOST:"localhost",
       AUTH_SECRET:browserTestAuthSecret,
+      DEBRIEF_BROWSER_TEST_PROFILE:"enabled",
       DEBRIEF_AI_GENERATION_ENABLED:"false",
       DEBRIEF_UPLOADS_ENABLED:"false",
       NEXT_TELEMETRY_DISABLED:"1"

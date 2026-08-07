@@ -1,11 +1,4 @@
 /* Cross-route WCAG support: visible focus, readable small text, and motion preferences. */
-:root{
-  --sage:#637970;
-  --olive:#536947;
-  --muted:#52605b;
-  --gold:#8b6425;
-}
-
 :where(a,button,summary,input,select,textarea):focus-visible{
   outline:3px solid var(--gold);
   outline-offset:3px;
@@ -25,7 +18,7 @@
 .iconbtn{border-color:#52656b;color:#b1c0ba}
 .avatar.signed-out{background:#30464a;color:#e1e9e5}
 .search-results small,.notifications-panel p{color:#a2b2ab}
-.eyebrow,.kicker{color:#4f685e}
+.eyebrow,.kicker{color:var(--muted)}
 .builder-note{color:#52605b}
 .step-list button{color:#707873}
 .cloud-save-prompt p{color:#655d4f}

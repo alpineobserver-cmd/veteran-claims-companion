@@ -30,10 +30,11 @@ test("upload and AI routes enforce containment while preserving recovery paths",
   assert.doesNotMatch(account,/uploadsEnabled|registrationsEnabled/);
 });
 
-test("registration pause checks the provider account without blocking existing users",async()=>{
+test("registration pause permits an existing user while blocking a new identity, and Google can be paused independently",async()=>{
   const auth=await read("auth.ts");
   assert.match(auth,/if\(registrationsEnabled\(\)\|\|!account\?\.provider/);
-  assert.match(auth,/provider_providerAccountId/);
+  assert.match(auth,/prisma\.account\.findFirst\(\{where:\{userId:user\.id\}/);
+  assert.match(auth,/googleLoginEnabled\(\)/);
   assert.match(auth,/if\(existing\)return true/);
   assert.match(auth,/RegistrationPaused/);
   assert.doesNotMatch(auth,/email:\s*account/);
@@ -41,9 +42,9 @@ test("registration pause checks the provider account without blocking existing u
 
 test("deployment validation and the environment template enumerate every control",async()=>{
   const [validator,example]=await Promise.all([read("scripts/validate-deployment-env.mjs"),read(".env.example")]);
-  for(const key of ["DEBRIEF_UPLOADS_ENABLED","DEBRIEF_AI_GENERATION_ENABLED","DEBRIEF_REGISTRATIONS_ENABLED"]){
+  for(const key of ["DEBRIEF_UPLOADS_ENABLED","DEBRIEF_AI_GENERATION_ENABLED","DEBRIEF_REGISTRATIONS_ENABLED","DEBRIEF_GOOGLE_LOGIN_ENABLED","DEBRIEF_MALWARE_SCANNING_ENABLED","DEBRIEF_REAL_DOCUMENTS_ENABLED"]){
     assert.match(validator,new RegExp(key));
-    assert.match(example,new RegExp(`${key}="true"`));
+    assert.match(example,new RegExp(`${key}="(?:true|false)"`));
   }
   assert.match(validator,/DEBRIEF_AI_POLICY_VERSION/);
   assert.match(example,/DEBRIEF_AI_POLICY_VERSION="personal-statement-v1"/);

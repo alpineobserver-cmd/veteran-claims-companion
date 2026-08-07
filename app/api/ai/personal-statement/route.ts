@@ -10,6 +10,7 @@ import { aiDailySpendPolicy, aiGlobalDailyPolicy, aiGlobalDailyTokenPolicy, aiMa
 import { emitSecurityEvent, securityEventErrorCode } from "@/lib/security-events";
 import { selectedAiGenerationPolicy } from "@/lib/ai-generation-policy";
 import { generationSourceReferences, type GenerationAuditMetadata } from "@/lib/generation-audit";
+import { statementSafetyIssues } from "@/lib/ai-statement-safety";
 
 export const runtime = "nodejs";
 
@@ -63,7 +64,7 @@ export async function POST(request:NextRequest){
   const parsed=requestSchema.safeParse(body);
   if(!parsed.success)return NextResponse.json({error:"Please review the statement information and try again."},{status:400});
   const input=parsed.data;
-  const templateLimited=session?.user?.id?await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.anonymousTemplateDraft],"Too many guided drafts were requested. Please wait before trying again."):await enforceAnonymousRateLimit(request,[rateLimitPolicies.anonymousTemplateDraft],"Too many guided drafts were requested. Please wait before trying again.");
+  const templateLimited=session?.user?.id==="fictional-browser-tester"?null:session?.user?.id?await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.anonymousTemplateDraft],"Too many guided drafts were requested. Please wait before trying again."):await enforceAnonymousRateLimit(request,[rateLimitPolicies.anonymousTemplateDraft],"Too many guided drafts were requested. Please wait before trying again.");
   if(templateLimited)return templateLimited;
   const startedAt=new Date().toISOString();
   const gaps=statementGaps(input);
@@ -108,6 +109,8 @@ export async function POST(request:NextRequest){
     if(result.data.status==="needs_information")return NextResponse.json({status:"needs_information",questions:result.data.questions,notice:"The drafting assistant needs a few factual details before it can continue without guessing.",generation:generationMetadata(input,startedAt,{mode:"ai",model,policyVersion:policy.version,resultStatus:"needs_information"})});
     if(!result.data.statement.trim())throw new Error("The model returned an empty statement.");
     const statement=`${statementHeading(input)}\n\n${result.data.statement.trim()}`;
+    const safetyIssues=statementSafetyIssues(statement);
+    if(safetyIssues.length)return NextResponse.json({status:"needs_information",questions:safetyIssues.map(({field,question,detail:reason})=>({field,question,reason})),notice:"The drafting assistant produced wording that could state a medical conclusion as fact. Review the relationship in your own words or identify the clinician or record that documented it; Debrief will not return that wording as a ready-to-use statement.",generation:generationMetadata(input,startedAt,{mode:"ai",model,policyVersion:policy.version,resultStatus:"needs_information"})});
     return NextResponse.json({status:"ready",statement,provenance:deriveStatementProvenance(statement,{...input,otherCondition:"",intentToFileStatus:"",intentToFileDate:""},input.timeline),mode:"ai",policyVersion:policy.version,generation:generationMetadata(input,startedAt,{mode:"ai",model,policyVersion:policy.version,resultStatus:"ready"})});
   }catch(error){
     emitSecurityEvent("ai_generation_failed",{operation:"personal-statement",code:securityEventErrorCode(error)},"error");

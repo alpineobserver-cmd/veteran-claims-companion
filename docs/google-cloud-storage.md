@@ -1,6 +1,6 @@
 # Google Cloud Storage activation and migration
 
-Status: Application adapter and isolated Staging resources are configured for fictional validation. The single-user upload, download, and verified-delete smoke test passed on July 22, 2026. Staging uploads remain paused until the separate live second-user isolation test is completed. Real medical or claimant information remains prohibited.
+Status: Application adapter and isolated Staging resources are configured for fictional validation. The single-user upload, download, and verified-delete smoke test passed on July 22, 2026. Staging uploads remain paused until the separate live second-user isolation test is completed. Real medical or claimant information remains prohibited. The new quarantine/ClamAV pipeline is implemented in code but remains unprovisioned; see `docs/malware-scanning.md` before replacing the single-bucket Alpha path.
 
 ## Staging resource record
 

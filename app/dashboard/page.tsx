@@ -5,42 +5,46 @@ import { DeleteClaimButton } from "@/components/delete-claim-button";
 import { prisma } from "@/lib/prisma";
 import { ArrowRight, BookOpen, Check, Cloud, FileText, Files, Info, PackageCheck, Plus, Upload } from "lucide-react";
 import type { Metadata } from "next";
+import {redirect} from "next/navigation";
 
 export const metadata:Metadata={title:"Dashboard",description:"Open, continue, and organize fictional Debrief claim workspaces."};
 
 export default async function Dashboard() {
   const session=await auth();
   const user=session?.user;
-  const [claims,archivedClaims]=user?await Promise.all([prisma.claim.findMany({where:{userId:user.id,status:{not:"ARCHIVED"}},orderBy:{updatedAt:"desc"},select:{id:true,title:true,status:true,progress:true,updatedAt:true}}),prisma.claim.findMany({where:{userId:user.id,status:"ARCHIVED"},orderBy:{updatedAt:"desc"},select:{id:true,title:true,updatedAt:true}})]):[[],[]];
+  if(!user?.id)redirect("/login?redirectTo=/dashboard");
+  const browserTest=user.id==="fictional-browser-tester";
+  const persistentUser=user&&!browserTest;
+  const [claims,archivedClaims]=browserTest?[[{id:"fictional-active-claim",title:"Fictional active workspace",status:"DRAFT" as const,progress:25,updatedAt:new Date("2026-08-05T12:00:00.000Z")}],[{id:"fictional-archived-claim",title:"Fictional archived workspace",updatedAt:new Date("2026-08-05T11:00:00.000Z")}]]:persistentUser?await Promise.all([prisma.claim.findMany({where:{userId:user.id,status:{not:"ARCHIVED"}},orderBy:{updatedAt:"desc"},select:{id:true,title:true,status:true,progress:true,updatedAt:true}}),prisma.claim.findMany({where:{userId:user.id,status:"ARCHIVED"},orderBy:{updatedAt:"desc"},select:{id:true,title:true,updatedAt:true}})]):[[],[]];
   const first=claims[0];
   const average=claims.length?Math.round(claims.reduce((sum,claim)=>sum+claim.progress,0)/claims.length):0;
-  const shellUser=user?{id:user.id,name:user.name,email:user.email,image:user.image}:undefined;
+  const shellUser={id:user.id,name:user.name,email:user.email,image:user.image};
 
   return <AppShell user={shellUser}><div className="content dashboard-content">
     <section className="welcome">
-      <div><div className="eyebrow"><CurrentDate/></div><h1>{user?.name?`Welcome back, ${user.name.split(" ")[0]}.`:"Your claim workspace."}</h1><p>{user?"Continue a saved claim or begin another workspace.":"Build a claim workspace on this device, or sign in to save it across devices."}</p></div>
-      <a className="button primary" href={user?"/intake":"/login?redirectTo=/intake"}><Plus size={17}/><span>Start a workspace</span></a>
+      <div><div className="eyebrow"><CurrentDate/></div><h1>{user.name?`Welcome back, ${user.name.split(" ")[0]}.`:"Your claim package."}</h1><p>Continue your saved package or begin another claim.</p></div>
+      <a className="button primary" href="/intake"><Plus size={17}/><span>Start a claim</span></a>
     </section>
 
     <section className="next-step" aria-labelledby="next-heading">
-      <div className="next-icon">{user?<Check size={22}/>:<Cloud size={22}/>}</div>
-      <div className="next-copy"><span className="kicker">Priority action</span><h2 id="next-heading">{first?`Continue your ${first.title} workspace`:user?"Create your first evidence workspace":"Sign in for account-based saving"}</h2><p>{first?`Your answers are ${first.progress}% prepared and were last saved ${formatUpdated(first.updatedAt)}.`:user?"Begin with the fictional document intake workspace. Real medical records are prohibited in this alpha.":"You can explore without an account; sign in when you want to keep a fictional draft across devices."}</p></div>
-      <a className="button warm" href={first?`/claim-builder?claim=${first.id}`:user?"/intake":"/login?redirectTo=/intake"}>{first?"Continue":user?"Open intake":"Sign in"} <ArrowRight size={17}/></a>
+      <div className="next-icon"><Check size={22}/></div>
+      <div className="next-copy"><span className="kicker">Priority action</span><h2 id="next-heading">{first?`Continue your ${first.title} claim`:"Build your service and health foundation"}</h2><p>{first?`Your answers are ${first.progress}% prepared and were last saved ${formatUpdated(first.updatedAt)}.`:"Begin with service history and fictional document intake. Real medical records are prohibited in this alpha."}</p></div>
+      <a className="button warm" href={first?`/claim-builder?claim=${first.id}`:"/intake"}>{first?"Resolve next claim step":"Open Service & Health"} <ArrowRight size={17}/></a>
     </section>
 
     <div className="dashboard-grid">
       <section className="panel claims-panel">
         <div className="section-title"><div><span className="kicker">Active casework</span><h2>Claims in progress</h2></div><a className="link" href="/claim-builder?new=1">New claim</a></div>
-        {claims.length?claims.map((claim,index)=><Claim key={claim.id} {...claim} tone={index%2?"clay":"olive"}/>):<div className="empty-claims"><Cloud size={23}/><strong>{user?"No saved claims yet":"Cloud saving is available after sign-in"}</strong><p>{user?"Start the guided questionnaire and it will appear here after your first save.":"A browser-only draft can still be created without an account."}</p><a href="/claim-builder?new=1">Open a new claim <ArrowRight size={14}/></a></div>}
+        {claims.length?claims.map((claim,index)=><Claim key={claim.id} {...claim} tone={index%2?"clay":"olive"}/>):<div className="empty-claims"><Cloud size={23}/><strong>No saved claims yet</strong><p>Start with Service &amp; Health and your first saved claim will appear here.</p><a href="/intake">Open Service &amp; Health <ArrowRight size={14}/></a></div>}
         {archivedClaims.length>0&&<details className="archived-claims"><summary>{archivedClaims.length} archived {archivedClaims.length===1?"workspace":"workspaces"}</summary>{archivedClaims.map(claim=><article key={claim.id}><div><strong>{claim.title}</strong><small>Archived {formatUpdated(claim.updatedAt)}</small></div><div className="claim-controls"><DeleteClaimButton id={claim.id} title={claim.title} archived/></div></article>)}</details>}
       </section>
 
       <aside className="panel overview-panel">
         <div className="section-title"><div><span className="kicker">Case status</span><h2>Your workspace</h2></div></div>
-        <div className="record-row"><span>Saved claims</span><strong>{user?claims.length:"Sign in"}</strong></div>
-        <div className="record-row"><span>Average preparation</span><strong>{user?`${average}%`:"—"}</strong></div>
-        <div className="record-row"><span>Storage</span><strong>{user?"Account cloud":"This device"}</strong></div>
-        <a className="text-action" href={user?"/claim-package":"/login?redirectTo=/claim-package"}>{user?"Review claim package":"Activate cloud saving"} <ArrowRight size={15}/></a>
+        <div className="record-row"><span>Saved claims</span><strong>{claims.length}</strong></div>
+        <div className="record-row"><span>Average preparation</span><strong>{`${average}%`}</strong></div>
+        <div className="record-row"><span>Storage</span><strong>Debrief account</strong></div>
+        <a className="text-action" href="/claim-package">Review claim package <ArrowRight size={15}/></a>
       </aside>
     </div>
 
@@ -49,7 +53,7 @@ export default async function Dashboard() {
       <div className="resource-grid">
         <Resource icon={Upload} title="Test document intake" text="Upload fictional records to the private intake prototype." href="/intake"/>
         <Resource icon={FileText} title="Start a new statement" text="Open a fresh claim questionnaire and prepare a draft." href="/claim-builder?new=1"/>
-        <Resource icon={PackageCheck} title="Review claim package" text="See statements, documents, pending records, and next actions together." href={user?"/claim-package":"/login?redirectTo=/claim-package"}/>
+        <Resource icon={PackageCheck} title="Review claim package" text="See statements, documents, pending records, and next actions together." href="/claim-package"/>
         <Resource icon={BookOpen} title="Understand a condition" text="Learn what documentation may help." href="/conditions"/>
         <Resource icon={Files} title="Find a VA form" text="See when and how forms are used." href="/forms"/>
       </div>

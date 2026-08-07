@@ -8,10 +8,11 @@ import { hasAcceptableContentLength, MAX_DOCUMENT_REQUEST_BYTES, MAX_DOCUMENTS_P
 import { enforceAccountRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 import { deleteObjectAndVerify, recordStorageReconciliation, retryUploadRollbackTasks } from "@/lib/storage-reconciliation";
 import { emitSecurityEvent, securityEventErrorCode } from "@/lib/security-events";
+import { malwareScanningEnabled, scanningConfigurationProblems } from "@/lib/malware-scanning";
 
 export const runtime="nodejs";
 
-const documentSelect={id:true,claimId:true,originalName:true,mimeType:true,size:true,status:true,provider:true,createdAt:true} as const;
+const documentSelect={id:true,claimId:true,originalName:true,mimeType:true,size:true,status:true,provider:true,scanErrorCode:true,scanCompletedAt:true,createdAt:true} as const;
 
 export async function GET(request:Request){
   const session=await auth();if(!session?.user?.id)return NextResponse.json({error:"Sign in to view documents."},{status:401});
@@ -25,6 +26,8 @@ export async function POST(request:Request){
   if(!hasAcceptableContentLength(request,MAX_DOCUMENT_REQUEST_BYTES))return NextResponse.json({error:"The upload request is larger than the 4 MB alpha limit."},{status:413});
   const session=await auth();if(!session?.user?.id)return NextResponse.json({error:"Sign in to upload a test document."},{status:401});
   if(!uploadsEnabled())return NextResponse.json({error:"Document uploads are temporarily paused by the Alpha administrator. Existing files remain available."},{status:503,headers:{"Cache-Control":"private, no-store"}});
+  const scanProblems=scanningConfigurationProblems();
+  if(!malwareScanningEnabled()||scanProblems.length)return NextResponse.json({error:"Document uploads are unavailable until the required security scanning service is configured."},{status:503,headers:{"Cache-Control":"private, no-store"}});
   const limited=await enforceAccountRateLimit(session.user.id,[rateLimitPolicies.documentUploadHour,rateLimitPolicies.documentUploadDay],"Too many upload attempts. Please wait before trying again.");if(limited)return limited;
   const form=await request.formData().catch(()=>null);if(!form)return NextResponse.json({error:"The upload could not be read."},{status:400});
   const file=form.get("file");const claimId=form.get("claimId");const syntheticConfirmed=form.get("syntheticConfirmed");
@@ -39,17 +42,18 @@ export async function POST(request:Request){
   let inspected:ReturnType<typeof inspectDocument>;let buffer:Buffer;
   try{buffer=Buffer.from(await file.arrayBuffer());inspected=inspectDocument(buffer,{fileName:file.name,declaredMimeType:file.type})}catch(reason){return NextResponse.json({error:reason instanceof Error?reason.message:"The file is not accepted."},{status:400})}
   const storageKey=syntheticStorageKey(session.user.id,claimId,inspected.extension);let storage;
-  try{storage=documentStorage()}catch(reason){return NextResponse.json({error:reason instanceof StorageConfigurationError?reason.message:"Private storage is unavailable."},{status:503})}
+  try{storage=documentStorage(undefined,"quarantine")}catch(reason){return NextResponse.json({error:reason instanceof StorageConfigurationError?reason.message:"Private storage is unavailable."},{status:503})}
   await retryUploadRollbackTasks(session.user.id,storage).catch(()=>{});
   let storedKey="";
   try{
-    storedKey=(await storage.put(buffer,storageKey,inspected.mimeType)).key;
+    const stored=await storage.put(buffer,storageKey,inspected.mimeType);storedKey=stored.key;
+    if(!stored.generation)throw new StorageConfigurationError("Private storage did not provide an immutable object generation.");
     const document=await prisma.$transaction(async transaction=>{
-      const created=await transaction.document.create({data:{userId:session.user.id,claimId,originalName:inspected.displayName,storageKey:storedKey,mimeType:inspected.mimeType,size:buffer.length,sha256:inspected.sha256,provider:storage.name,status:"TEST_ONLY",syntheticConfirmed:true},select:documentSelect});
-      await transaction.auditEvent.create({data:{actorUserId:session.user.id,claimId,documentId:created.id,action:"DOCUMENT_UPLOADED",metadata:{mimeType:created.mimeType,size:created.size,provider:created.provider,testOnly:true}}});
+      const created=await transaction.document.create({data:{userId:session.user.id,claimId,originalName:inspected.displayName,storageKey:storedKey,quarantineKey:storedKey,objectGeneration:stored.generation,mimeType:inspected.mimeType,size:buffer.length,sha256:inspected.sha256,provider:storage.name,status:"PENDING_SCAN",syntheticConfirmed:true,scanAttemptCount:0},select:documentSelect});
+      await transaction.auditEvent.create({data:{actorUserId:session.user.id,claimId,documentId:created.id,action:"DOCUMENT_SCAN_QUEUED",metadata:{mimeType:created.mimeType,size:created.size,provider:created.provider,policy:"gcs-clamav-quarantine-v1",testOnly:true}}});
       return created;
     });
-    return NextResponse.json({document},{status:201});
+    return NextResponse.json({document},{status:202,headers:{"Cache-Control":"private, no-store"}});
   }catch(reason){
     if(storedKey)try{await deleteObjectAndVerify(storage,storedKey)}catch(cleanupReason){await recordStorageReconciliation({userId:session.user.id,operation:"DELETE_OBJECT",scope:"upload-rollback",entityId:claimId,storageKey:storedKey,storageProvider:storage.name,reason:cleanupReason})}
     emitSecurityEvent("document_upload_failed",{operation:"PUT_OBJECT",scope:"document-upload",code:securityEventErrorCode(reason)},"error");return NextResponse.json({error:"The test document could not be stored."},{status:500})

@@ -25,7 +25,7 @@ test("account export is authenticated, owner-scoped, comprehensive, and excludes
   const route=await read("app/api/account/export/route.ts");
   assert.match(route,/await auth\(\)/);
   assert.match(route,/where:\{id:session\.user\.id\}/);
-  for(const relation of ["accounts","sessions","claims","conditions","evidence","answers","progressItems","statements","documents","pages","uploads","auditEvents"])assert.match(route,new RegExp(`${relation}:`),relation);
+  for(const relation of ["accounts","sessions","claims","conditions","evidence","answers","progressItems","statements","documents","pages","scans","uploads","auditEvents"])assert.match(route,new RegExp(`${relation}:`),relation);
   for(const secret of ["access_token:true","refresh_token:true","id_token:true","sessionToken:true","passwordHash:true","storageKey:true"])assert.doesNotMatch(route,new RegExp(secret),secret);
   assert.match(route,/binaryFilesIncluded:false/);
   assert.match(route,/securityCounters/);
@@ -42,7 +42,9 @@ test("account deletion covers current and legacy objects and verifies database r
   assert.match(route,/prisma\.document\.findMany\(\{where:\{userId:session\.user\.id\}/);
   assert.match(route,/prisma\.upload\.findMany\(\{where:\{userId:session\.user\.id\}/);
   assert.match(route,/deleteStoredObjectReferencesAndVerify/);
-  assert.match(route,/provider=>documentStorage\(provider\)/);
+  assert.match(route,/\(provider,zone\)=>documentStorage\(provider,zone\)/);
+  assert.match(route,/documentStorageReferences\(item\)/);
+  assert.match(route,/rejectedStorageKey:true/);
   assert.match(route,/transaction\.rateLimitBucket\.deleteMany/);
   assert.match(route,/transaction\.user\.deleteMany/);
   assert.match(route,/prisma\.user\.findUnique/);

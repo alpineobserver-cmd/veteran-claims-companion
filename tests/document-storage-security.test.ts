@@ -40,7 +40,7 @@ test("private document delivery keeps tickets out of URLs and requires an authen
   assert.match(contentRoute,/export async function POST/);
   assert.match(contentRoute,/authorization/);
   assert.match(contentRoute,/verifyDocumentDownloadTicket\(token,id,session\.user\.id\)/);
-  assert.ok(contentRoute.indexOf("verifyDocumentDownloadTicket")<contentRoute.indexOf("storageKey:true"));
+  assert.ok(contentRoute.indexOf("verifyDocumentDownloadTicket")<contentRoute.indexOf("cleanStorageKey:true"));
   assert.match(contentRoute,/"Cache-Control":"private, no-store"/);
   assert.match(contentRoute,/"Referrer-Policy":"no-referrer"/);
   assert.match(contentRoute,/"X-Content-Type-Options":"nosniff"/);
@@ -61,8 +61,10 @@ test("storage adapters prohibit public object access and list responses omit sto
   assert.match(storage,/getVercelOidcToken/);
   assert.doesNotMatch(storage,/private_key|GCP_PRIVATE_KEY|GOOGLE_APPLICATION_CREDENTIALS/);
   assert.doesNotMatch(storage,/access:\s*["']public["']/);
-  assert.match(contentRoute,/documentStorage\(document\.provider\)/);
-  assert.match(deleteRoute,/documentStorage\(document\.provider\)/);
+  assert.match(contentRoute,/documentStorage\(document\.provider,"clean"\)/);
+  assert.match(deleteRoute,/documentStorageReferences\(document\)/);
+  assert.match(deleteRoute,/rejectedStorageKey:true/);
+  assert.match(deleteRoute,/documentStorage\(item\.storageProvider,item\.storageZone\)/);
   const publicSelect=documentsRoute.match(/const documentSelect=\{([^;]+)\} as const;/)?.[1]||"";
   assert.ok(publicSelect.length>0);
   assert.doesNotMatch(publicSelect,/storageKey/);

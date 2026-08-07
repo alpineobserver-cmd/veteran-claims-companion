@@ -161,6 +161,8 @@ test("condition review PDF carries the statement source trace and related file n
 });
 
 test("claim-package endpoint fails closed when the anonymous rate-limit service is unavailable",async()=>{
+  const priorEnvironment=process.env.APP_ENV;
+  process.env.APP_ENV="staging";
   const draft=completeDraft();
   const statement=guidedDraft({...draft.answers,timeline:draft.timeline});
   const body=JSON.stringify({
@@ -178,13 +180,15 @@ test("claim-package endpoint fails closed when the anonymous rate-limit service 
     linkedDocuments:[{factId:"treatment",documentId:"fictional-document-1",documentName:"fictional-treatment-record.pdf",pageReference:"p. 4, assessment"}],
     qualityFindings:[]
   });
-  const response=await createClaimPackageResponse(new Request("https://debrief.test/api/claim-package",{
-    method:"POST",
-    headers:{"content-type":"application/json","content-length":String(Buffer.byteLength(body)),"origin":"https://debrief.test"},
-    body
-  }));
-  assert.equal(response.status,503);
-  assert.match((await response.json() as {error:string}).error,/safely processed/i);
+  try{
+    const response=await createClaimPackageResponse(new Request("https://debrief.test/api/claim-package",{
+      method:"POST",
+      headers:{"content-type":"application/json","content-length":String(Buffer.byteLength(body)),"origin":"https://debrief.test"},
+      body
+    }));
+    assert.equal(response.status,503);
+    assert.match((await response.json() as {error:string}).error,/safely processed/i);
+  }finally{if(priorEnvironment===undefined)delete process.env.APP_ENV;else process.env.APP_ENV=priorEnvironment;}
 });
 
 test("claim-package endpoint rejects a relied-on uploaded record without a precise citation",async()=>{

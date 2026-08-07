@@ -58,7 +58,7 @@ export function ExposureRecordCheck(){
 
   return <div className="erc-content">
     <header className="erc-heading">
-      <div><span className="erc-kicker">Military exposure tools</span><h1>Exposure Record Check</h1><p>See which official registries, exposure programs, and records may be worth checking.</p></div>
+      <div><span className="erc-kicker">Service history debrief</span><h1>Check your service history for exposure records</h1><p>Locations, duties, and dates you remember can help identify official records or programs worth reviewing.</p></div>
       <div className="erc-security-note"><ShieldAlert size={19} aria-hidden="true"/><span><strong>Fictional Alpha</strong>Use fictional details only. Answers stay on this page and are not saved or sent.</span></div>
     </header>
 
@@ -77,7 +77,7 @@ export function ExposureRecordCheck(){
 
       <section className="erc-workspace">
         {stage==="service"&&<>
-          <div className="erc-section-heading"><span className="erc-section-icon"><MapPin size={20} aria-hidden="true"/></span><div><h2 ref={stageHeadingRef} tabIndex={-1}>Start with your service history</h2><p>Choose the closest period and every relevant duty location. Official programs use more exact dates and places.</p></div></div>
+          <div className="erc-section-heading"><span className="erc-section-icon"><MapPin size={20} aria-hidden="true"/></span><div><h2 ref={stageHeadingRef} tabIndex={-1}>Debrief where and when you served</h2><p>Start with the details you remember. Approximate periods are useful here; official programs may require exact dates and places.</p></div></div>
           <fieldset className="erc-fieldset">
             <legend>When did you serve?</legend>
             <div className="erc-era-grid">{serviceEras.map(item=><label className={era===item.key?"erc-choice selected":"erc-choice"} key={item.key}>

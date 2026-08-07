@@ -1,10 +1,10 @@
 export const securityEventNames=[
-  "sign_in_started","sign_in_succeeded","sign_out_succeeded","sign_in_blocked","auth_error","auth_warning",
+  "sign_in_started","sign_in_succeeded","sign_out_succeeded","sign_in_blocked","auth_error","auth_warning","auth_strength_observed",
   "rate_limit_exceeded","rate_limit_cleanup_failed","rate_limit_backend_failed","ai_budget_threshold_reached",
   "storage_reconciliation_pending","storage_reconciliation_record_failed","storage_reconciliation_resolution_failed","storage_reconciliation_retry_query_failed","storage_reconciliation_retry_failed",
   "account_object_deletion_failed","account_database_deletion_failed","claim_object_cleanup_failed","claim_database_cleanup_failed",
   "document_download_failed","document_ticket_failed","document_object_deletion_failed","document_database_deletion_failed","document_upload_failed",
-  "ai_generation_failed"
+  "ai_generation_failed","document_scan_promotion_failed"
 ] as const;
 
 export type SecurityEventName=(typeof securityEventNames)[number];

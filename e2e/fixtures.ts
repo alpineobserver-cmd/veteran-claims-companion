@@ -91,7 +91,12 @@ export function captureBrowserErrors(page:Page){
   return errors;
 }
 
+export async function enableBrowserTestProfile(page:Page){
+  await page.context().addCookies([{name:"debrief-browser-test-profile",value:"enabled",url:"http://localhost:3111",httpOnly:true,sameSite:"Strict"}]);
+}
+
 export async function installDraft(page:Page,draft:unknown,archives:unknown[]=[]){
+  await enableBrowserTestProfile(page);
   await page.goto("/");
   await page.evaluate(({draftValue,archiveValues})=>{
     window.localStorage.setItem("vcc-claim-draft",JSON.stringify(draftValue));
@@ -104,6 +109,7 @@ export async function continueClaim(page:Page){
 }
 
 export async function completeQuestionnaireToStatement(page:Page){
+  await enableBrowserTestProfile(page);
   await page.goto("/claim-builder?new=1");
   await page.locator(".question-card select").selectOption({label:fictionalAnswers.condition});
   await continueClaim(page);

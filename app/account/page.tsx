@@ -12,7 +12,8 @@ export const metadata:Metadata={title:"Account and data",description:"Review, ex
 export default async function AccountPage(){
   const session=await auth();if(!session?.user?.id)redirect("/login?redirectTo=/account");
   const user=session.user;
-  const [claims,documents]=await Promise.all([prisma.claim.count({where:{userId:user.id}}),prisma.document.count({where:{userId:user.id}})]);
+  const browserTest=user.id==="fictional-browser-tester";
+  const [claims,documents]=browserTest?[0,0]:await Promise.all([prisma.claim.count({where:{userId:user.id}}),prisma.document.count({where:{userId:user.id}})]);
   return <AppShell current="account" user={{id:user.id,name:user.name,email:user.email,image:user.image}}><div className="account-wrap">
     <header><span className="kicker">Account and data</span><h1>Control your alpha workspace</h1><p>Review what Debrief stores for this account and remove it when you are finished testing.</p></header>
     <section className="account-card"><ShieldCheck size={20}/><div><h2>Google sign-in</h2><p>Debrief uses your Google name, email address, profile image, and account identifier only to authenticate you and connect your private workspaces to your account.</p><strong>{user.email}</strong></div></section>
