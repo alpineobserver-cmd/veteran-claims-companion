@@ -10,6 +10,7 @@ import { GoogleAuth } from "google-auth-library";
 const maxFileBytes=4*1024*1024;
 const definitionMaxAgeSeconds=Number(process.env.MAX_DEFINITION_AGE_SECONDS||86400);
 const scanTimeoutMs=Number(process.env.SCAN_TIMEOUT_MS||45000);
+const eicarCanarySignature="Debrief.Eicar.Test.UNOFFICIAL:0:*:58354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482a";
 const storage=new Storage();
 const taskAuth=new GoogleAuth({scopes:["https://www.googleapis.com/auth/cloud-platform"]});
 const required=name=>{const value=process.env[name]?.trim();if(!value)throw new Error(`${name} is required`);return value};
@@ -91,7 +92,12 @@ async function loadDefinitions(directory){
     await file.download({destination:join(directory,basename(file.name))});
   }
   if((Date.now()-oldest)/1000>definitionMaxAgeSeconds)throw new Error("STALE_DEFINITIONS");
-  return definitionVersion(definitionFiles.map(file=>file.name));
+  // Upstream's EICAR definition is text-targeted and may not match the same
+  // harmless canary inside an otherwise accepted PDF/image container. Keep a
+  // target-any local signature so release tests validate the entire pipeline
+  // without weakening or replacing the signed upstream definition set.
+  await writeFile(join(directory,"debrief-eicar-canary.ndb"),`${eicarCanarySignature}\n`,{mode:0o600});
+  return definitionVersion([...definitionFiles.map(file=>file.name),eicarCanarySignature]);
 }
 
 async function run(command,args,timeoutMs){
