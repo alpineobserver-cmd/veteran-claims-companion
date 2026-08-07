@@ -117,7 +117,12 @@ async function processObject(event){
     if(String(metadata.generation)!==String(generation))throw new Error("SOURCE_GENERATION_MISMATCH");
     if(Number(metadata.size)!==Number(size)||Number(metadata.size)>maxFileBytes)throw new Error("SOURCE_GENERATION_MISMATCH");
     const sourcePath=join(working,"document");await source.download({destination:sourcePath,validation:"crc32c"});
-    const exitCode=await run("clamscan",["--no-summary","--infected",`--database=${join(working,"definitions")}`,"--max-files=1",`--max-scansize=${maxFileBytes}`,`--max-filesize=${maxFileBytes}`,sourcePath],scanTimeoutMs);
+    const scanArgs=["--no-summary","--infected",`--database=${join(working,"definitions")}`,"--max-files=1",`--max-scansize=${maxFileBytes}`,`--max-filesize=${maxFileBytes}`];
+    let exitCode=await run("clamscan",[...scanArgs,sourcePath],scanTimeoutMs);
+    // Container parsers can intentionally omit a document's rendered text.
+    // A second parser-disabled pass ensures signatures are also evaluated
+    // against the exact uploaded bytes before any object can be promoted.
+    if(exitCode===0)exitCode=await run("clamscan",[...scanArgs,"--scan-archive=no","--scan-pdf=no","--normalize=no",sourcePath],scanTimeoutMs);
     if(exitCode===0){
       const [bytes]=await source.download({validation:"crc32c"});
       const cleanKey=cleanKeyFor(bucket,name,String(generation));const clean=storage.bucket(config.cleanBucket).file(cleanKey);
