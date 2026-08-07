@@ -7,12 +7,12 @@ import { authAuditLogger, logAuthEvent } from "@/lib/auth-audit";
 import { googleLoginEnabled, registrationsEnabled } from "@/lib/operational-controls";
 import {cookies} from "next/headers";
 import {emitSecurityEvent} from "@/lib/security-events";
-import {googleAuthenticationClaims,googleMfaMode,googleMfaSatisfied} from "@/lib/google-auth-strength";
+import {googleAuthorizationParams,googleMfaMode,googleMfaSatisfied} from "@/lib/google-auth-strength";
 
 const nextAuth=NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
-    ...(googleLoginEnabled()?[Google({authorization:{params:{claims:JSON.stringify(googleAuthenticationClaims)}}})]:[]),
+    ...(googleLoginEnabled()?[Google({authorization:{params:googleAuthorizationParams}})]:[]),
     ...(process.env.AUTH_MICROSOFT_ENTRA_ID_ID?.trim()&&process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET?.trim()?[MicrosoftEntraID]:[])
   ],
   pages: { signIn: "/login", error: "/auth/error" },

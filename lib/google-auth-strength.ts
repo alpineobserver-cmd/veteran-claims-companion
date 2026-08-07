@@ -1,6 +1,7 @@
 export type GoogleMfaMode="disabled"|"audit"|"enforced";
 
 export const googleAuthenticationClaims={id_token:{amr:{essential:true},auth_time:{essential:true}}};
+export const googleAuthorizationParams={claims:googleAuthenticationClaims};
 
 export function googleMfaMode(value=process.env.DEBRIEF_GOOGLE_MFA_ENFORCEMENT):GoogleMfaMode{
   return value==="audit"||value==="enforced"?value:"disabled";

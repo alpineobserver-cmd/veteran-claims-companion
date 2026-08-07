@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {googleAuthenticationClaims,googleAuthenticationMethods,googleMfaMode,googleMfaSatisfied} from "../lib/google-auth-strength";
+import {googleAuthenticationClaims,googleAuthenticationMethods,googleAuthorizationParams,googleMfaMode,googleMfaSatisfied} from "../lib/google-auth-strength";
 
 test("Google authentication requests strength and authentication-time claims",()=>{
   assert.deepEqual(googleAuthenticationClaims,{id_token:{amr:{essential:true},auth_time:{essential:true}}});
+  assert.deepEqual(googleAuthorizationParams,{claims:googleAuthenticationClaims});
+  assert.equal(typeof googleAuthorizationParams.claims,"object");
 });
 
 test("only Google MFA, passkey, or hardware-key methods satisfy the strong-auth gate",()=>{
