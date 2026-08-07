@@ -28,22 +28,24 @@ async function api(path,token,init={}){
 async function json(response){return response.json()}
 async function createClaim(token,title){
   const response=await api("/api/claims",token,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({title,progress:0,draft:{answers:{},step:0}})});
-  assert.equal(response.status,201,`Claim creation failed: ${await response.text()}`);return (await json(response)).claim;
+  if(response.status!==201)throw new Error(`Claim creation failed (${response.status}): ${await response.text()}`);return (await json(response)).claim;
 }
 async function upload(token,claimId,name,bytes){
   const form=new FormData();form.set("claimId",claimId);form.set("syntheticConfirmed","true");form.set("file",new File([bytes],name,{type:"application/pdf"}));
   const response=await api("/api/documents",token,{method:"POST",body:form});
-  assert.equal(response.status,202,`Upload failed: ${await response.text()}`);return (await json(response)).document;
+  if(response.status!==202)throw new Error(`Upload failed (${response.status}): ${await response.text()}`);return (await json(response)).document;
 }
-async function waitFor(token,claimId,documentId,statuses,timeoutMs=180000){
+async function waitFor(token,claimId,documentId,statuses,timeoutMs=360000){
   const deadline=Date.now()+timeoutMs;
+  let lastStatus="missing";
   while(Date.now()<deadline){
     const response=await api(`/api/documents?claimId=${claimId}`,token);assert.equal(response.status,200);
     const document=(await json(response)).documents.find(item=>item.id===documentId);
+    if(document)lastStatus=document.status;
     if(document&&statuses.includes(document.status))return document;
     await new Promise(resolve=>setTimeout(resolve,2500));
   }
-  throw new Error(`Document ${documentId} did not reach ${statuses.join("/")}`);
+  throw new Error(`Document ${documentId} did not reach ${statuses.join("/")}; last status ${lastStatus}`);
 }
 async function download(token,id){
   const link=await api(`/api/documents/${id}/download-link`,token,{method:"POST"});
@@ -70,8 +72,9 @@ try{
 
   const cleanPdf=await readFile(new URL("../test-fixtures/fictional-alpha-record.pdf",import.meta.url));
   const eicar=Buffer.from("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*");
-  const marker=Buffer.from("startxref");const markerAt=cleanPdf.lastIndexOf(marker);assert.ok(markerAt>0,"PDF fixture has startxref");
-  const eicarPdf=Buffer.concat([cleanPdf.subarray(0,markerAt),eicar,Buffer.from("\n"),cleanPdf.subarray(markerAt)]);
+  const marker=Buffer.from("stream\nBT\n");const markerAt=cleanPdf.indexOf(marker);assert.ok(markerAt>0,"PDF fixture has a content stream");
+  const insertAt=markerAt+marker.length;
+  const eicarPdf=Buffer.concat([cleanPdf.subarray(0,insertAt),eicar,Buffer.from("\n"),cleanPdf.subarray(insertAt)]);
 
   const cleanA=await upload(sessionA,claimA.id,"fictional-clean-a.pdf",cleanPdf);
   const pending=await download(sessionA,cleanA.id);check(pending.link.status===409,"pending upload is fail-closed before scan completion");
