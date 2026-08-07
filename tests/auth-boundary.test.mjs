@@ -18,6 +18,12 @@ test("signed-in navigation exposes a direct, recoverable sign-out path",async()=
   assert.match(account,/await signOut\(\{redirectTo:"\/"\}\)/);
 });
 
+test("Google authorization claims remain an object until Auth.js serializes them",async()=>{
+  const source=await readFile(new URL("../auth.ts",import.meta.url),"utf8");
+  assert.match(source,/Google\(\{authorization:\{params:googleAuthorizationParams\}\}\)/);
+  assert.doesNotMatch(source,/claims:\s*JSON\.stringify/);
+});
+
 test("login page presents supported sign-in actions and retry guidance",liveBoundaryOptions,async()=>{
   const login=await fetch(new URL("/login?retry=1",baseUrl),{redirect:"manual"});
   assert.equal(login.status,200);

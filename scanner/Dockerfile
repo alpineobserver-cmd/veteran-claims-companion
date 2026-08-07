@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim@sha256:f32b81066cde10a75dbac96646099533316d94bac4150c55da1636e1f0ffdc46
+FROM node:24-trixie-slim@sha256:366fdef91728b1b7fa18c84fba63b6e79ed77b7e10cc206878e9705da4d7b169
 
 ARG VCS_REF=unknown
 LABEL org.opencontainers.image.title="Debrief malware scanner" \
@@ -6,6 +6,7 @@ LABEL org.opencontainers.image.title="Debrief malware scanner" \
   org.opencontainers.image.revision=$VCS_REF
 
 RUN apt-get update \
+  && apt-get upgrade -y \
   && apt-get install --no-install-recommends -y ca-certificates clamav clamav-freshclam \
   && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /tmp/clamav-definitions /tmp/debrief-scan \
