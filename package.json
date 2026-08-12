@@ -33,8 +33,10 @@
     "test:runbooks": "node --test tests/operational-runbooks.test.mjs tests/service-health.test.mjs",
     "test:claim-process": "node --import tsx --test tests/claim-process.test.mjs tests/claim-package-workflow.test.ts",
     "test:exposures": "node --import tsx --test tests/exposure-record-check.test.ts",
-    "test:usability": "node --import tsx --test tests/usability-simulation.test.ts tests/rework-next-action-guidance.test.ts",
-    "test:browser": "playwright test --project=chromium",
+    "test:usability": "node --import tsx --test tests/usability-simulation.test.ts tests/rework-next-action-guidance.test.ts tests/rework-package-lifecycle-simulation.test.ts",
+    "test:browser": "npm run test:browser:core && npm run test:browser:rework",
+    "test:browser:core": "playwright test e2e/complete-claim.spec.ts e2e/exploration-accessibility.spec.ts e2e/large-account-visual.spec.ts e2e/private-data-controls.spec.ts e2e/recovery.spec.ts --project=chromium",
+    "test:browser:rework": "playwright test e2e/rework-accessibility.spec.ts e2e/rework-preview.spec.ts --project=chromium",
     "test:browser:update": "playwright test --project=chromium --grep @visual --update-snapshots",
     "test:unit": "npm run test:deployment && npm run test:links && npm run test:accessibility && npm run test:runbooks && npm run test:content && npm run test:claim-process && npm run test:exposures && npm run test:usability && npm run eval:claims && npm run eval:ai && npm run eval:alpha",
     "test:integration": "npm run test:storage && npm run test:data-controls && npm run test:reconciliation",
@@ -70,6 +72,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.61.1",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.3",
