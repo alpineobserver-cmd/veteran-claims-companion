@@ -20,6 +20,7 @@ Never record a secret value in this file, Git, issues, chat, screenshots, build 
 | `BLOB_STORE_ID` | Identifier, not secret | Vercel Blob | Matching environment only | Vercel integration | Alpha administrator |
 | `BLOB_WEBHOOK_PUBLIC_KEY` | Public verification material | Vercel Blob | Matching environment only | Vercel integration | Vercel/integration owner |
 | `DOCUMENT_SCAN_CALLBACK_SECRET` | Critical secret | Vercel sensitive variable and matching Google Secret Manager secret | Separate Staging/Production value; never Preview | HMAC-authenticated scanner callback | Alpha administrator + Engineering |
+| `CRON_SECRET` | Secret | Vercel sensitive variable | Debrief Staging project, Production environment only; never Preview or the live Production project | Vercel-authenticated Staging database liveness route | Alpha administrator + Engineering |
 | Vercel OIDC token | Ephemeral workload credential; never configured manually | Vercel request/build context | Matching team, project, and environment; maximum provider-controlled lifetime | Google Workload Identity Federation | Vercel/Google |
 | `OPENAI_API_KEY` | Secret; currently expected unset | OpenAI/Vercel | Server-side only; add separately only after AI approval | Personal-statement AI route | Alpha administrator |
 | GitHub, Vercel, Google, Supabase, and OpenAI administrator sessions/MFA | Privileged account secret | Each provider | Named administrators only; never application environment variables | Administrative access | Product owner |
@@ -85,6 +86,10 @@ No persistent Google service-account private key is permitted. To revoke access,
 ### Malware-scanner callback secret
 
 Pause uploads before rotation. Rotate the callback secret through the matching environment's Vercel Sensitive Variables and Google Secret Manager, redeploy the scanner, verify a fictional clean-file scan and a deliberately failed callback, then revoke the old Secret Manager version. Never share a scanner secret between Staging and Production. Cloud Scheduler uses a dedicated Google service-account identity rather than a shared secret.
+
+### Staging database liveness secret
+
+Set `CRON_SECRET` only in the Debrief Staging Vercel project's Production environment. Vercel uses it to authenticate the daily request to `/api/cron/database-liveness`; the route runs only `SELECT 1` when `APP_ENV=staging`. Rotate it independently by creating a new random value, updating the Staging Vercel variable, redeploying, and confirming one successful scheduled run with no sensitive information in logs. Do not add it to the live Production project or Preview environments.
 
 ### Future OpenAI key
 
