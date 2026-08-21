@@ -23,6 +23,14 @@ test("Supabase Data API hardening is portable across managed PostgreSQL owner ro
   assert.match(migration,/IF EXISTS \(SELECT 1 FROM pg_roles WHERE rolname = api_role\)/);
 });
 
+test("tables created after the schema-wide hardening retain the server-only RLS posture",async()=>{
+  const migration=await readFile(path.join(process.cwd(),"prisma/migrations/20260821120000_harden_document_scan_rls/migration.sql"),"utf8");
+  assert.match(migration,/ALTER TABLE public\."DocumentScan" ENABLE ROW LEVEL SECURITY/);
+  for(const role of ["anon","authenticated","service_role"])assert.match(migration,new RegExp(`'${role}'`));
+  assert.match(migration,/REVOKE ALL PRIVILEGES ON TABLE public\."DocumentScan"/);
+  assert.doesNotMatch(migration,/CREATE POLICY|GRANT /i);
+});
+
 test("deployment repairs only the exact known unfinished migration before applying migrations",async()=>{
   const [packageJson,recovery]=await Promise.all([
     readFile(path.join(process.cwd(),"package.json"),"utf8"),

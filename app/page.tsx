@@ -14,8 +14,8 @@ export default async function LandingPage() {
         <span><strong>Debrief</strong><small>Veteran claim preparation</small></span>
       </Link>
       {signedIn
-        ? <Link className="landing-login" href="/dashboard">Open dashboard <ArrowRight size={15}/></Link>
-        : <Link className="landing-login" href="/login?redirectTo=/dashboard">Log in <ArrowRight size={15}/></Link>}
+        ? <Link className="landing-login" href="/rework-preview">Open Debrief <ArrowRight size={15}/></Link>
+        : <Link className="landing-login" href="/login?redirectTo=/rework-preview">Log in <ArrowRight size={15}/></Link>}
     </header>
 
     <section className="landing-hero">
@@ -23,7 +23,7 @@ export default async function LandingPage() {
         <h1>Debrief your service. Organize the facts that matter.</h1>
         <p className="landing-lede">Capture mission context, health events, and supporting records so each claim begins with information only you can provide.</p>
         <div className="landing-actions">
-          <Link className="landing-primary" href={signedIn?"/dashboard":"/login?redirectTo=/dashboard"}>{signedIn?"Open dashboard":"Log in to begin"} <ArrowRight size={17}/></Link>
+          <Link className="landing-primary" href={signedIn?"/rework-preview":"/login?redirectTo=/rework-preview"}>{signedIn?"Open Debrief":"Log in to begin"} <ArrowRight size={17}/></Link>
         </div>
       </div>
 

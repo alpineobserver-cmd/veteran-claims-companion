@@ -21,8 +21,34 @@ model User {
   documents Document[]
   auditEvents AuditEvent[] @relation("AuditActor")
   statements Statement[]
+  reworkProfile ReworkProfile?
+  reworkPackageSnapshots ReworkPackageSnapshot[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ReworkProfile {
+  id String @id @default(cuid())
+  userId String @unique
+  state Json
+  version Int @default(1)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ReworkPackageSnapshot {
+  id String @id @default(cuid())
+  userId String
+  packageId String
+  state Json
+  checksum String
+  approvedAt DateTime
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, packageId])
+  @@index([userId, approvedAt])
 }
 
 model Document {

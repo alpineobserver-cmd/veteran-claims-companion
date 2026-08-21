@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect,useRef,useState,type ReactNode} from "react";
+import {useCallback,useEffect,useRef,useState,type ReactNode} from "react";
 import {createPortal} from "react-dom";
 import Link from "next/link";
 import {
@@ -15,6 +15,7 @@ import {
   type PrototypeScreen,type ServicePeriod,type SourceReference,type WorkspaceDraft
 } from "@/lib/rework-prototype";
 import {conditionGroups} from "@/lib/claim-options";
+import {packageRecordsFromState,type ApprovalSection,type PackageRecord,type SavedState} from "@/lib/rework-state";
 
 const buildScreens:Array<{id:PrototypeScreen;label:string;icon:typeof History}>=[
   {id:"intent",label:"Package Type",icon:ClipboardCheck},
@@ -23,30 +24,6 @@ const buildScreens:Array<{id:PrototypeScreen;label:string;icon:typeof History}>=
   {id:"leads",label:"Claim Leads",icon:FolderSearch}
 ];
 const storageKey="debrief.rework-preview.v3";
-
-type SavedState={
-  screen:PrototypeScreen;
-  services:ServicePeriod[];
-  events:HealthEvent[];
-  documents:DocumentRecord[];
-  sources?:SourceReference[];
-  leads:ClaimLead[];
-  claims:ClaimWorkspace[];
-  approved:boolean;
-  briefingSeen?:boolean;
-  workspaceDraft?:WorkspaceDraft;
-  packageKind?:ClaimPath;
-  buddyDecision?:BuddyDecision;
-  approvalSections?:ApprovalSection[];
-  approvalChanges?:string[];
-  packages?:PackageRecord[];
-  activePackageId?:string;
-  onboardingComplete?:boolean;
-  selectedClaimId?:string|null;
-};
-
-type ApprovalSection="foundation"|"claims"|"records"|"package";
-type PackageRecord={id:string;kind:ClaimPath;claims:ClaimWorkspace[];leads:ClaimLead[];approved:boolean;buddyDecision:BuddyDecision;approvalSections:ApprovalSection[];approvalChanges:string[];selectedClaimId:string|null;updated:string};
 
 const initialWorkspaceDraft:WorkspaceDraft={
   serviceEvent:"",
@@ -75,7 +52,7 @@ function reconcileIntakeSources(events:HealthEvent[],sources:SourceReference[]){
 
 function upsertPackage(records:PackageRecord[],record:PackageRecord){return [...records.filter(item=>item.id!==record.id),record]}
 
-export function ReworkPrototype({user}:{user:{name:string|null;localTestProfile:boolean}}){
+export function ReworkPrototype({user,initialState=null,initialVersion=0,approvedPackageIds=[]}:{user:{name:string|null;localTestProfile:boolean};initialState?:SavedState|null;initialVersion?:number;approvedPackageIds?:string[]}){
   const [screen,setScreen]=useState<PrototypeScreen>("intent");
   const [services,setServices]=useState<ServicePeriod[]>([]);
   const [events,setEvents]=useState<HealthEvent[]>([]);
@@ -100,6 +77,12 @@ export function ReworkPrototype({user}:{user:{name:string|null;localTestProfile:
   const [followUpOpen,setFollowUpOpen]=useState(false);
   const [onboardingComplete,setOnboardingComplete]=useState(false);
   const [selectedClaimId,setSelectedClaimId]=useState<string|null>(null);
+  const [resetOpen,setResetOpen]=useState(false);
+  const [saveStatus,setSaveStatus]=useState<"loading"|"saving"|"saved"|"error"|"conflict">("loading");
+  const [approvalPending,setApprovalPending]=useState(false);
+  const versionRef=useRef(initialVersion);
+  const saveInFlight=useRef(false);
+  const pendingSave=useRef<SavedState|null>(null);
   const activeClaimId=claims.some(claim=>claim.id===selectedClaimId)?selectedClaimId:claims[0]?.id||null;
   const packageReadiness=getPackageReadiness({services,events,documents,claims,sources,packageKind,buddyDecision,packageId:activePackageId});
   const reviewRequiredCount=packageReadiness.unresolved;
@@ -108,7 +91,7 @@ export function ReworkPrototype({user}:{user:{name:string|null;localTestProfile:
 
   useEffect(()=>{
     try{
-      const saved=JSON.parse(localStorage.getItem(storageKey)||"null") as SavedState|null;
+      const saved=user.localTestProfile?JSON.parse(localStorage.getItem(storageKey)||"null") as SavedState|null:initialState;
       if(saved){
         const completed=Boolean(saved.onboardingComplete);
         const savedActivePackageId=saved.activePackageId||"package-1";
@@ -128,7 +111,7 @@ export function ReworkPrototype({user}:{user:{name:string|null;localTestProfile:
         setLeads(storedActive?.leads||saved.leads||[]);
         setClaims(savedClaims);
         setPackageKind(savedPackageKind);
-        setApproved(storedActive?.approved??saved.approved);
+        setApproved(approvedPackageIds.includes(savedActivePackageId)||(storedActive?.approved??saved.approved));
         setBriefingSeen(Boolean(saved.briefingSeen));
         setBriefingOpen(!saved.briefingSeen);
         setBuddyDecision(storedActive?.buddyDecision||saved.buddyDecision||"undecided");
@@ -141,13 +124,35 @@ export function ReworkPrototype({user}:{user:{name:string|null;localTestProfile:
       }
       else setBriefingOpen(true);
     }catch{}
-    setLoaded(true);
-  },[]);
+    setSaveStatus("saved");setLoaded(true);
+  },[approvedPackageIds,initialState,user.localTestProfile]);
+
+  const drainServerSaves=useCallback(async function drainServerSaves(){
+    if(saveInFlight.current||user.localTestProfile)return;
+    saveInFlight.current=true;
+    while(pendingSave.current){
+      const state=pendingSave.current;pendingSave.current=null;setSaveStatus("saving");
+      try{
+        const response=await fetch("/api/rework-state",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({version:versionRef.current,state})});
+        const result=await response.json().catch(()=>({}));
+        if(response.status===409){pendingSave.current=null;setSaveStatus("conflict");setNotice(result.error||"This workspace changed elsewhere. Reload before continuing.");break}
+        if(!response.ok){setSaveStatus("error");setNotice(result.error||"Your latest changes could not be saved.");break}
+        versionRef.current=result.version;setSaveStatus("saved");
+      }catch{setSaveStatus("error");setNotice("Your latest changes could not be saved. Check your connection and try again.");break}
+    }
+    saveInFlight.current=false;
+    if(pendingSave.current)void drainServerSaves();
+  },[user.localTestProfile]);
+
   useEffect(()=>{
     if(!loaded)return;
     const activeRecord:PackageRecord={id:activePackageId,kind:packageKind,claims,leads,approved,buddyDecision,approvalSections,approvalChanges,selectedClaimId:activeClaimId,updated:"Just now"};
-    localStorage.setItem(storageKey,JSON.stringify({screen,services,events,documents,sources,leads,claims,packageKind,approved,briefingSeen,buddyDecision,approvalSections,approvalChanges,packages:upsertPackage(packageRecords,activeRecord),activePackageId,onboardingComplete,selectedClaimId}));
-  },[screen,services,events,documents,sources,leads,claims,packageKind,approved,briefingSeen,buddyDecision,approvalSections,approvalChanges,packageRecords,activePackageId,onboardingComplete,selectedClaimId,activeClaimId,loaded]);
+    const state:SavedState={screen,services,events,documents,sources,leads,claims,packageKind,approved,briefingSeen,buddyDecision,approvalSections,approvalChanges,packages:upsertPackage(packageRecords,activeRecord),activePackageId,onboardingComplete,selectedClaimId};
+    if(user.localTestProfile){localStorage.setItem(storageKey,JSON.stringify(state));setSaveStatus("saved");return}
+    setSaveStatus("saving");
+    const timer=window.setTimeout(()=>{pendingSave.current=state;void drainServerSaves()},500);
+    return()=>window.clearTimeout(timer);
+  },[screen,services,events,documents,sources,leads,claims,packageKind,approved,briefingSeen,buddyDecision,approvalSections,approvalChanges,packageRecords,activePackageId,onboardingComplete,selectedClaimId,activeClaimId,loaded,user.localTestProfile,drainServerSaves]);
 
   function navigate(next:PrototypeScreen){setScreen(next);setMenuOpen(false);setNotice("");window.scrollTo({top:0,behavior:"smooth"})}
   function openClaim(claimId:string){setSelectedClaimId(claimId);navigate("workspace")}
@@ -161,9 +166,30 @@ export function ReworkPrototype({user}:{user:{name:string|null;localTestProfile:
     setPackageKind(next);
     setNotice("Package type selected. Every claim added to this package will use this filing path.");
   }
-  function reset(){
-    localStorage.removeItem(storageKey);setScreen("intent");setServices([]);setEvents([]);
+  async function reset(){
+    if(user.localTestProfile)localStorage.removeItem(storageKey);
+    else{
+      const response=await fetch("/api/rework-state",{method:"DELETE"});
+      if(!response.ok){const result=await response.json().catch(()=>({}));setResetOpen(false);setNotice(result.error||"The workspace could not be cleared.");return}
+      versionRef.current=0;pendingSave.current=null;
+    }
+    setScreen("intent");setServices([]);setEvents([]);
     setDocuments([]);setSources(prototypeSources);setLeads([]);setClaims([]);setPackageKind("unsure");setApproved(false);setBriefingSeen(false);setBriefingOpen(true);setBuddyDecision("undecided");setApprovalSections([]);setApprovalChanges([]);setActivePackageId("package-1");setPackageRecords([]);setInspectedSource(null);setFollowUpOpen(false);setOnboardingComplete(false);setSelectedClaimId(null);setNotice("Preview data cleared. Your test profile is empty again.");
+    setResetOpen(false);
+  }
+
+  function savedState():SavedState{return {screen,services,events,documents,sources,leads,claims,packageKind,approved,briefingSeen,buddyDecision,approvalSections,approvalChanges,packages:packageRecordsFromState({screen,services,events,documents,sources,leads,claims,packageKind,approved,briefingSeen,buddyDecision,approvalSections,approvalChanges,packages:packageRecords,activePackageId,onboardingComplete,selectedClaimId}),activePackageId,onboardingComplete,selectedClaimId}}
+
+  async function approvePackage(){
+    if(user.localTestProfile){setApproved(true);setApprovalChanges([]);return}
+    setApprovalPending(true);
+    try{
+      const response=await fetch(`/api/rework-packages/${encodeURIComponent(activePackageId)}/approve`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({version:versionRef.current,state:savedState(),packageId:activePackageId})});
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok){setNotice(result.error||"This package could not be approved.");setSaveStatus(response.status===409?"conflict":"error");return}
+      versionRef.current=result.version;setApproved(true);setApprovalChanges([]);setSaveStatus("saved");setNotice("Package approved. Its download is now preserved as an immutable snapshot.");
+    }catch{setNotice("This package could not be approved. Check your connection and try again.");setSaveStatus("error")}
+    finally{setApprovalPending(false)}
   }
   function closeBriefing(doNotShowAgain:boolean,start:boolean){
     setBriefingSeen(doNotShowAgain);
@@ -223,14 +249,14 @@ export function ReworkPrototype({user}:{user:{name:string|null;localTestProfile:
         <Link href="/support#content-correction" target="_blank"><MessageSquareText size={16}/><strong>Send Feedback</strong><span className="sr-only">, opens in a new tab</span></Link>
       </div>
       <div className="rw-boundary"><ShieldCheck size={16}/><p><strong>Fictional preview only</strong>Do not upload or enter real personal, medical, or military information.</p></div>
-      <button className="rw-reset" type="button" onClick={reset}><RotateCcw size={14}/> Clear preview data</button>
+      <button className="rw-reset" type="button" onClick={()=>setResetOpen(true)}><RotateCcw size={14}/> {user.localTestProfile?"Clear preview data":"Clear draft workspace"}</button>
     </aside>
     {menuOpen&&<button className="rw-scrim" type="button" aria-label="Close navigation" onClick={()=>setMenuOpen(false)}/>}
     <div className="rw-stage">
       <header className="rw-topbar">
         <button type="button" className="rw-menu" aria-label="Open navigation" onClick={()=>setMenuOpen(true)}><Menu size={19}/></button>
         <div><span>{onboardingComplete?"Active package":"New package setup"}</span><strong>{packageLabels[packageKind]}</strong></div>
-        <div className="rw-top-actions"><span className="rw-save"><Check size={13}/> Saved in this browser</span><button className="rw-guide" type="button" aria-label="How prototype saving works" onClick={()=>setNotice("This prototype saves only in this browser. It does not yet sync package details to your Debrief account or another device.")}><Info size={17}/> <span>Save details</span></button><button className="rw-guide" type="button" aria-label="How Debrief works" onClick={()=>setBriefingOpen(true)}><CircleHelp size={17}/> <span>How Debrief works</span></button><Link className="rw-sign-in" href="/account" aria-label={user.name?`Open ${user.name} account`:"Open profile"}><UserRound size={15}/> {user.name||"Profile"}</Link></div>
+        <div className="rw-top-actions"><span className="rw-save" role="status">{saveStatus==="saving"?<RefreshCw size={13}/>:saveStatus==="error"||saveStatus==="conflict"?<AlertTriangle size={13}/>:<Check size={13}/>} {user.localTestProfile?"Saved in this browser":saveStatus==="saving"?"Saving to your account":saveStatus==="conflict"?"Reload required":saveStatus==="error"?"Save needs attention":"Saved to your account"}</span><button className="rw-guide" type="button" aria-label={saveStatus==="error"?"Retry account save":"How saving works"} onClick={()=>{if(!user.localTestProfile&&saveStatus==="error"){pendingSave.current=savedState();void drainServerSaves()}else setNotice(user.localTestProfile?"This fictional test profile saves only in this browser.":saveStatus==="conflict"?"Reload this page before continuing so another saved version is not overwritten.":"Your package work is encrypted in transit and saved to your signed-in Debrief account. Approved packages are preserved separately.")}}><Info size={17}/> <span>{saveStatus==="error"?"Retry save":"Save details"}</span></button><button className="rw-guide" type="button" aria-label="How Debrief works" onClick={()=>setBriefingOpen(true)}><CircleHelp size={17}/> <span>How Debrief works</span></button><Link className="rw-sign-in" href="/account" aria-label={user.name?`Open ${user.name} account`:"Open profile"}><UserRound size={15}/> {user.name||"Profile"}</Link></div>
       </header>
       <main id="rework-main" tabIndex={-1}>
         {notice&&<div className="rw-notice" role="status"><Info size={16}/><span>{notice}</span><button type="button" aria-label="Dismiss notice" onClick={()=>setNotice("")}>×</button></div>}
@@ -240,7 +266,7 @@ export function ReworkPrototype({user}:{user:{name:string|null;localTestProfile:
         {screen==="leads"&&<Leads leads={leads} setLeads={setLeads} documents={documents} sources={sources} packageKind={packageKind} activePackageId={activePackageId} readOnly={approved} claims={claims} setClaims={setClaims} onContinue={()=>navigate("dashboard")} onOpenClaim={openClaim} setNotice={setNotice} onInspectSource={inspectSource} invalidateApproval={invalidateApproval}/>}
         {screen==="dashboard"&&<Dashboard services={services} events={events} documents={documents} sources={sources} leads={leads} claims={claims} packageKind={packageKind} activePackageId={activePackageId} packages={allPackages} readOnly={approved} onSwitchPackage={switchPackage} onNavigate={navigate} onOpenClaim={openClaim} onDeleteClaim={deleteClaim}/>}
         {screen==="workspace"&&<ClaimWorkspaceView claims={claims} selectedClaimId={activeClaimId} setClaims={setClaims} documents={documents} sources={sources} readOnly={approved} onNavigate={navigate} onInspectSource={inspectSource} invalidateApproval={invalidateApproval} setNotice={setNotice}/>}
-        {screen==="package"&&<PackageReview services={services} events={events} documents={documents} activePackageId={activePackageId} packageKind={packageKind} claims={claims} sources={sources} approved={approved} setApproved={setApproved} approvalSections={approvalSections} setApprovalSections={setApprovalSections} approvalChanges={approvalChanges} setApprovalChanges={setApprovalChanges} invalidateApproval={invalidateApproval} setDownloadOpen={setDownloadOpen} onNavigate={navigate} onOpenClaim={openClaim} onInspectSource={inspectSource} buddyDecision={buddyDecision} setBuddyDecision={setBuddyDecision}/>}
+        {screen==="package"&&<PackageReview services={services} events={events} documents={documents} activePackageId={activePackageId} packageKind={packageKind} claims={claims} sources={sources} approved={approved} approvalSections={approvalSections} setApprovalSections={setApprovalSections} approvalChanges={approvalChanges} invalidateApproval={invalidateApproval} setDownloadOpen={setDownloadOpen} onApprove={approvePackage} approvalPending={approvalPending} saveReady={user.localTestProfile||saveStatus==="saved"} localTestProfile={user.localTestProfile} onNavigate={navigate} onOpenClaim={openClaim} onInspectSource={inspectSource} buddyDecision={buddyDecision} setBuddyDecision={setBuddyDecision}/>}
       </main>
     </div>
     {briefingOpen&&<MissionBriefing onClose={closeBriefing} firstRun={!onboardingComplete}/>}
@@ -259,8 +285,9 @@ export function ReworkPrototype({user}:{user:{name:string|null;localTestProfile:
         onClose={()=>setInspectedSource(null)}
       />
     )}
-    {downloadOpen&&<DownloadPreview onClose={()=>setDownloadOpen(false)} claims={claims} onFollowUp={()=>{setDownloadOpen(false);setFollowUpOpen(true)}}/>}
+    {downloadOpen&&<DownloadPreview onClose={()=>setDownloadOpen(false)} claims={claims} packageId={activePackageId} localTestProfile={user.localTestProfile} onFollowUp={()=>{setDownloadOpen(false);setFollowUpOpen(true)}}/>}
     {followUpOpen&&<FollowUpPreview onClose={()=>setFollowUpOpen(false)} onStart={startNewPackage}/>}
+    {resetOpen&&<ResetWorkspaceDialog localTestProfile={user.localTestProfile} onClose={()=>setResetOpen(false)} onConfirm={()=>void reset()}/>}
   </div>;
 }
 
@@ -512,7 +539,7 @@ function WorkspaceField({number,title,source,value,placeholder,disabled,onChange
   return <label className="rw-workspace-field"><span className="rw-field-number">{number}</span><span className="rw-field-copy"><strong>{title}</strong><small>{source}</small><textarea value={value} placeholder={placeholder} disabled={disabled} onChange={event=>onChange(event.target.value)} rows={title.includes("diagnosis")?2:3}/></span></label>;
 }
 
-function PackageReview({services,events,documents,activePackageId,packageKind,claims,sources,approved,setApproved,approvalSections,setApprovalSections,approvalChanges,setApprovalChanges,invalidateApproval,setDownloadOpen,onNavigate,onOpenClaim,onInspectSource,buddyDecision,setBuddyDecision}:{services:ServicePeriod[];events:HealthEvent[];documents:DocumentRecord[];activePackageId:string;packageKind:ClaimPath;claims:ClaimWorkspace[];sources:SourceReference[];approved:boolean;setApproved:(value:boolean)=>void;approvalSections:ApprovalSection[];setApprovalSections:(value:ApprovalSection[])=>void;approvalChanges:string[];setApprovalChanges:(value:string[])=>void;invalidateApproval:(message:string)=>void;setDownloadOpen:(value:boolean)=>void;onNavigate:(screen:PrototypeScreen)=>void;onOpenClaim:(claimId:string)=>void;onInspectSource:(sourceId:string)=>void;buddyDecision:BuddyDecision;setBuddyDecision:(value:BuddyDecision)=>void}){
+function PackageReview({services,events,documents,activePackageId,packageKind,claims,sources,approved,approvalSections,setApprovalSections,approvalChanges,invalidateApproval,setDownloadOpen,onApprove,approvalPending,saveReady,localTestProfile,onNavigate,onOpenClaim,onInspectSource,buddyDecision,setBuddyDecision}:{services:ServicePeriod[];events:HealthEvent[];documents:DocumentRecord[];activePackageId:string;packageKind:ClaimPath;claims:ClaimWorkspace[];sources:SourceReference[];approved:boolean;approvalSections:ApprovalSection[];setApprovalSections:(value:ApprovalSection[])=>void;approvalChanges:string[];invalidateApproval:(message:string)=>void;setDownloadOpen:(value:boolean)=>void;onApprove:()=>void;approvalPending:boolean;saveReady:boolean;localTestProfile:boolean;onNavigate:(screen:PrototypeScreen)=>void;onOpenClaim:(claimId:string)=>void;onInspectSource:(sourceId:string)=>void;buddyDecision:BuddyDecision;setBuddyDecision:(value:BuddyDecision)=>void}){
   const [tab,setTab]=useState<"readiness"|"approval">("readiness");
   const readiness=claims.map(claim=>{
     const linkedSources=sources.filter(source=>claim.sourceIds.includes(source.id));
@@ -546,11 +573,11 @@ function PackageReview({services,events,documents,activePackageId,packageKind,cl
       </section>
       <aside className="rw-panel rw-package-files"><span className="rw-kicker">Package contents</span><h2>Files assembled for review</h2><FileRow name="Package index.pdf" meta="Package overview and file checklist" ready={allReady}/>{readiness.map(item=><FileRow key={item.claim.id} name={`${item.claim.title} review.pdf`} meta={`${packageLabels[item.claim.path]}, statement, source trace, and open questions`} ready={item.pathReady&&item.statementReady&&item.sourcesReady}/>)}<FileRow name="Supporting records/" meta="Linked documents, without duplicate copies" ready={packageReadiness.documentsReady&&readiness.every(item=>item.sourcesReady)}/><p><Info size={14}/> A linked record must finish analysis or be unlinked before approval.</p></aside>
     </div>:<section className="rw-approval">
-      <div className="rw-approval-status">{approved?<CheckCircle2 size={29}/>:<ClipboardCheck size={29}/>}<div><span className="rw-kicker">Final approval</span><h2>{approved?"Package approved":"Your approval is still required"}</h2><p>{approved?"Every required section was approved in this fictional preview. Any later package change will clear this approval.":"Review the package index, each condition statement, and every linked document before approving."}</p></div></div>
+      <div className="rw-approval-status">{approved?<CheckCircle2 size={29}/>:<ClipboardCheck size={29}/>}<div><span className="rw-kicker">Final approval</span><h2>{approved?"Package approved":"Your approval is still required"}</h2><p>{approved?(localTestProfile?"Every required section was approved in this fictional preview. Any later package change will clear this approval.":"The approved version is preserved for download. Start a new linked package for later changes."):"Review the package index, each condition statement, and every linked document before approving."}</p></div></div>
       {approvalChanges.length>0&&<div className="rw-approval-changes" role="status"><History size={18}/><div><strong>Changes since the last approval</strong><ul>{approvalChanges.map(change=><li key={change}>{change}</li>)}</ul></div></div>}
       {unresolved>0&&<div className="rw-warning"><AlertTriangle size={18}/><div><strong>Approval is blocked.</strong><p>Resolve {unresolved} required readiness {unresolved===1?"item":"items"} before approving the package.</p></div></div>}
       {!approved&&<fieldset className="rw-section-approvals" disabled={!allReady}><legend>Approve each package section</legend>{approvalOptions.map(option=><label key={option.id}><input type="checkbox" checked={approvalSections.includes(option.id)} onChange={()=>toggleApprovalSection(option.id)}/><span><strong>{option.title}</strong><small>{option.copy}</small></span></label>)}</fieldset>}
-      <div className="rw-approval-actions"><button type="button" className="rw-secondary" onClick={()=>setTab("readiness")}><ArrowLeft size={15}/> Return to readiness</button>{!approved?<button className="rw-primary" disabled={!allReady||!sectionsApproved} type="button" onClick={()=>{setApproved(true);setApprovalChanges([])}}><Check size={15}/> Approve entire package</button>:<button className="rw-primary" type="button" onClick={()=>setDownloadOpen(true)}><Download size={15}/> Preview download package</button>}</div>
+      <div className="rw-approval-actions"><button type="button" className="rw-secondary" onClick={()=>setTab("readiness")}><ArrowLeft size={15}/> Return to readiness</button>{!approved?<button className="rw-primary" disabled={!allReady||!sectionsApproved||!saveReady||approvalPending} type="button" onClick={onApprove}>{approvalPending?<RefreshCw size={15}/>:<Check size={15}/>} {approvalPending?"Preserving approval…":!saveReady?"Wait for account save":"Approve entire package"}</button>:<button className="rw-primary" type="button" onClick={()=>setDownloadOpen(true)}><Download size={15}/> {localTestProfile?"Preview download package":"Download approved package"}</button>}</div>
     </section>}
     {approved?<section className="rw-submit"><div><span className="rw-kicker">Submission bridge</span><h2>Download here. Submit through an official VA channel.</h2><p>Debrief does not collect VA credentials, submit a claim, or confirm receipt. Check current VA instructions before filing.</p></div><a href="https://www.va.gov/disability/how-to-file-claim/" target="_blank" rel="noreferrer">Open official filing guidance <ArrowRight size={14}/></a></section>:<p className="rw-submit-locked"><LockKeyhole size={15}/> Download and filing guidance appear after final approval.</p>}
   </div>;
@@ -563,7 +590,7 @@ function PageHead({kicker,title,copy}:{kicker:string;title:string;copy:string}){
 function PanelHead({icon:Icon,title,count,action,readOnly=false,onAction}:{icon:typeof History;title:string;count:string;action:string;readOnly?:boolean;onAction:()=>void}){return <div className="rw-panel-head"><span><Icon size={18}/></span><div><h2>{title}</h2><small>{count}</small></div>{!readOnly&&<button type="button" onClick={onAction}><Plus size={14}/> {action}</button>}</div>}
 function TimelineRow({title,meta,copy,approximate,readOnly=false,onEdit}:{title:string;meta:string;copy:string;approximate:boolean;readOnly?:boolean;onEdit:()=>void}){return <article className="rw-timeline-row"><i/><div><small>{meta}{approximate?", approximate":""}</small><strong>{title}</strong><p>{copy}</p></div>{!readOnly&&<button type="button" aria-label={`Edit ${title}`} onClick={onEdit}>Edit</button>}</article>}
 function IntakeEmpty({icon:Icon,title,copy,action,onAction}:{icon:typeof History;title:string;copy:string;action:string;onAction:()=>void}){return <div className="rw-intake-empty"><Icon size={23}/><strong>{title}</strong><p>{copy}</p><button className="rw-secondary" type="button" onClick={onAction}>{action}</button></div>}
-function FooterActions({next,nextLabel,note="Prototype changes are saved in this browser.",disabled=false}:{next:()=>void;nextLabel:string;note?:string;disabled?:boolean}){return <div className="rw-footer-actions"><span className="rw-autosave-note">{disabled?<Info size={14}/>:<Check size={14}/>} {note}</span><button className="rw-primary" type="button" disabled={disabled} onClick={next}>{nextLabel} <ArrowRight size={15}/></button></div>}
+function FooterActions({next,nextLabel,note="Changes are saved automatically.",disabled=false}:{next:()=>void;nextLabel:string;note?:string;disabled?:boolean}){return <div className="rw-footer-actions"><span className="rw-autosave-note">{disabled?<Info size={14}/>:<Check size={14}/>} {note}</span><button className="rw-primary" type="button" disabled={disabled} onClick={next}>{nextLabel} <ArrowRight size={15}/></button></div>}
 function DocStatus({item,retry}:{item:DocumentRecord;retry:()=>void}){if(item.status==="ready")return <span className="rw-doc-status ready"><CheckCircle2 size={14}/> Ready</span>;if(item.status==="processing")return <span className="rw-doc-status processing"><Clock3 size={14}/> Processing</span>;return <button type="button" className="rw-doc-status failed" onClick={retry}><RefreshCw size={14}/> Retry analysis</button>}
 function LeadCard({lead,sources,canMerge,readOnly,onAccept,onDismiss,onRestore,onMerge,onOpenClaim,onInspectSource,onMissing}:{lead:ClaimLead;sources:SourceReference[];canMerge:boolean;readOnly:boolean;onAccept:()=>void;onDismiss:()=>void;onRestore:()=>void;onMerge:()=>void;onOpenClaim:()=>void;onInspectSource:(sourceId:string)=>void;onMissing:(missing:string)=>void}){
   const leadSources=sources.filter(source=>lead.sourceIds.includes(source.id));
@@ -608,8 +635,12 @@ function QuickAdd({title,fields,initialValues,showApproximate=false,initialAppro
 }
 function SourceInspector({source,verified,readOnly,onConfirm,onCorrection,onClose}:{source:SourceReference;verified:boolean;readOnly:boolean;onConfirm:()=>void;onCorrection:()=>void;onClose:()=>void}){return <AccessibleDialog titleId="source-inspector-title" className="rw-source-inspector" onClose={onClose}><header><div><span className="rw-kicker">Source inspection</span><h2 id="source-inspector-title">{source.label}</h2></div><button type="button" aria-label="Close source inspection" onClick={onClose}><X size={18}/></button></header><div className="rw-source-location"><FileCheck2 size={18}/><div><strong>{source.location||"Intake answer"}</strong><small>{source.kind==="document"?"Fictional document preview":"Information you entered during intake"}</small></div></div><blockquote>“{source.excerpt}”</blockquote><div className="rw-source-meta"><span>{source.kind==="document"?`Extraction match: ${source.confidence}`:"Source: your intake answer"}</span><span>{verified?"Verified by you":"Needs your review"}</span></div><p><Info size={14}/> {readOnly?"This source is preserved in an approved package.":"Confirm only that the wording and location are accurate. This does not determine whether the information proves a claim."}</p><footer>{readOnly?<button className="rw-primary" type="button" onClick={onClose}>Close</button>:<><button className="rw-secondary" type="button" onClick={onCorrection}>Correction needed</button><button className="rw-primary" type="button" onClick={onConfirm}>{verified?<><Check size={14}/> Already verified</>:<>Confirm source <Check size={14}/></>}</button></>}</footer></AccessibleDialog>}
 
-function DownloadPreview({onClose,claims,onFollowUp}:{onClose:()=>void;claims:ClaimWorkspace[];onFollowUp:()=>void}){
-  return <AccessibleDialog titleId="download-title" className="rw-download" onClose={onClose}><header><div><span className="rw-kicker">Download preview</span><h2 id="download-title">Your package is ready to download</h2></div><button type="button" aria-label="Close" onClick={onClose}><X size={18}/></button></header><div className="rw-download-mark"><Download size={26}/><span><strong>debrief-claim-package.zip</strong><small>{claims.length+2} folders and files, fictional preview</small></span></div><FileRow name="00 Package index.pdf" meta="Review checklist and file map"/>{claims.map((item,index)=><FileRow key={item.id} name={`0${index+1} ${item.title}/`} meta="Statement, source trace, and linked documents"/>)}<FileRow name="Submission instructions.pdf" meta="Official links and reminders"/><p>This prototype does not create a file. A production download would preserve the approved version and record when it was generated.</p><div className="rw-follow-up-callout"><LockKeyhole size={18}/><div><strong>Keep this package unchanged</strong><p>If a later decision requires more work, start a linked follow-up package instead of editing this history.</p></div><button type="button" onClick={onFollowUp}>Start linked follow-up</button></div><footer><button className="rw-primary" type="button" onClick={onClose}>Done</button></footer></AccessibleDialog>
+function DownloadPreview({onClose,claims,packageId,localTestProfile,onFollowUp}:{onClose:()=>void;claims:ClaimWorkspace[];packageId:string;localTestProfile:boolean;onFollowUp:()=>void}){
+  return <AccessibleDialog titleId="download-title" className="rw-download" onClose={onClose}><header><div><span className="rw-kicker">Approved package</span><h2 id="download-title">Your package is ready to download</h2></div><button type="button" aria-label="Close" onClick={onClose}><X size={18}/></button></header><div className="rw-download-mark"><Download size={26}/><span><strong>debrief-{packageId}.pdf</strong><small>{claims.length} {claims.length===1?"claim":"claims"}, package index, source trace, and filing reminder</small></span></div><FileRow name="Package index" meta="Approval date, filing path, and snapshot checksum"/>{claims.map((item,index)=><FileRow key={item.id} name={`${index+1}. ${item.title}`} meta="Statement and source trace"/>)}<FileRow name="Submission boundary" meta="Official link and reminders"/><p>{localTestProfile?"Fictional test profiles preview the contents but do not create a server file.":"This PDF is generated from the immutable version you approved. Downloading it does not submit anything to VA."}</p><div className="rw-follow-up-callout"><LockKeyhole size={18}/><div><strong>Keep this package unchanged</strong><p>If a later decision requires more work, start a linked follow-up package instead of editing this history.</p></div><button type="button" onClick={onFollowUp}>Start linked follow-up</button></div><footer>{!localTestProfile&&<a className="rw-primary" href={`/api/rework-packages/${encodeURIComponent(packageId)}/download`} download><Download size={15}/> Download approved PDF</a>}<button className={localTestProfile?"rw-primary":"rw-secondary"} type="button" onClick={onClose}>Done</button></footer></AccessibleDialog>
+}
+
+function ResetWorkspaceDialog({localTestProfile,onClose,onConfirm}:{localTestProfile:boolean;onClose:()=>void;onConfirm:()=>void}){
+  return <AccessibleDialog titleId="reset-workspace-title" descriptionId="reset-workspace-copy" className="rw-delete-claim" onClose={onClose}><header><div><span className="rw-kicker">Destructive action</span><h2 id="reset-workspace-title">Clear this {localTestProfile?"preview":"draft workspace"}?</h2></div><button type="button" aria-label="Close" onClick={onClose}><X size={18}/></button></header><div className="rw-delete-claim-copy"><span><RotateCcw size={18}/></span><p id="reset-workspace-copy">This removes unfinished service, health, document, lead, and claim information. Approved package history cannot be cleared here.</p></div><footer><button className="rw-secondary" type="button" onClick={onClose}>Keep my work</button><button className="rw-danger" type="button" onClick={onConfirm}>Clear draft workspace</button></footer></AccessibleDialog>;
 }
 
 function FollowUpPreview({onClose,onStart}:{onClose:()=>void;onStart:(kind:Exclude<ClaimPath,"unsure">)=>void}){const options:Array<[Exclude<ClaimPath,"unsure">,string,string]>=[["original","Original disability claim","Organize one or more new disability claims"],["increase","Increased-rating claim","Document that a service-connected condition has worsened"],["supplemental","Supplemental claim","Add new and relevant evidence"],["contested","Decision review","Organize the decision and review options"]];return <AccessibleDialog titleId="follow-up-title" className="rw-follow-up" onClose={onClose}><header><div><span className="rw-kicker">New linked package</span><h2 id="follow-up-title">Start a new package without changing this package.</h2></div><button type="button" aria-label="Close new package preview" onClick={onClose}><X size={18}/></button></header><p>Your account service history, health timeline, and document library remain available. Claims, readiness, and approval stay separate for each filing path.</p><div className="rw-follow-up-options">{options.map(([kind,title,copy])=><button type="button" key={kind} onClick={()=>onStart(kind)}><strong>{title}</strong><small>{copy}</small><ArrowRight size={15}/></button>)}</div><footer><button className="rw-secondary" type="button" onClick={onClose}>Return to package</button></footer></AccessibleDialog>}

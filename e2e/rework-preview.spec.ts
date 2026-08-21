@@ -123,6 +123,18 @@ test("a package cannot begin until one filing path is selected",async({page})=>{
   await expect(continueButton).toBeEnabled();
 });
 
+test("clearing a draft requires explicit confirmation",async({page})=>{
+  await page.getByRole("dialog",{name:"A well-supported claim starts with the right mission details."}).getByRole("button",{name:"Close mission briefing"}).click();
+  await page.getByRole("button",{name:"Clear preview data"}).click();
+  const confirmation=page.getByRole("dialog",{name:"Clear this preview?"});
+  await expect(confirmation).toContainText("Approved package history cannot be cleared here.");
+  await confirmation.getByRole("button",{name:"Keep my work"}).click();
+  await expect(page.getByRole("dialog",{name:"Clear this preview?"})).toHaveCount(0);
+  await page.getByRole("button",{name:"Clear preview data"}).click();
+  await page.getByRole("dialog",{name:"Clear this preview?"}).getByRole("button",{name:"Clear draft workspace"}).click();
+  await expect(page.getByRole("dialog",{name:"A well-supported claim starts with the right mission details."})).toBeVisible();
+});
+
 test("returning users land on package overview instead of onboarding",async({page})=>{
   await startCleanIntake(page);
   await addKneeIntake(page);
