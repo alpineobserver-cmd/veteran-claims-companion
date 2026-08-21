@@ -1,6 +1,6 @@
 # Personal-statement generation audit trail
 
-Last reviewed: July 24, 2026
+Last reviewed: August 21, 2026
 
 ## Purpose
 
@@ -13,12 +13,14 @@ The history is part of the claim draft. It follows the same owner checks, accoun
 - Random generation identifier
 - Feature name (`personal_statement`)
 - Drafting mode: AI-assisted, guided template, or missing-information preflight
+- Provider identifier: Vertex, local template, or no provider call
 - Provider model identifier, or a clear non-provider value such as `guided-template` or `not-called`
 - Prompt or generation-policy version
 - Completion timestamp
 - Result: ready, needs information, or failed
 - User disposition: pending review, accepted, rejected, regenerated, edited, saved, downloaded, exported, needs information, or failed
 - Source references limited to questionnaire field names and timeline positions
+- Input, output, and total token counts when the provider returns them
 
 ## Deliberately excluded
 
@@ -28,7 +30,7 @@ The history is part of the claim draft. It follows the same owner checks, accoun
 - Document names, contents, citations, storage keys, or hashes
 - Provider request or response bodies
 - Prompts and API credentials
-- Token values, cookies, or authentication identifiers
+- Authentication-token values, cookies, or authentication identifiers
 
 The actual statement, questionnaire, and source trace remain in their existing claim-draft fields. The audit trail does not duplicate them.
 

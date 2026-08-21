@@ -1,12 +1,12 @@
 # Third-party software, content, and data review
 
-**Engineering review date:** July 22, 2026
+**Engineering review date:** August 21, 2026
 
 **Scope:** production dependency lockfile, interface assets, regulatory links, VA form links, and local educational summaries.
 
 ## Result
 
-The production lockfile reports no unknown license values. The automated gate permits the reviewed permissive set and requires explicit review of CC BY and LGPL expressions. The public `/licenses` page and `THIRD_PARTY_NOTICES.md` record material components, attribution-sensitive data, and source links.
+The production lockfile reports no unknown license values. The automated gate permits the reviewed permissive set and requires explicit review of CC BY, LGPL, and dual-license expressions. The Vertex integration added `json-schema`; its upstream license permits selecting BSD-3-Clause, which Debrief records in the notices. The public `/licenses` page and `THIRD_PARTY_NOTICES.md` record material components, attribution-sensitive data, and source links.
 
 The application does not include copied rating content from commercial veteran-claims websites. Condition and form text is locally authored and tied to primary eCFR or VA sources through `/sources`. Lucide icons are attributed. Debrief uses no VA seal and makes no affiliation claim.
 

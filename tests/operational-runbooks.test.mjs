@@ -14,8 +14,8 @@ test("tester lifecycle covers minimum access, consent, revocation, and deletion"
 test("secret inventory covers every application secret and separates environments",async()=>{
   const [inventory,example]=await Promise.all([read("docs/secret-inventory-and-rotation.md"),read(".env.example")]);
   const keys=[...example.matchAll(/^([A-Z][A-Z0-9_]+)=/gm)].map(match=>match[1]);
-  for(const key of ["DATABASE_URL","AUTH_SECRET","AUTH_GOOGLE_ID","AUTH_GOOGLE_SECRET","BLOB_READ_WRITE_TOKEN","OPENAI_API_KEY"])assert.match(inventory,new RegExp(`\\b${key}\\b`),key);
-  for(const key of keys)assert.ok(inventory.includes(key)||["RELEASE_ID","OPENAI_MODEL"].includes(key),`Inventory must classify ${key} or explicitly exempt it in this test.`);
+  for(const key of ["DATABASE_URL","AUTH_SECRET","AUTH_GOOGLE_ID","AUTH_GOOGLE_SECRET","BLOB_READ_WRITE_TOKEN","GCP_SERVICE_ACCOUNT_EMAIL"])assert.match(inventory,new RegExp(`\\b${key}\\b`),key);
+  for(const key of keys)assert.ok(inventory.includes(key)||["RELEASE_ID"].includes(key),`Inventory must classify ${key} or explicitly exempt it in this test.`);
   assert.match(inventory,/Never use one `AUTH_SECRET`.*across Staging and Production/);
 });
 

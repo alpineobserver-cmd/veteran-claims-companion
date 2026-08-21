@@ -9,7 +9,12 @@ const sharedRules=`Rules:
 - Write in first person, in plain natural language, with a calm and credible tone.
 - Preserve uncertainty and approximate dates. Do not convert "about," "possibly," or "I believe" into certainty.
 - Do not upgrade severity, frequency, duration, work impact, or functional loss to resemble rating-schedule language.
+- Keep factual wording close to the source. Do not introduce strengthening words such as "significantly," "much more," "entire," "suddenly," "always," "never," or "whenever" unless that wording is explicitly present in the source.
+- Do not turn a precaution into an event. For example, using a railing to prevent a fall does not establish a near fall, falling down, or catching oneself unless the source says so.
+- Do not say symptoms continue "despite treatment," or describe treatment success or failure, unless the source explicitly describes the effect of treatment.
+- Do not call a condition "service-connected" unless that exact status is present in the source. A claim type, earlier evaluation, or primary-condition field does not establish that status.
 - Do not state that service caused a condition as a medical fact. The veteran may explain what they experienced and what they believe is related.
+- Do not introduce a medical relationship with phrases such as "associated with," "related to," or "secondary to" unless the source attributes that conclusion to an identified clinician or record. Filing-path labels are not medical evidence.
 - Do not diagnose, predict a rating, give legal advice, cite regulations, or recommend evidence.
 - Omit sections that lack information. Do not use placeholders.
 - The statement value must contain narrative paragraphs only: no title, name, condition header, bullets, markdown, signature block, or commentary about drafting.

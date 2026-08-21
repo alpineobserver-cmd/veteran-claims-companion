@@ -9,7 +9,7 @@ Created July 22, 2026:
 - Google Cloud project: `debrief-staging-storage` (`928631666085`)
 - Regional bucket: `debrief-staging-documents-928631666085` in `us-east4`
 - Bucket controls: uniform bucket-level access and public-access prevention enforced; Google-managed encryption; seven-day soft delete; no retention lock
-- Runtime service account: `debrief-storage-runtime@debrief-staging-storage.iam.gserviceaccount.com`
+- Closed-Alpha runtime service account: `debrief-storage-runtime@debrief-staging-storage.iam.gserviceaccount.com`
 - Workload identity pool/provider: `vercel-staging` / `vercel`
 - Trusted subject: only `owner:veteran-claims:project:debrief-staging:environment:production`
 - Runtime access: `roles/storage.objectUser` on this bucket only; no project-wide role and no user-managed service-account key
@@ -42,7 +42,7 @@ Create these independently for Staging and Production:
 1. A Google Cloud project with billing and the Cloud Storage, Security Token Service, and IAM Service Account Credentials APIs enabled.
 2. A regional private bucket. Choose the region through the approved data-residency review; do not use a public website bucket.
 3. Uniform bucket-level access and public-access prevention enforced on the bucket.
-4. A dedicated service account with object read, create, and delete permissions only on that bucket. Do not grant project Owner, Editor, or Storage Admin to the runtime identity.
+4. A dedicated runtime service account with object read, create, and delete permissions only on that bucket. During the fictional-data Vertex Alpha, the same identity also has the separate project custom role `debriefVertexPredictor`, containing only `aiplatform.endpoints.predict`. Do not grant project Owner, Editor, Storage Admin, Vertex User, or Vertex Administrator to the runtime identity.
 5. A dedicated Workload Identity Pool and OIDC provider that trusts the matching Vercel team issuer.
 6. Attribute conditions restricted to the exact Vercel team, project, and `production` environment used by the stable Staging or Production project. Do not grant the entire pool without an environment restriction.
 7. Permission for the restricted Vercel principal to impersonate only the dedicated storage service account.

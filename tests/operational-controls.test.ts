@@ -24,7 +24,8 @@ test("upload and AI routes enforce containment while preserving recovery paths",
   const [documents,ai,deleteDocument,account]=await Promise.all([read("app/api/documents/route.ts"),read("app/api/ai/personal-statement/route.ts"),read("app/api/documents/[id]/route.ts"),read("app/api/account/route.ts")]);
   assert.match(documents,/!uploadsEnabled\(\)/);
   assert.match(documents,/Existing files remain available/);
-  assert.match(ai,/!process\.env\.OPENAI_API_KEY\|\|!aiGenerationEnabled\(\)/);
+  assert.match(ai,/!provider\.configured\|\|!aiGenerationEnabled\(\)\|\|!policy/);
+  assert.match(ai,/personalStatementProviderConfiguration\(\)/);
   assert.match(ai,/mode:"template"/);
   assert.doesNotMatch(deleteDocument,/uploadsEnabled/);
   assert.doesNotMatch(account,/uploadsEnabled|registrationsEnabled/);

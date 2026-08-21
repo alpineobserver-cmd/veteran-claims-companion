@@ -21,10 +21,10 @@ Never record a secret value in this file, Git, issues, chat, screenshots, build 
 | `BLOB_WEBHOOK_PUBLIC_KEY` | Public verification material | Vercel Blob | Matching environment only | Vercel integration | Vercel/integration owner |
 | `DOCUMENT_SCAN_CALLBACK_SECRET` | Critical secret | Vercel sensitive variable and matching Google Secret Manager secret | Separate Staging/Production value; never Preview | HMAC-authenticated scanner callback | Alpha administrator + Engineering |
 | Vercel OIDC token | Ephemeral workload credential; never configured manually | Vercel request/build context | Matching team, project, and environment; maximum provider-controlled lifetime | Google Workload Identity Federation | Vercel/Google |
-| `OPENAI_API_KEY` | Secret; currently expected unset | OpenAI/Vercel | Server-side only; add separately only after AI approval | Personal-statement AI route | Alpha administrator |
-| GitHub, Vercel, Google, Supabase, and OpenAI administrator sessions/MFA | Privileged account secret | Each provider | Named administrators only; never application environment variables | Administrative access | Product owner |
+| Vertex custom IAM role binding | Privileged authorization; no secret value | Google Cloud IAM | Staging runtime identity only; `aiplatform.endpoints.predict` only during fictional Alpha | Personal-statement AI route | Alpha administrator + Engineering |
+| GitHub, Vercel, Google, and Supabase administrator sessions/MFA | Privileged account secret | Each provider | Named administrators only; never application environment variables | Administrative access | Product owner |
 
-Configuration values such as `APP_ENV`, `DATA_ENVIRONMENT`, `RELEASE_ID`, `AUTH_URL`, `AUTH_CANONICAL_HOST`, `PRIVACY_CONTACT_EMAIL`, `OPENAI_MODEL`, `DOCUMENT_STORAGE_PROVIDER`, `GCS_AUTH_MODE`, `GCS_BUCKET`, `GCS_QUARANTINE_BUCKET`, `GCS_CLEAN_BUCKET`, `GCS_REJECTED_BUCKET`, `GCS_DEFINITIONS_BUCKET`, `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`, `DEBRIEF_UPLOADS_ENABLED`, `DEBRIEF_MALWARE_SCANNING_ENABLED`, `DEBRIEF_REAL_DOCUMENTS_ENABLED`, `DEBRIEF_SCAN_PROVIDER`, `DEBRIEF_AI_GENERATION_ENABLED`, `DEBRIEF_AI_POLICY_VERSION`, `DEBRIEF_AI_DAILY_USER_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_LIMIT`, `DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT`, `DEBRIEF_AI_MAX_OUTPUT_TOKENS`, `DEBRIEF_AI_MAX_REQUEST_COST_CENTS`, `DEBRIEF_AI_DAILY_SPEND_CAP_CENTS`, `DEBRIEF_REGISTRATIONS_ENABLED`, and `DEBRIEF_GOOGLE_MFA_ENFORCEMENT` are not secrets. They still require environment review because incorrect values can weaken isolation, authentication, availability, or cost containment. Keep Google MFA enforcement `disabled` until the Google Security Bundle is configured, then use `audit` in Staging before `enforced`.
+Configuration values such as `APP_ENV`, `DATA_ENVIRONMENT`, `RELEASE_ID`, `AUTH_URL`, `AUTH_CANONICAL_HOST`, `PRIVACY_CONTACT_EMAIL`, `DOCUMENT_STORAGE_PROVIDER`, `GCS_AUTH_MODE`, `GCS_BUCKET`, `GCS_QUARANTINE_BUCKET`, `GCS_CLEAN_BUCKET`, `GCS_REJECTED_BUCKET`, `GCS_DEFINITIONS_BUCKET`, `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`, `DEBRIEF_AI_PROVIDER`, `DEBRIEF_AI_MODEL`, `GOOGLE_VERTEX_LOCATION`, `DEBRIEF_AI_FICTIONAL_DATA_ONLY`, `DEBRIEF_UPLOADS_ENABLED`, `DEBRIEF_MALWARE_SCANNING_ENABLED`, `DEBRIEF_REAL_DOCUMENTS_ENABLED`, `DEBRIEF_SCAN_PROVIDER`, `DEBRIEF_AI_GENERATION_ENABLED`, `DEBRIEF_AI_POLICY_VERSION`, `DEBRIEF_AI_DAILY_USER_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_LIMIT`, `DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT`, `DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT`, `DEBRIEF_AI_MAX_OUTPUT_TOKENS`, `DEBRIEF_AI_MAX_REQUEST_COST_CENTS`, `DEBRIEF_AI_DAILY_SPEND_CAP_CENTS`, `DEBRIEF_REGISTRATIONS_ENABLED`, and `DEBRIEF_GOOGLE_MFA_ENFORCEMENT` are not secrets. They still require environment review because incorrect values can weaken isolation, authentication, availability, or cost containment. Keep Google MFA enforcement `disabled` until the Google Security Bundle is configured, then use `audit` in Staging before `enforced`.
 
 `DEBRIEF_GOOGLE_LOGIN_ENABLED` is also a non-secret operational control. Set it to `false` only to pause the Google provider during a credential incident; retain a separately configured emergency sign-in path before using it.
 
@@ -36,7 +36,7 @@ Configuration values such as `APP_ENV`, `DATA_ENVIRONMENT`, `RELEASE_ID`, `AUTH_
 - [ ] Confirm no persistent database, Blob, Google, Auth, or AI secret is available to disposable Preview deployments.
 - [ ] Search Git history, build/runtime logs, issues, and documentation for accidental values; record only the result.
 - [ ] Confirm provider administrators use MFA and remove accounts that no longer require access.
-- [ ] Confirm `OPENAI_API_KEY` remains absent while paid AI is not approved.
+- [ ] Confirm no Vertex API key or persistent Google service-account private key exists; Staging uses workload identity and the custom prediction-only role.
 
 Vercel documents that sensitive variables become unreadable after creation and that variable changes affect only new deployments: https://vercel.com/docs/environment-variables/sensitive-environment-variables
 
@@ -86,9 +86,9 @@ No persistent Google service-account private key is permitted. To revoke access,
 
 Pause uploads before rotation. Rotate the callback secret through the matching environment's Vercel Sensitive Variables and Google Secret Manager, redeploy the scanner, verify a fictional clean-file scan and a deliberately failed callback, then revoke the old Secret Manager version. Never share a scanner secret between Staging and Production. Cloud Scheduler uses a dedicated Google service-account identity rather than a shared secret.
 
-### Future OpenAI key
+### Vertex model or authorization change
 
-Keep `DEBRIEF_AI_GENERATION_ENABLED=false` during rotation. Create a replacement project-scoped key with the smallest available permissions/budget, update Vercel, redeploy, run only fictional evaluation fixtures, verify daily ceilings, then revoke the old key before re-enabling AI.
+Keep `DEBRIEF_AI_GENERATION_ENABLED=false` while changing the model, project, workload-identity trust, or custom IAM role. Verify that the role contains only `aiplatform.endpoints.predict`, update only Debrief Staging, redeploy, run fictional evaluation fixtures, and verify request, token, and spend ceilings before re-enabling. No API key or persistent service-account key is permitted.
 
 ## Emergency revocation checklist
 

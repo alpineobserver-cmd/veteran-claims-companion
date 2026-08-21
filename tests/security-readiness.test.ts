@@ -29,7 +29,7 @@ test("the data inventory covers every current Prisma field and required system b
   assert.deepEqual(missing,[],`Document these Prisma fields: ${missing.join(", ")}`);
   for(const required of[
     "vcc-claim-draft","vcc-claim-workspaces","Supabase PostgreSQL","Vercel private Blob",
-    "Google OAuth","Vercel application runtime","Support email provider","OpenAI Responses API",
+    "Google OAuth","Vercel application runtime","Support email provider","Google Vertex AI",
     "Provider-controlled backup"
   ])assert.match(inventory,new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
   assert.match(inventory,/not approval to process real medical or claimant information/i);

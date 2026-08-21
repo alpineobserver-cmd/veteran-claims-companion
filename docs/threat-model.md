@@ -4,7 +4,7 @@ Status: Internal engineering model completed July 22, 2026 for the fictional-dat
 
 ## Scope and security objectives
 
-In scope: the browser application, Next.js middleware and routes, Auth.js/Google OAuth, Prisma/PostgreSQL, private Blob storage, support intake, Vercel runtime/build logs, administrator credentials, backups, and the disabled future OpenAI path.
+In scope: the browser application, Next.js middleware and routes, Auth.js/Google OAuth, Prisma/PostgreSQL, private object storage, the fictional-data Vertex AI drafting path, support intake, Vercel runtime/build logs, administrator credentials, and backups.
 
 Primary objectives:
 
@@ -27,7 +27,7 @@ Primary objectives:
 | Security and audit evidence | Sensitive-data leakage, tampering, insufficient detail | Fixed database audit actions, allowlisted structured security-event fields, release/environment labels |
 | Product content and packages | Stale authority, unsafe guidance, PDF injection | Human-authored source metadata, Zod limits, PDF generation in memory, no submission automation |
 
-Trust boundaries are: browser ↔ Vercel; Google ↔ Auth.js; Vercel ↔ Supabase direct PostgreSQL; Vercel ↔ private Blob; runtime ↔ provider logs/administrators; support page ↔ email provider; and the disabled runtime ↔ OpenAI path. See `docs/data-inventory-and-flow.md` for the field and flow inventory.
+Trust boundaries are: browser ↔ Vercel; Google ↔ Auth.js; Vercel ↔ Supabase direct PostgreSQL; Vercel ↔ private object storage; Vercel workload identity ↔ Google Cloud Storage and Vertex AI; runtime ↔ provider logs/administrators; and support page ↔ email provider. See `docs/data-inventory-and-flow.md` for the field and flow inventory.
 
 ## Threat analysis
 
