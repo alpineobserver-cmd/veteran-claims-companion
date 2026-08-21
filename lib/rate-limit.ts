@@ -12,6 +12,9 @@ let lastCleanupAt=0;
 
 export const rateLimitPolicies={
   claimMutation:{scope:"claim-mutation-10m",limit:180,windowMs:10*MINUTE},
+  reworkMutation:{scope:"rework-mutation-10m",limit:180,windowMs:10*MINUTE},
+  reworkApproval:{scope:"rework-approval-hour",limit:12,windowMs:HOUR},
+  reworkDownload:{scope:"rework-download-10m",limit:30,windowMs:10*MINUTE},
   workspaceCreate:{scope:"workspace-create-day",limit:30,windowMs:DAY},
   documentUploadHour:{scope:"document-upload-hour",limit:10,windowMs:HOUR},
   documentUploadDay:{scope:"document-upload-day",limit:25,windowMs:DAY},

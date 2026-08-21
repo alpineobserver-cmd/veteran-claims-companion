@@ -43,6 +43,7 @@ test("every private resource route authenticates and applies the session user to
   const privateRoutes=[
     "app/api/claims/route.ts","app/api/claims/[id]/route.ts","app/api/claims/[id]/actions/route.ts","app/api/claims/[id]/buddy-statements/route.ts",
     "app/api/workspaces/route.ts","app/api/documents/route.ts","app/api/documents/[id]/route.ts","app/api/documents/[id]/download-link/route.ts","app/api/documents/[id]/content/route.ts",
+    "app/api/rework-state/route.ts","app/api/rework-packages/[packageId]/approve/route.ts","app/api/rework-packages/[packageId]/download/route.ts",
     "app/api/account/route.ts","app/api/account/export/route.ts"
   ];
   for(const route of privateRoutes){const source=await read(route);assert.match(source,/await auth\(\)/,route);assert.match(source,/session\.user\.id/,route)}
@@ -53,6 +54,7 @@ test("all authenticated mutation routes enforce same-origin checks and durable a
   const mutationRoutes=[
     "app/api/claims/route.ts","app/api/claims/[id]/route.ts","app/api/claims/[id]/actions/route.ts","app/api/claims/[id]/buddy-statements/route.ts",
     "app/api/workspaces/route.ts","app/api/documents/route.ts","app/api/documents/[id]/route.ts","app/api/documents/[id]/download-link/route.ts","app/api/account/route.ts"
+    ,"app/api/rework-state/route.ts","app/api/rework-packages/[packageId]/approve/route.ts"
   ];
   for(const route of mutationRoutes){const source=await read(route);assert.match(source,/rejectCrossOriginMutation\(request\)/,route);assert.match(source,/enforceAccountRateLimit/,route)}
 });
