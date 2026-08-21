@@ -22,7 +22,9 @@ export async function GET(){
     statements:{orderBy:{createdAt:"asc"},select:{id:true,claimId:true,templateId:true,title:true,content:true,createdAt:true,updatedAt:true}},
     documents:{orderBy:{createdAt:"asc"},select:{id:true,claimId:true,originalName:true,mimeType:true,size:true,sha256:true,provider:true,status:true,syntheticConfirmed:true,scanEngine:true,scanEngineVersion:true,definitionVersion:true,scanAttemptCount:true,scanStartedAt:true,scanCompletedAt:true,scanErrorCode:true,createdAt:true,updatedAt:true,pages:{orderBy:{pageNumber:"asc"},select:{pageNumber:true,ocrText:true,createdAt:true,updatedAt:true}},scans:{orderBy:{createdAt:"asc"},select:{sourceGeneration:true,outcome:true,engine:true,engineVersion:true,definitionVersion:true,errorCode:true,completedAt:true,createdAt:true}}}},
     uploads:{orderBy:{createdAt:"asc"},select:{id:true,evidenceId:true,filename:true,mimeType:true,size:true,provider:true,createdAt:true}},
-    auditEvents:{orderBy:{createdAt:"asc"},select:{id:true,claimId:true,documentId:true,action:true,metadata:true,createdAt:true}}
+    auditEvents:{orderBy:{createdAt:"asc"},select:{id:true,claimId:true,documentId:true,action:true,metadata:true,createdAt:true}},
+    reworkProfile:{select:{id:true,state:true,version:true,createdAt:true,updatedAt:true}},
+    reworkPackageSnapshots:{orderBy:{approvedAt:"asc"},select:{id:true,packageId:true,state:true,checksum:true,approvedAt:true,createdAt:true}}
   }});
   if(!account)return NextResponse.json({error:"Account not found."},{status:404});
   const principalHash=rateLimitPrincipalHash(`user:${session.user.id}`);

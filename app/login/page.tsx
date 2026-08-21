@@ -11,7 +11,7 @@ export const metadata:Metadata={title:"Sign in",description:"Sign in to open you
 export default async function Login({searchParams}:{searchParams:Promise<{redirectTo?:string;retry?:string}>}){
   const params=await searchParams;
   const requested=params.redirectTo;
-  const redirectTo=requested?.startsWith("/")&&!requested.startsWith("//")?requested:"/dashboard";
+  const redirectTo=requested?.startsWith("/")&&!requested.startsWith("//")?requested:"/rework-preview";
 
   return <main className="login-screen">
     <div className="login-grid" aria-hidden="true"/>

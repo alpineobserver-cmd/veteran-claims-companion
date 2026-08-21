@@ -23,7 +23,7 @@ This inventory describes the code currently deployed for the fictional-data Alph
 | `User.image` | Personal identifier/profile URL | Exported; deleted with account |
 | `User.passwordHash` | Authentication secret; retained for legacy schema compatibility and not used by Google-only login | Never exported; deleted with account |
 | `User.createdAt`, `User.updatedAt` | Account lifecycle metadata | Exported; deleted with account |
-| `User.accounts`, `User.sessions`, `User.claims`, `User.uploads`, `User.documents`, `User.auditEvents`, `User.statements` | Prisma relationship helpers | Underlying related rows follow the rules below |
+| `User.accounts`, `User.sessions`, `User.claims`, `User.uploads`, `User.documents`, `User.auditEvents`, `User.statements`, `User.reworkProfile`, `User.reworkPackageSnapshots` | Prisma relationship helpers | Underlying related rows follow the rules below |
 | `Document.id` | Internal document identifier | Exported; deleted with document/workspace/account |
 | `Document.userId`, `Document.claimId` | Ownership and workspace authorization keys | Exported; cascaded with owner/workspace |
 | `Document.originalName` | Restricted user-supplied filename after normalization | Exported; never included in security logs; deleted with record |
@@ -38,6 +38,16 @@ This inventory describes the code currently deployed for the fictional-data Alph
 | `Document.syntheticConfirmed` | Fictional-data acknowledgement | Exported; deleted with record |
 | `Document.createdAt`, `Document.updatedAt` | Lifecycle metadata | Exported; deleted with record |
 | `Document.user`, `Document.claim`, `Document.pages`, `Document.scans`, `Document.auditEvents` | Prisma relationship helpers | No separate stored value |
+| `ReworkProfile.id`, `ReworkProfile.userId` | Internal reworked-workflow identity and account ownership key | Exported; deleted with account |
+| `ReworkProfile.state` | Restricted service history, health timeline, document metadata, claim leads, claim drafts, package navigation, and review state | Exported; owner-scoped; deleted with account |
+| `ReworkProfile.version` | Optimistic-concurrency counter used to prevent silent overwrites | Exported; deleted with account |
+| `ReworkProfile.createdAt`, `ReworkProfile.updatedAt` | Draft lifecycle metadata | Exported; deleted with account |
+| `ReworkProfile.user` | Prisma relationship helper | No separate stored value |
+| `ReworkPackageSnapshot.id`, `ReworkPackageSnapshot.userId`, `ReworkPackageSnapshot.packageId` | Internal approved-package identity and owner/package authorization keys | Exported; owner-scoped; deleted with account |
+| `ReworkPackageSnapshot.state` | Restricted immutable copy of the approved package, reusable account foundation, claims, and source trace | Exported; used for private PDF generation; deleted with account |
+| `ReworkPackageSnapshot.checksum` | SHA-256 integrity fingerprint of the approved snapshot | Exported; returned with its private download; deleted with account |
+| `ReworkPackageSnapshot.approvedAt`, `ReworkPackageSnapshot.createdAt` | Approval and record lifecycle metadata | Exported; deleted with account |
+| `ReworkPackageSnapshot.user` | Prisma relationship helper | No separate stored value |
 | `DocumentScan.id`, `DocumentScan.documentId`, `DocumentScan.sourceGeneration` | Internal scan-attempt identity and exact source-generation binding | Restricted operational metadata; deleted with document and never logged with an object key |
 | `DocumentScan.outcome`, `DocumentScan.engine`, `DocumentScan.engineVersion`, `DocumentScan.definitionVersion`, `DocumentScan.errorCode`, `DocumentScan.completedAt`, `DocumentScan.createdAt` | Sanitized scanner verdict, version, failure code, and lifecycle evidence | Restricted operational metadata; deleted with document; raw scanner output is never stored |
 | `DocumentScan.document` | Prisma relationship helper | No separate stored value |

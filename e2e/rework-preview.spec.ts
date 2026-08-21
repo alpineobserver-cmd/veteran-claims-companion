@@ -29,7 +29,7 @@ async function addKneeIntake(page:import("@playwright/test").Page){
 
   await page.getByRole("button",{name:"Add health event"}).first().click();
   const event=page.getByRole("dialog",{name:"Add a health event"});
-  await event.getByLabel("Event type: injury, illness, surgery, treatment, or symptom change").fill("Injury");
+  await event.getByLabel("Event type").selectOption("Injury");
   await event.getByLabel("Condition, symptom, or event").fill("Right knee injury");
   await event.getByLabel("What happened").fill("Pain after a fictional training exercise.");
   await event.getByRole("textbox",{name:"Date",exact:true}).fill("2013");
@@ -55,7 +55,7 @@ async function addOtherClaim(page:import("@playwright/test").Page,title:string){
 
 test.beforeEach(async({page})=>{
   await page.goto(previewPath);
-  await page.evaluate(()=>localStorage.removeItem("debrief.rework-preview.v2"));
+  await page.evaluate(()=>localStorage.removeItem("debrief.rework-preview.v3"));
   await page.reload();
 });
 
@@ -108,8 +108,31 @@ test("new profile starts empty and orientation is not permanent navigation",asyn
   await expect(journey.getByText("Package and Foundation")).toBeVisible();
   await expect(journey.getByText("Claims in This Package")).toBeVisible();
   await expect(journey.getByText("Finalize")).toBeVisible();
-  await expect(page.getByText("No records added yet")).toBeVisible();
+  await expect(page.getByText("No records linked yet")).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test("a package cannot begin until one filing path is selected",async({page})=>{
+  const briefing=page.getByRole("dialog",{name:"A well-supported claim starts with the right mission details."});
+  await briefing.getByRole("button",{name:"Choose package type"}).click();
+  const continueButton=page.getByRole("button",{name:"Continue to Service & Health"});
+  await expect(page.getByRole("radio",{name:/I am not sure yet/})).toBeChecked();
+  await expect(continueButton).toBeDisabled();
+  await expect(page.getByText("Choose one filing path to begin a package.")).toBeVisible();
+  await page.getByRole("radio",{name:/New disability claim/}).check();
+  await expect(continueButton).toBeEnabled();
+});
+
+test("clearing a draft requires explicit confirmation",async({page})=>{
+  await page.getByRole("dialog",{name:"A well-supported claim starts with the right mission details."}).getByRole("button",{name:"Close mission briefing"}).click();
+  await page.getByRole("button",{name:"Clear preview data"}).click();
+  const confirmation=page.getByRole("dialog",{name:"Clear this preview?"});
+  await expect(confirmation).toContainText("Approved package history cannot be cleared here.");
+  await confirmation.getByRole("button",{name:"Keep my work"}).click();
+  await expect(page.getByRole("dialog",{name:"Clear this preview?"})).toHaveCount(0);
+  await page.getByRole("button",{name:"Clear preview data"}).click();
+  await page.getByRole("dialog",{name:"Clear this preview?"}).getByRole("button",{name:"Clear draft workspace"}).click();
+  await expect(page.getByRole("dialog",{name:"A well-supported claim starts with the right mission details."})).toBeVisible();
 });
 
 test("returning users land on package overview instead of onboarding",async({page})=>{
@@ -157,11 +180,19 @@ test("clean-profile journey reaches a reviewed package",async({page})=>{
   const download=page.getByRole("dialog",{name:"Your package is ready to download"});
   await expect(download).toBeVisible();
   await download.getByRole("button",{name:"Start linked follow-up"}).click();
-  const followUp=page.getByRole("dialog",{name:"Start a new package without changing the prior package."});
+  const followUp=page.getByRole("dialog",{name:"Start a new package without changing this package."});
   await followUp.getByRole("button",{name:/Supplemental claim/}).click();
-  await expect(page.getByText("Linked supplemental claim started.")).toBeVisible();
-  await expect(page.getByRole("heading",{name:"Prior approved packages remain unchanged"})).toBeVisible();
+  await expect(page.locator(".rw-notice")).toContainText("New supplemental claim started.");
+  await expect(page.getByRole("heading",{name:"Linked packages remain separate"})).toBeVisible();
+  await expect(page.locator(".rw-package-history")).toContainText("Approved");
   await expect(page.getByText("No claims yet")).toBeVisible();
+  await page.locator(".rw-package-history").getByRole("button",{name:"Open package"}).click();
+  await expect(page.getByText("Approved package, read only.",{exact:true})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Add a Claim"})).toHaveCount(0);
+  await page.getByRole("button",{name:"Open Right knee symptoms"}).click();
+  await expect(page.getByRole("textbox",{name:/In-service event/})).toBeDisabled();
+  await page.getByRole("button",{name:"My Documents"}).click();
+  await expect(page.getByRole("button",{name:"Linked to this package"})).toBeDisabled();
 });
 
 test("a claim can be safely deleted from Package Overview",async({page})=>{
@@ -198,7 +229,7 @@ test("documents can be skipped and users can add their own claim",async({page})=
   await startCleanIntake(page);
   await completeSetup(page);
   await page.getByRole("button",{name:/Claim Leads/}).click();
-  await expect(page.getByText("No claim leads yet")).toBeVisible();
+  await expect(page.getByText("No active claim leads")).toBeVisible();
   await page.getByRole("button",{name:"Add a claim not shown"}).click();
   const custom=page.getByRole("dialog",{name:"Add a claim to your package"});
   await custom.getByLabel("Condition or symptom").selectOption("Shoulder or arm condition");
@@ -250,16 +281,16 @@ test("linked document failures become the primary action and block approval",asy
   await addKneeIntake(page);
   await completeSetup(page);
   await page.evaluate(()=>{
-    const key="debrief.rework-preview.v2";
+    const key="debrief.rework-preview.v3";
     const saved=JSON.parse(localStorage.getItem(key)||"{}");
-    saved.documents=[{id:"failed-document",name:"Fictional failed analysis.pdf",type:"Medical record",dateRange:"2022",status:"failed",caseIds:["case-1"],claimIds:[],insights:[]}];
+    saved.documents=[{id:"failed-document",name:"Fictional failed analysis.pdf",type:"Medical record",dateRange:"2022",status:"failed",caseIds:["package-1"],claimIds:[],insights:[]}];
     localStorage.setItem(key,JSON.stringify(saved));
   });
   await page.reload();
   await expect(page.getByRole("heading",{name:"Resolve a document analysis problem"})).toBeVisible();
   await page.getByRole("button",{name:"Review My Documents"}).click();
   await expect(page.getByRole("button",{name:"Retry analysis"})).toBeVisible();
-  await page.getByRole("button",{name:"Linked to package"}).click();
+  await page.getByRole("button",{name:"Linked to this package"}).click();
   await page.getByRole("button",{name:"Go to Package Overview"}).click();
   await expect(page.getByRole("heading",{name:"Resolve a document analysis problem"})).toHaveCount(0);
   await expect(page.getByRole("button",{name:"Review Claim Lead"})).toBeVisible();
@@ -280,8 +311,12 @@ test("clean onboarding remains usable at mobile and desktop widths",async({page}
   await page.setViewportSize({width:390,height:844});
   await expectNoOverflow(page);
   const briefing=page.getByRole("dialog",{name:"A well-supported claim starts with the right mission details."});
-  await expect(briefing.getByRole("button",{name:"Choose package type"})).toBeVisible();
-  await briefing.getByRole("button",{name:"Choose package type"}).click();
+  const briefingCta=briefing.getByRole("button",{name:"Choose package type"});
+  await expect(briefingCta).toBeVisible();
+  const ctaBox=await briefingCta.boundingBox();
+  expect(ctaBox?.y).toBeGreaterThanOrEqual(0);
+  expect((ctaBox?.y||0)+(ctaBox?.height||0)).toBeLessThanOrEqual(844);
+  await briefingCta.click();
   await page.getByRole("radio",{name:/New disability claim/}).check();
   await page.getByRole("button",{name:"Continue to Service & Health"}).click();
   await page.getByRole("button",{name:"Open navigation"}).click();
@@ -299,7 +334,7 @@ test("clean onboarding remains usable at mobile and desktop widths",async({page}
 test("empty setup is saved honestly and points back to the foundation",async({page})=>{
   await startCleanIntake(page);
   await completeSetup(page);
-  await expect(page.getByText("Your package has started, but your foundation is still empty.")).toBeVisible();
+  await expect(page.getByText("Your package has started, but your foundation still needs meaningful service and health details.")).toBeVisible();
   await expect(page.getByRole("heading",{name:"Complete your service and health foundation"})).toBeVisible();
   await expect(page.getByText("Not started",{exact:true})).toBeVisible();
 });
@@ -312,6 +347,39 @@ test("service periods use structured type and calendar controls",async({page})=>
   await expect(dialog.getByLabel("Period type")).toHaveJSProperty("tagName","SELECT");
   await expect(dialog.getByLabel("Start date")).toHaveAttribute("type","date");
   await expect(dialog.getByLabel("End date")).toHaveAttribute("type","date");
+});
+
+test("blank intake rows are blocked with inline guidance",async({page})=>{
+  await startCleanIntake(page);
+  await page.getByRole("button",{name:"Add service period"}).first().click();
+  let dialog=page.getByRole("dialog",{name:"Add a service period"});
+  await dialog.getByRole("button",{name:"Save item"}).click();
+  await expect(dialog.getByRole("alert")).toContainText("Add a branch, period type");
+  await dialog.getByRole("button",{name:"Cancel"}).click();
+  await expect(page.getByText("0 periods")).toBeVisible();
+
+  await page.getByRole("button",{name:"Add health event"}).first().click();
+  dialog=page.getByRole("dialog",{name:"Add a health event"});
+  await dialog.getByRole("button",{name:"Save item"}).click();
+  await expect(dialog.getByRole("alert")).toContainText("Choose an event type");
+  await dialog.getByRole("button",{name:"Cancel"}).click();
+  await expect(page.getByText("0 events")).toBeVisible();
+});
+
+test("intake dates and wording remain exact and traceable",async({page})=>{
+  await startCleanIntake(page);
+  await addKneeIntake(page);
+  await expect(page.getByText("Air Force, Duty station, Jan 1, 2011 to Jan 1, 2015")).toBeVisible();
+  await completeSetup(page);
+  await page.getByRole("button",{name:/Claim Leads/}).click();
+  const lead=page.locator(".rw-lead").filter({hasText:"Right knee symptoms"});
+  await lead.getByRole("button",{name:/Why this appeared/}).click();
+  await expect(lead.locator(".rw-sources p")).toContainText("Pain after a fictional training exercise.");
+  await lead.getByRole("button",{name:/Health timeline: Right knee injury/}).click();
+  const source=page.getByRole("dialog",{name:"Health timeline: Right knee injury"});
+  await expect(source).toContainText("Health timeline, 2013");
+  await expect(source).toContainText("Source: your intake answer");
+  await expect(source).toContainText("Pain after a fictional training exercise.");
 });
 
 test("package overview exposes one prominent action-required control",async({page})=>{
@@ -374,6 +442,77 @@ test("alternate package type changes claim prompts",async({page})=>{
   await addOtherClaim(page,"Fictional rated condition");
   await page.getByRole("button",{name:"Open Package Overview"}).click();
   await page.getByRole("button",{name:"Open Fictional rated condition"}).click();
-  await expect(page.getByLabel("Claim path")).toHaveValue("increase");
+  await expect(page.locator(".rw-claim-path-locked")).toContainText("Increased-rating claim");
+  await expect(page.getByLabel("Claim path")).toHaveCount(0);
   await expect(page.getByRole("textbox",{name:/What has worsened/})).toBeVisible();
+});
+
+test("an active package keeps its path and a different filing path starts a linked package",async({page})=>{
+  await startCleanIntake(page);
+  await addKneeIntake(page);
+  await completeSetup(page,{upload:true});
+  await page.getByRole("button",{name:/Claim Leads/}).click();
+  await addOtherClaim(page,"Fictional original condition");
+  await page.getByRole("button",{name:"Open Package Overview"}).click();
+  await page.getByRole("button",{name:"Open Fictional original condition"}).click();
+  await page.getByRole("button",{name:"View Package Type"}).click();
+  await expect(page.getByRole("heading",{name:"This package keeps one filing path."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Original disability claim"})).toBeVisible();
+  await expect(page.getByRole("radio")).toHaveCount(0);
+  await page.getByRole("button",{name:/Start a New Package/}).click();
+  const newPackage=page.getByRole("dialog",{name:"Start a new package without changing this package."});
+  await newPackage.getByRole("button",{name:/Increased-rating claim/}).click();
+  await expect(page.getByText("No claims yet")).toBeVisible();
+  await expect(page.getByText("1 service period, 1 health event with details")).toBeVisible();
+  await expect(page.locator(".rw-package-history")).toContainText("Original disability claim");
+  await expect(page.locator(".rw-package-history")).toContainText("Saved draft");
+  await expect(page.getByRole("button",{name:"Review Claim Lead"})).toBeVisible();
+  await page.getByRole("button",{name:"Review Claim Lead"}).click();
+  await page.locator(".rw-lead").filter({hasText:"Right knee symptoms"}).getByRole("button",{name:"Add to Your Claims"}).click();
+  await page.getByRole("button",{name:"Open Package Overview"}).click();
+  await expect(page.locator("#rework-main").getByText("Right knee symptoms",{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"My Documents",exact:true}).click();
+  const sharedRecord=page.locator(".rw-doc-list article").filter({hasText:"Fictional orthopedic visit.pdf"});
+  await expect(sharedRecord).toBeVisible();
+  await expect(sharedRecord.getByRole("button",{name:"Link to this package"})).toBeVisible();
+  await sharedRecord.getByRole("button",{name:"Link to this package"}).click();
+  await page.getByRole("button",{name:"Go to Package Overview"}).click();
+
+  await page.locator(".rw-package-history").getByRole("button",{name:"Open package"}).click();
+  await expect(page.locator("#rework-main").getByText("Fictional original condition",{exact:true})).toBeVisible();
+  await expect(page.locator("#rework-main").getByText("Right knee symptoms",{exact:true})).toHaveCount(0);
+  await page.getByRole("button",{name:"My Documents",exact:true}).click();
+  await expect(sharedRecord.getByRole("button",{name:"Linked to this package"})).toBeVisible();
+  await page.getByRole("button",{name:"Go to Package Overview"}).click();
+
+  await page.locator(".rw-package-history").getByRole("button",{name:"Open package"}).click();
+  await expect(page.locator("#rework-main").getByText("Right knee symptoms",{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"My Documents",exact:true}).click();
+  await expect(sharedRecord.getByRole("button",{name:"Linked to this package"})).toBeVisible();
+});
+
+test("accepted leads leave the active queue and reopen their claim",async({page})=>{
+  await startCleanIntake(page);
+  await addKneeIntake(page);
+  await completeSetup(page);
+  await page.getByRole("button",{name:/Claim Leads/}).click();
+  const lead=page.locator(".rw-lead").filter({hasText:"Right knee symptoms"});
+  await lead.getByRole("button",{name:"Add to Your Claims"}).click();
+  await expect(page.getByRole("tab",{name:"Active (0)"})).toBeVisible();
+  await expect(lead).toHaveCount(0);
+  await page.getByRole("tab",{name:"Accepted (1)"}).click();
+  await page.locator(".rw-lead").filter({hasText:"Right knee symptoms"}).getByRole("button",{name:"Open Claim"}).click();
+  await expect(page.getByRole("heading",{name:"Right knee symptoms Claim"})).toBeVisible();
+});
+
+test("a simulated analysis failure has visible retry and unlink recovery",async({page})=>{
+  await startCleanIntake(page);
+  await addKneeIntake(page);
+  await page.getByRole("button",{name:"Continue to documents"}).click();
+  await page.getByRole("button",{name:"Simulate analysis issue"}).click();
+  const record=page.locator(".rw-doc-list article").filter({hasText:"Fictional unreadable record.pdf"});
+  await expect(record.getByText(/Analysis stopped/)).toBeVisible();
+  await expect(record.getByRole("button",{name:"Retry analysis"})).toBeVisible();
+  await record.getByRole("button",{name:"Linked to this package"}).click();
+  await expect(record.getByRole("button",{name:"Link to this package"})).toBeVisible();
 });
