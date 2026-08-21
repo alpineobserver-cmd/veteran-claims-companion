@@ -43,6 +43,7 @@ test("questionnaire moves visible focus to newly displayed step content",async()
 
 test("global accessibility styles preserve focus, contrast, touch targets, and reduced motion",async()=>{
   const css=await read("app/accessibility.css");
+  assert.match(css,/\.sr-only\{[^}]*position:absolute!important[^}]*clip:rect\(0,0,0,0\)!important[^}]*white-space:nowrap!important/s);
   assert.match(css,/:focus-visible/);
   assert.match(css,/outline:3px solid/);
   assert.match(css,/min-height:24px/);
