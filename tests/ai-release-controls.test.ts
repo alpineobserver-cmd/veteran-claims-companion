@@ -61,6 +61,6 @@ test("generation audit UI and privacy contract remain observable",async()=>{
   const [route,questionnaire,guide]=await Promise.all([read("app/api/ai/personal-statement/route.ts"),read("components/claim-questionnaire.tsx"),read("docs/generation-audit-trail.md")]);
   for(const field of ["mode","model","policyVersion","sourceReferences","createdAt","completedAt","resultStatus"])assert.match(route,new RegExp(field));
   for(const disposition of ["accepted","rejected","regenerated","edited","saved","downloaded","exported"])assert.match(questionnaire,new RegExp(`\"${disposition}\"`));
-  assert.match(questionnaire,/For privacy, this history records field names and timeline positions/);
+  assert.match(questionnaire,/For privacy, this history records field names, timeline positions, provider metadata, and token counts/);
   for(const excluded of ["Questionnaire answer text","Generated or edited statement text","Document names, contents","Provider request or response bodies"])assert.match(guide,new RegExp(excluded));
 });

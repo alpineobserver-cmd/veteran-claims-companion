@@ -48,7 +48,11 @@ These checks reduce configuration mistakes; they cannot prove that two secret co
 | `AUTH_URL` | Stable HTTPS Staging origin |
 | `AUTH_CANONICAL_HOST` | Hostname from the stable Staging origin, without `https://` or a path |
 | `PRIVACY_CONTACT_EMAIL` | The monitored Alpha privacy contact |
-| `OPENAI_API_KEY` | Leave unset while paid AI is disabled |
+| `DEBRIEF_AI_PROVIDER` | `vertex` only for the approved fictional-data Alpha; otherwise `disabled` |
+| `DEBRIEF_AI_MODEL` | Evaluated Gemini model identifier recorded in the release |
+| `GOOGLE_VERTEX_LOCATION` | Reviewed Vertex processing location |
+| `DEBRIEF_AI_FICTIONAL_DATA_ONLY` | `true` during Alpha |
+| `DEBRIEF_AI_GENERATION_ENABLED` | Explicit kill switch; enable only after the Vertex release gate |
 
 8. In the Staging project's Preview scope, use `APP_ENV=preview` and only Staging/test data services. OAuth and persistent storage may remain disabled on disposable previews if they are not needed for review.
 9. Add `APP_ENV=production` and `DATA_ENVIRONMENT=production` to the Production scope of the existing Production Vercel project. Confirm its Production database, Blob, and authentication credentials are scoped to Production only; remove them from Preview and Development scopes or replace those scopes with Staging/test-only resources. Do not change the permanent Production `AUTH_SECRET`, Google credentials, database, Blob store, `AUTH_URL`, or canonical host.

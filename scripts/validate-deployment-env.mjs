@@ -8,6 +8,7 @@ const operationalControls=["DEBRIEF_UPLOADS_ENABLED","DEBRIEF_AI_GENERATION_ENAB
 const operationalValues=new Set(["0","1","false","true","off","on","disabled","enabled","pause","paused"]);
 const boundedIntegerControls=[["DEBRIEF_AI_DAILY_USER_LIMIT",500],["DEBRIEF_AI_DAILY_GLOBAL_LIMIT",5000],["DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT",10_000_000],["DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT",100_000_000],["DEBRIEF_AI_DAILY_SPEND_CAP_CENTS",100_000],["DEBRIEF_AI_MAX_REQUEST_COST_CENTS",10_000],["DEBRIEF_AI_MAX_OUTPUT_TOKENS",8_000]];
 const aiPolicyVersions=new Set(["personal-statement-v0","personal-statement-v1"]);
+const aiProviders=new Set(["disabled","vertex"]);
 const storageProviders=new Set(["gcs","google-cloud-storage","vercel","blob","vercel-private-blob","local","local-synthetic"]);
 const storageProvider=process.env.DOCUMENT_STORAGE_PROVIDER?.trim().toLowerCase();
 const malwareScanningEnabled=["1","true","on","enabled"].includes(process.env.DEBRIEF_MALWARE_SCANNING_ENABLED?.trim().toLowerCase());
@@ -15,10 +16,13 @@ const realDocumentsEnabled=["1","true","on","enabled"].includes(process.env.DEBR
 const vercelGitRef=process.env.VERCEL_GIT_COMMIT_REF?.trim();
 const vercelGitSha=process.env.VERCEL_GIT_COMMIT_SHA?.trim();
 const googleMfaMode=(process.env.DEBRIEF_GOOGLE_MFA_ENFORCEMENT||"disabled").trim().toLowerCase();
+const aiProvider=(process.env.DEBRIEF_AI_PROVIDER||"disabled").trim().toLowerCase();
+const aiFictionalOnly=["1","true","on","enabled"].includes((process.env.DEBRIEF_AI_FICTIONAL_DATA_ONLY||"").trim().toLowerCase());
 
 if(!allowed.has(appEnvironment))problems.push("APP_ENV must be development, preview, staging, or production.");
 if(dataEnvironment&&!allowed.has(dataEnvironment))problems.push("DATA_ENVIRONMENT must be development, preview, staging, or production.");
 if(!new Set(["disabled","audit","enforced"]).has(googleMfaMode))problems.push("DEBRIEF_GOOGLE_MFA_ENFORCEMENT must be disabled, audit, or enforced.");
+if(!aiProviders.has(aiProvider))problems.push("DEBRIEF_AI_PROVIDER must be disabled or vertex.");
 
 if(appEnvironment==="staging"){
   if(dataEnvironment!=="staging")problems.push("Staging requires DATA_ENVIRONMENT=staging so its data boundary is explicit.");
@@ -74,8 +78,16 @@ for(const [key,max] of boundedIntegerControls){
   if(!Number.isSafeInteger(value)||value<1||value>max)problems.push(`${key} must be a whole number from 1 through ${max}.`);
 }
 const aiControl=process.env.DEBRIEF_AI_GENERATION_ENABLED?.trim().toLowerCase()||"";
-const aiEnabled=!["0","false","off","disabled","pause","paused"].includes(aiControl);
-if(aiEnabled&&process.env.OPENAI_API_KEY){
+const aiEnabled=["1","true","on","enabled"].includes(aiControl);
+if(aiEnabled&&aiProvider==="vertex"){
+  for(const key of ["GCP_PROJECT_ID","DEBRIEF_AI_MODEL","GOOGLE_VERTEX_LOCATION"]){
+    if(!process.env[key]?.trim())problems.push(`Vertex AI generation requires ${key}.`);
+  }
+  if(!/^gemini-[a-z0-9][a-z0-9._-]{1,100}$/i.test(process.env.DEBRIEF_AI_MODEL||""))problems.push("DEBRIEF_AI_MODEL must be a Gemini model ID.");
+  if(!/^(?:global|[a-z]+-[a-z]+\d)$/i.test(process.env.GOOGLE_VERTEX_LOCATION||""))problems.push("GOOGLE_VERTEX_LOCATION must be global or a valid Google Cloud region.");
+  if(!aiFictionalOnly)problems.push("Alpha Vertex AI generation requires DEBRIEF_AI_FICTIONAL_DATA_ONLY=true.");
+  if(realDocumentsEnabled)problems.push("Alpha Vertex AI generation cannot be enabled while real documents are enabled.");
+  if(appEnvironment==="production")problems.push("Vertex AI generation is restricted to fictional Staging during Alpha.");
   for(const key of ["DEBRIEF_AI_DAILY_SPEND_CAP_CENTS","DEBRIEF_AI_MAX_REQUEST_COST_CENTS"]){
     if(!process.env[key]?.trim())problems.push(`Paid AI generation requires an explicit ${key} cost boundary.`);
   }
@@ -83,6 +95,7 @@ if(aiEnabled&&process.env.OPENAI_API_KEY){
   const requestCap=Number(process.env.DEBRIEF_AI_MAX_REQUEST_COST_CENTS);
   if(Number.isSafeInteger(dailyCap)&&Number.isSafeInteger(requestCap)&&requestCap>dailyCap)problems.push("DEBRIEF_AI_MAX_REQUEST_COST_CENTS cannot exceed DEBRIEF_AI_DAILY_SPEND_CAP_CENTS.");
 }
+if(aiEnabled&&aiProvider==="disabled"&&["staging","production"].includes(appEnvironment))problems.push("Hosted AI generation requires DEBRIEF_AI_PROVIDER=vertex or DEBRIEF_AI_GENERATION_ENABLED=false.");
 if(process.env.DEBRIEF_AI_POLICY_VERSION&&!aiPolicyVersions.has(process.env.DEBRIEF_AI_POLICY_VERSION.trim()))problems.push("DEBRIEF_AI_POLICY_VERSION must identify an evaluated policy version.");
 
 if(problems.length){

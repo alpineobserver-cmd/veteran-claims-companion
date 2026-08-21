@@ -50,7 +50,7 @@ DEBRIEF_AI_MAX_REQUEST_COST_CENTS=5
 DEBRIEF_AI_DAILY_SPEND_CAP_CENTS=500
 ```
 
-The deployment validator bounds every control and requires both spend values whenever an API key and external generation are enabled. The maximum per-request reservation cannot exceed the daily cap. Configure values separately in Staging and Production. Lowering a value takes effect immediately for its current fixed window; raising it should be an intentional cost decision.
+The deployment validator bounds every control and requires both spend values whenever Vertex external generation is enabled. The maximum per-request reservation cannot exceed the daily cap. Configure values separately in Staging and Production. Lowering a value takes effect immediately for its current fixed window; raising it should be an intentional cost decision.
 
 The cost values are reservations, not a provider invoice parser. Set `DEBRIEF_AI_MAX_REQUEST_COST_CENTS` to a rounded-up worst-case price for the configured model, input boundary, and output limit. Recalculate and document it whenever model, pricing, context size, or output allowance changes. Keep `DEBRIEF_AI_DAILY_SPEND_CAP_CENTS` within the owner-approved loss tolerance.
 

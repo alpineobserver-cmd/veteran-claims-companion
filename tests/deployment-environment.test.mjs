@@ -66,16 +66,16 @@ test("deployment rejects unsafe AI cost ceilings",()=>{
     assert.notEqual(result.status,0);
     assert.match(result.stderr,/DEBRIEF_AI_/);
   }
-  const missingCostBoundary=validate({DEBRIEF_AI_GENERATION_ENABLED:"true",OPENAI_API_KEY:"fictional",DEBRIEF_AI_DAILY_SPEND_CAP_CENTS:"500"});
+  const vertex={APP_ENV:"staging",DATA_ENVIRONMENT:"staging",AUTH_URL:"https://staging.example.test",AUTH_CANONICAL_HOST:"staging.example.test",DEBRIEF_UPLOADS_ENABLED:"false",DEBRIEF_AI_GENERATION_ENABLED:"true",DEBRIEF_REGISTRATIONS_ENABLED:"true",DEBRIEF_GOOGLE_LOGIN_ENABLED:"true",DEBRIEF_MALWARE_SCANNING_ENABLED:"false",DEBRIEF_REAL_DOCUMENTS_ENABLED:"false",DEBRIEF_AI_PROVIDER:"vertex",DEBRIEF_AI_MODEL:"gemini-3.7-flash",GOOGLE_VERTEX_LOCATION:"global",DEBRIEF_AI_FICTIONAL_DATA_ONLY:"true",GCP_PROJECT_ID:"fictional-project"};
+  const missingCostBoundary=validate({...vertex,DEBRIEF_AI_DAILY_SPEND_CAP_CENTS:"500"});
   assert.notEqual(missingCostBoundary.status,0);
   assert.match(missingCostBoundary.stderr,/DEBRIEF_AI_MAX_REQUEST_COST_CENTS/);
-  const implicitEnabledMissingBoundaries=validate({OPENAI_API_KEY:"fictional"});
-  assert.notEqual(implicitEnabledMissingBoundaries.status,0);
-  assert.match(implicitEnabledMissingBoundaries.stderr,/Paid AI generation requires/);
-  const invertedCostBoundary=validate({DEBRIEF_AI_GENERATION_ENABLED:"true",OPENAI_API_KEY:"fictional",DEBRIEF_AI_DAILY_SPEND_CAP_CENTS:"2",DEBRIEF_AI_MAX_REQUEST_COST_CENTS:"3"});
+  const invertedCostBoundary=validate({...vertex,DEBRIEF_AI_DAILY_SPEND_CAP_CENTS:"2",DEBRIEF_AI_MAX_REQUEST_COST_CENTS:"3"});
   assert.notEqual(invertedCostBoundary.status,0);
   assert.match(invertedCostBoundary.stderr,/cannot exceed/);
-  const safe=validate({DEBRIEF_AI_DAILY_USER_LIMIT:"30",DEBRIEF_AI_DAILY_GLOBAL_LIMIT:"200",DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT:"300000",DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT:"2000000",DEBRIEF_AI_DAILY_SPEND_CAP_CENTS:"500",DEBRIEF_AI_MAX_REQUEST_COST_CENTS:"5",DEBRIEF_AI_MAX_OUTPUT_TOKENS:"2000"});
+  const realData=validate({...vertex,DEBRIEF_REAL_DOCUMENTS_ENABLED:"true",DEBRIEF_AI_DAILY_SPEND_CAP_CENTS:"500",DEBRIEF_AI_MAX_REQUEST_COST_CENTS:"5"});
+  assert.notEqual(realData.status,0);assert.match(realData.stderr,/cannot be enabled while real documents are enabled/);
+  const safe=validate({...vertex,DEBRIEF_AI_DAILY_USER_LIMIT:"30",DEBRIEF_AI_DAILY_GLOBAL_LIMIT:"200",DEBRIEF_AI_DAILY_USER_TOKEN_LIMIT:"300000",DEBRIEF_AI_DAILY_GLOBAL_TOKEN_LIMIT:"2000000",DEBRIEF_AI_DAILY_SPEND_CAP_CENTS:"500",DEBRIEF_AI_MAX_REQUEST_COST_CENTS:"5",DEBRIEF_AI_MAX_OUTPUT_TOKENS:"2000"});
   assert.equal(safe.status,0,safe.stderr);
 });
 

@@ -64,15 +64,20 @@ test("high-risk authenticated routes enforce limits and paid AI has user and glo
     "app/api/account/export/route.ts","app/api/account/route.ts"
   ].map(read));
   for(const source of routes)assert.match(source,/enforceAccountRateLimit/);
-  const ai=await read("app/api/ai/personal-statement/route.ts");
+  const [ai,provider]=await Promise.all([
+    read("app/api/ai/personal-statement/route.ts"),
+    read("lib/ai/personal-statement-provider.ts")
+  ]);
   assert.match(ai,/rateLimitPolicies\.aiBurst/);
   assert.match(ai,/aiUserDailyPolicy\(\)/);
   assert.match(ai,/aiGlobalDailyPolicy\(\)/);
   assert.match(ai,/aiUserDailyTokenPolicy\(\)/);
   assert.match(ai,/aiGlobalDailyTokenPolicy\(\)/);
   assert.match(ai,/aiDailySpendPolicy\(\)/);
-  assert.match(ai,/Buffer\.byteLength/);
-  assert.match(ai,/max_output_tokens:maxOutputTokens/);
+  assert.match(ai,/personalStatementTokenReservation/);
+  assert.match(provider,/Buffer\.byteLength/);
+  assert.match(provider,/maxOutputTokens/);
+  assert.match(provider,/Output\.object/);
   assert.doesNotMatch(ai,/new Map/);
   assert.equal(rateLimitPolicies.documentUploadHour.limit,10);
   assert.equal(rateLimitPolicies.documentUploadDay.limit,25);

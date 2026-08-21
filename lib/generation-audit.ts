@@ -13,6 +13,10 @@ export const generationAuditEntrySchema=z.object({
   createdAt:z.string().datetime(),
   completedAt:z.string().datetime(),
   resultStatus:z.enum(generationResultStatuses),
+  provider:z.enum(["vertex","local","none"]).optional(),
+  inputTokens:z.number().int().nonnegative().optional(),
+  outputTokens:z.number().int().nonnegative().optional(),
+  totalTokens:z.number().int().nonnegative().optional(),
   userDisposition:z.enum(generationDispositions),
   dispositionUpdatedAt:z.string().datetime()
 }).strict();

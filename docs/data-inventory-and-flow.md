@@ -136,11 +136,11 @@ This inventory describes the code currently deployed for the fictional-data Alph
 | Vercel application runtime | Requests, server-rendered pages, API bodies in memory, environment variables, privacy-minimized runtime events | Request bodies are not intentionally logged; API responses use no-store where private | Runtime/build log retention, staff access, region, drain/access configuration |
 | Supabase PostgreSQL | All Prisma models above via a server-only direct connection | RLS enabled and public Data API grants revoked; no browser Supabase client | Project region, SSL enforcement evidence, encryption/key ownership, administrator access, backups, contracts, restoration test |
 | Vercel private Blob | Fictional PDF/JPEG/PNG object bytes under random private keys | Server-only credentials; short-lived owner-bound application tickets; private delivery | Region, encryption/key ownership, administrator access, object/version retention and contractual evidence |
-| Google Cloud Storage (supported; not activated) | Fictional PDF/JPEG/PNG object bytes under random private keys after environment activation | Server-only, private bucket adapter; keyless Vercel OIDC federation; existing application tickets and owner checks remain authoritative | Separate resources, IAM condition evidence, region, encryption/key ownership, audit logs, retention/backups, administrator access, contracts, migration and Staging smoke test |
+| Google Cloud Storage | Fictional PDF/JPEG/PNG object bytes under random private keys | Server-only, private bucket adapter; keyless Vercel OIDC federation; existing application tickets and owner checks remain authoritative | Region, encryption/key ownership, audit logs, retention/backups, administrator access, contracts, and real-data approval |
 | Google OAuth | Authorization request, account identity, consent, and transient authorization codes | Separate clients by environment; application stores identity and provider tokens in PostgreSQL | Approved scopes, retention, administrator/MFA evidence, OAuth Production review |
 | Vercel/GitHub build systems | Source, dependency metadata, release commit, non-secret build output | Persistent credentials are excluded from Preview; repository has protected release branches | Administrator/access review and provider retention evidence |
 | Support email provider | Reporter address and the minimum details a reporter chooses to send from `/support` | Page instructs reporters not to include claims, health data, credentials, or private screenshots | Named monitored mailbox, access list, retention, secure deletion, and incident escalation evidence |
-| OpenAI Responses API (future/disabled) | Questionnaire and timeline source except optional display name, only after sign-in and in-product acknowledgement | `store:false`, bounded request/output, explicit kill switch; no key is expected during the free Alpha | Provider/legal/retention/region/subprocessor approval and AI safety gate |
+| Google Vertex AI | Fictional questionnaire and timeline source except optional display name, only after sign-in and explicit acknowledgement | Keyless workload identity; one-permission custom prediction role; schema-bound output; bounded request/output and spend; explicit kill switch; Staging only | Fictional draft review and safety evaluation; separate legal/privacy/security approval before any real data, documents, buddy information, or Production enablement |
 
 ## Data-flow map
 
@@ -153,11 +153,11 @@ flowchart LR
   R -->|"Owner-scoped records"| P
   U -->|"Confirmed fictional file"| R
   R -->|"Validated private object"| B["Vercel private Blob"]
-  R -. "Supported after reviewed activation" .-> C["Google Cloud Storage"]
+  R -->|"Private fictional object"| C["Google Cloud Storage"]
   R -->|"Metadata and audit record"| P
   R -->|"Privacy-minimized security event"| L["Vercel runtime logs"]
   U -->|"mailto; minimum report details"| S["Support mailbox"]
-  R -. "Disabled until approval: bounded drafting source" .-> O["OpenAI"]
+  R -->|"Acknowledged fictional drafting source"| O["Google Vertex AI"]
   P -. "Provider-controlled backup" .-> PB["Database backups"]
 ```
 

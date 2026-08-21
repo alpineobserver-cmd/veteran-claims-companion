@@ -27,7 +27,7 @@ Conclusion: suitable for a small allowlisted alpha using fictional data only. No
 1. Obtain qualified legal review of 38 CFR Part 14 accreditation boundaries. Debrief must remain self-directed and must not represent that a person or the service prepares, presents, or prosecutes an individual claim on a claimant’s behalf.
 2. Determine applicability of the FTC Act, FTC Health Breach Notification Rule, HIPAA/business-associate rules, state consumer-health and privacy laws, and any international rules based on actual users and operations.
 3. Replace the alpha notices with counsel-approved terms and privacy disclosures identifying the legal operator, physical or registered address where required, a monitored privacy/security contact, governing terms, and all vendor retention periods.
-4. Complete vendor and data-flow review for Vercel, the PostgreSQL host, Google OAuth, private Blob, OpenAI if enabled, logging, backups, support access, subprocessors, encryption, regions, deletion, and incident notification.
+4. Complete vendor and data-flow review for Vercel, the PostgreSQL host, Google OAuth, Google Cloud Storage and Vertex AI, private Blob, logging, backups, support access, subprocessors, encryption, regions, deletion, and incident notification.
 5. Add malware scanning and quarantine before accepting any real document. File signatures alone do not establish that a file is safe.
 6. Complete a threat model, independent penetration test, incident-response plan/tabletop, breach-notification decision tree, secret rotation procedure, recovery test, and backup deletion policy.
 7. Replace in-process AI rate limiting with a durable distributed limiter and add abuse monitoring and cost caps before enabling paid AI.
@@ -53,5 +53,5 @@ Conclusion: suitable for a small allowlisted alpha using fictional data only. No
 - Instruct testers in writing to use fictional scenarios only and provide the private security-reporting path.
 - Review platform/database/Blob access lists and deployment logs before invitations.
 - Test account deletion and document deletion in the deployed environment with fictional files.
-- Do not enable `OPENAI_API_KEY` during alpha unless the AI consent, provider settings, spend cap, and authenticated-only behavior are independently verified.
+- Keep Vertex restricted to authenticated, explicitly acknowledged, fictional Staging use with the approved model, custom prediction role, spend cap, and release evaluation. Do not process real data or enable Production during Alpha.
 - Record each release and regulatory/form-content change in the in-product change log.
