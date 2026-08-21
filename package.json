@@ -22,7 +22,7 @@
     "test:accessibility": "node --test tests/accessibility-contract.test.mjs",
     "test:storage": "node --import tsx --test tests/document-storage-security.test.ts tests/document-upload-security.test.ts tests/malware-scanning.test.ts",
     "test:controls": "node --import tsx --test tests/operational-controls.test.ts tests/ai-release-controls.test.ts tests/ai-output-safety.test.ts",
-    "test:data-controls": "node --import tsx --test tests/account-data-controls.test.ts tests/rework-production-enablement.test.ts",
+    "test:data-controls": "node --import tsx --test tests/account-data-controls.test.ts tests/account-summary.test.ts tests/rework-production-enablement.test.ts",
     "test:rate-limit": "node --import tsx --test tests/durable-rate-limit.test.ts",
     "test:reconciliation": "node --import tsx --test tests/storage-reconciliation.test.ts",
     "test:security-readiness": "node --import tsx --test tests/security-readiness.test.ts",

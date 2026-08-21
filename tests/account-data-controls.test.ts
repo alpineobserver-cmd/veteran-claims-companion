@@ -56,6 +56,10 @@ test("account deletion covers current and legacy objects and verifies database r
 
 test("account UI explains export exclusions and backup limits",async()=>{
   const [page,controls]=await Promise.all([read("app/account/page.tsx"),read("components/account-controls.tsx")]);
+  assert.match(page,/summarizeAccountData/);
+  assert.match(page,/Claim packages/);
+  assert.match(page,/My Documents/);
+  assert.match(page,/Previous-version workspaces/);
   assert.match(page,/href="\/api\/account\/export"/);
   assert.match(page,/Authentication tokens, session tokens, private storage keys/);
   assert.match(page,/Provider backups and security logs may remain/);

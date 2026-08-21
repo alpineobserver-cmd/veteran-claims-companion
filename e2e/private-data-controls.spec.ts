@@ -61,6 +61,15 @@ test("claim archive, restore, and permanent delete send their intended private m
   expect(calls).toContain("DELETE /api/claims/fictional-active-claim");
 });
 
+test("account summary uses the package model and keeps legacy work secondary",async({page})=>{
+  await page.goto("/account");
+  await expect(page.getByRole("heading",{name:"Control your Debrief account"})).toBeVisible();
+  const summary=page.locator('[aria-label="Account data summary"]');
+  await expect(summary.getByText("Claim packages",{exact:true})).toBeVisible();
+  await expect(summary.getByText("My Documents",{exact:true})).toBeVisible();
+  await expect(summary.getByText("Previous-version workspaces",{exact:true})).toHaveCount(0);
+});
+
 test("account deletion requires a typed confirmation before the destructive request",async({page})=>{
   let deletions=0;
   await page.route("**/api/account",async route=>{deletions+=1;await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({receipt:{receiptId:"fictional-receipt"}})});});
