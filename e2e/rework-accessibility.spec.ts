@@ -110,6 +110,10 @@ test("reference annotations stay available to assistive technology without disru
 
   await page.setViewportSize({width:390,height:844});
   await page.getByRole("button",{name:"Open navigation"}).click();
+  await page.waitForFunction(()=>{
+    const sidebar=document.querySelector<HTMLElement>(".rw-shell > aside");
+    return sidebar!==null&&sidebar.getBoundingClientRect().left>=-.5;
+  });
   await expectActionsInsideViewport(page,"mobile navigation");
   const layout=await page.evaluate(()=>({viewport:innerWidth,content:document.documentElement.scrollWidth}));
   expect(layout.content).toBeLessThanOrEqual(layout.viewport);
