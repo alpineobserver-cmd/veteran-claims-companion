@@ -22,6 +22,7 @@ if(!new Set(["disabled","audit","enforced"]).has(googleMfaMode))problems.push("D
 
 if(appEnvironment==="staging"){
   if(dataEnvironment!=="staging")problems.push("Staging requires DATA_ENVIRONMENT=staging so its data boundary is explicit.");
+  if((process.env.CRON_SECRET||"").trim().length<32)problems.push("Staging requires a CRON_SECRET of at least 32 characters for the private database liveness check.");
   if(process.env.AUTH_CANONICAL_HOST===canonicalProductionHost)problems.push("Staging must not use the Production canonical authentication host.");
   if(process.env.AUTH_URL){
     try{

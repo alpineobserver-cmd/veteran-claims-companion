@@ -10,3 +10,6 @@ uploads/*
 playwright-report/
 test-results/
 Initial Veteran Claims Companion MVP/
+.vercel
+.env.local
+.env.*.local
