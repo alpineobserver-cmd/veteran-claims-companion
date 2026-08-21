@@ -55,6 +55,8 @@ Production remains a no-go until the Staging migration and the live two-account 
 - Stable Staging is healthy at verified Git commit `723c29ca4e1f0d3a77b7c40cadb3aa8ba44642c7` / Vercel deployment `dpl_6jHPRPLMM5bJZ5WhyqcBaRHAvqL7`. Production was not changed.
 - Vercel build evidence confirms `APP_ENV=staging`, `DATA_ENVIRONMENT=staging`, authentication environment validation, Prisma migration status, and an isolated Supabase connection without printing secrets.
 - `/api/health` returned HTTP 200 with no-store, CSP, HSTS, frame, MIME, permissions, and cross-origin isolation headers. Vercel reported no runtime error clusters during the prior seven days.
+- The repository health monitor passed all five live targets (`/`, `/login`, `/api/health`, `/api/auth/providers`, and `/api/auth/session`) within its five-second threshold.
+- The current Auth.js dependency review passed: configured `5.0.0-beta.32` still matches the upstream beta tag and no new version decision is required.
 - Signed-out access to `/rework-preview` redirected to `/login?redirectTo=/rework-preview` at desktop and 390 px widths. Both widths had no horizontal overflow and the browser console had no warnings or errors.
 - Supabase reports the Staging project as healthy on PostgreSQL 17. All ten existing Prisma migrations are complete. The two rework tables are correctly absent until the candidate deploys.
 - Database inspection found `DocumentScan` with RLS disabled but no grants to `anon`, `authenticated`, `service_role`, or `PUBLIC`. The candidate now closes this defense-in-depth gap through `20260821120000_harden_document_scan_rls`.
