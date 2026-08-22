@@ -4,7 +4,16 @@ import { generationAuditEntrySchema } from "./generation-audit";
 
 const statementOriginSchema=z.object({kind:z.enum(["answer","timeline"]),label:z.string().max(200),excerpt:z.string().max(500),field:z.string().max(100).optional(),timelineEventId:z.string().max(100).optional(),factId:z.string().max(100).optional()}).strict();
 export const statementProvenanceSchema=z.object({version:z.literal(1),sentences:z.array(z.object({id:z.string().max(100),sectionIndex:z.number().int().min(0).max(100),sentenceIndex:z.number().int().min(0).max(500),text:z.string().max(6000),status:z.enum(["mapped","unmapped"]),origins:z.array(statementOriginSchema).max(20)}).strict()).max(500)}).strict();
-const documentCitationsSchema=z.record(z.record(z.string().trim().max(120)));
+const MAX_DOCUMENT_CITATION_FACTS=100;
+const MAX_DOCUMENT_CITATIONS_PER_FACT=20;
+const documentCitationEntrySchema=z.record(z.string().trim().max(120)).refine(
+  value=>Object.keys(value).length<=MAX_DOCUMENT_CITATIONS_PER_FACT,
+  `A fact can cite at most ${MAX_DOCUMENT_CITATIONS_PER_FACT} documents.`
+);
+const documentCitationsSchema=z.record(documentCitationEntrySchema).refine(
+  value=>Object.keys(value).length<=MAX_DOCUMENT_CITATION_FACTS,
+  `A claim can cite at most ${MAX_DOCUMENT_CITATION_FACTS} facts.`
+);
 
 export const claimDraftSchema = z.object({
   answers: z.record(z.unknown()),

@@ -13,7 +13,11 @@ Debrief's Alpha document intake remains limited to entirely fictional test files
 7. The server streams the file as an attachment. Responses use `private, no-store`, `no-referrer`, and `nosniff` controls.
 8. A successful download creates the existing privacy-minimized audit event. Tickets, filenames, contents, and medical details are not added to logs.
 
-The ticket is deliberately short-lived but may be replayed by the same signed-in owner until it expires. Permanent `AUTH_SECRET` continuity is required: changing the secret immediately invalidates outstanding tickets, sessions, and other authentication state.
+## Alpha replay decision and real-data gate
+
+The ticket is deliberately short-lived but may be replayed by the same signed-in owner until it expires. For the current fictional-data Alpha, this is an explicit, accepted limitation: the ticket is owner- and document-bound, usable only with the owner's current session through a same-origin `POST`, never appears in a URL, and expires after 60 seconds. Permanent `AUTH_SECRET` continuity is required: changing the secret immediately invalidates outstanding tickets, sessions, and other authentication state.
+
+This decision does **not** authorize real medical, claimant, government-identifier, or third-party records. Before that boundary can change, Debrief must either make download tickets single-use with a durable consumed-nonce store or complete and record a qualified security/legal review that approves an equivalent control. The broader quarantine-and-scan, retention, incident-response, vendor, and legal gates remain mandatory.
 
 ## Verification
 

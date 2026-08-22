@@ -12,6 +12,7 @@ import { claimScenarios } from "../evals/claim-scenarios";
 import { compareStatementVersions } from "../lib/statement-version-comparison";
 import { POST as createClaimPackageResponse } from "../app/api/claim-package/route";
 import { recordCitationGaps, statementFactSourceKind } from "../lib/statement-source-labels";
+import { groupDocumentCitations } from "../lib/document-citation-groups";
 
 const root=process.cwd();
 const read=(relative:string)=>readFile(path.join(root,relative),"utf8");
@@ -32,6 +33,18 @@ test("package workflow accepts document links, revision history, and lifecycle s
   assert.deepEqual(packageStatuses,["planned","requested","obtained","reviewed","exported","submitted"]);
   const checklist=evidenceChecklist(draft,"Migraines");
   assert.deepEqual(checklist.find(item=>item.id==="treatment")?.documentIds,["fictional-document-1"]);
+});
+
+test("document citation maps have bounded keys and package grouping stays linear",()=>{
+  const draft=completeDraft();
+  const maximum=Object.fromEntries(Array.from({length:100},(_,index)=>[`fact-${index}`,{"document-1":"p. 1"}]));
+  assert.equal(claimDraftSchema.safeParse({...draft,documentCitations:maximum}).success,true);
+  const tooManyFacts=Object.fromEntries(Array.from({length:101},(_,index)=>[`fact-${index}`,{"document-1":"p. 1"}]));
+  assert.equal(claimDraftSchema.safeParse({...draft,documentCitations:tooManyFacts}).success,false);
+  const tooManyDocuments=Object.fromEntries(Array.from({length:21},(_,index)=>[`document-${index}`,"p. 1"]));
+  assert.equal(claimDraftSchema.safeParse({...draft,documentCitations:{treatment:tooManyDocuments}}).success,false);
+  const grouped=groupDocumentCitations([{factId:"treatment",documentId:"record-a",pageReference:"p. 1"},{factId:"treatment",documentId:"record-b",pageReference:"p. 2"},{factId:"onset",documentId:"record-a",pageReference:"p. 3"}]);
+  assert.deepEqual(grouped,{documentLinks:{treatment:["record-a","record-b"],onset:["record-a"]},documentCitations:{treatment:{"record-a":"p. 1","record-b":"p. 2"},onset:{"record-a":"p. 3"}}});
 });
 
 test("package validation blocks stale or unverified statements without predicting an outcome",()=>{
