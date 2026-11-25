@@ -141,7 +141,10 @@ test("application responses opt into cross-origin resource isolation",async()=>{
 test("security discovery and crawler controls are explicit",async()=>{
   const [security,robots]=await Promise.all([read("public/.well-known/security.txt"),read("app/robots.ts")]);
   for(const field of["Contact: mailto:","Expires:","Preferred-Languages: en","Canonical: https://debriefclaims.com/.well-known/security.txt","Policy: https://debriefclaims.com/support"])assert.match(security,new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
-  assert.match(robots,/userAgent:"\*",disallow:"\/"/);
+  assert.match(robots,/DATA_ENVIRONMENT!=="production"/);
+  assert.match(robots,/disallow:"\/"/);
+  assert.match(robots,/allow:"\/",disallow:"\/api\/"/);
+  assert.match(robots,/sitemap\.xml/);
 });
 
 test("the synthetic browser identity is restricted to the local browser-test runtime",async()=>{

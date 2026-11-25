@@ -9,7 +9,7 @@ import type { Metadata } from "next";
 import "./buddy-statement.css";
 import "./buddy-sources.css";
 
-export const metadata:Metadata={title:"Buddy statement",description:"Prepare and save a fictional witness or buddy statement for a claim workspace."};
+export const metadata:Metadata={title:"Buddy statement",description:"Prepare and save a fictional witness or buddy statement for a claim workspace.",robots:{index:false,follow:false}};
 
 export default async function BuddyStatementPage({searchParams}:{searchParams:Promise<{claim?:string}>}){
   const [session,params]=await Promise.all([auth(),searchParams]);if(!session?.user?.id)redirect("/login?redirectTo=/buddy-statement");

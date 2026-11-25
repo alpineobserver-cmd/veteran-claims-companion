@@ -38,3 +38,5 @@ export default async function AuthErrorPage({searchParams}:{searchParams:Promise
     </section>
   </main>;
 }
+
+export const metadata={robots:{index:false,follow:false}};

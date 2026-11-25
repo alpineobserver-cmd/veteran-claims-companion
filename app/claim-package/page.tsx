@@ -16,7 +16,7 @@ import "./claim-package.css";
 import "./statement-provenance.css";
 import "./source-citations.css";
 
-export const metadata:Metadata={title:"Claim package",description:"Review fictional condition statements, supporting items, and preparation next steps together."};
+export const metadata:Metadata={title:"Claim package",description:"Review fictional condition statements, supporting items, and preparation next steps together.",robots:{index:false,follow:false}};
 
 type PackageClaim={
   id:string;

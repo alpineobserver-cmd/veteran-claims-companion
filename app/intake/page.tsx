@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import "./intake.css";
 
-export const metadata:Metadata={title:"Document upload",description:"Add and organize fictional Alpha test documents in a private Debrief workspace."};
+export const metadata:Metadata={title:"Document upload",description:"Add and organize fictional Alpha test documents in a private Debrief workspace.",robots:{index:false,follow:false}};
 
 export default async function IntakePage(){
   const session=await auth();if(!session?.user?.id)redirect("/login?redirectTo=/intake");

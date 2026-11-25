@@ -1,5 +1,4 @@
-import {auth} from "@/auth";
-import {notFound,redirect} from "next/navigation";
+import {notFound} from "next/navigation"
 import {AppShell} from "@/components/app-shell";
 import {getFormAgency,getFormAuthorityLabel,getFormLabel,getVAForm,getVAFormDownload,vaForms} from "@/lib/va-forms";
 import {ArrowLeft,CheckCircle2,Download,ExternalLink,FileCheck2,Info,UserRound} from "lucide-react";
@@ -7,16 +6,17 @@ import Link from "next/link";
 import { formProvenance } from "@/lib/content-provenance";
 import "../forms.css";
 import "../downloads.css";
+import type {Metadata} from "next";
 
 export function generateStaticParams(){return vaForms.map(f=>({slug:f.slug}))}
+export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const {slug}=await params;const form=getVAForm(slug);const index=process.env.DATA_ENVIRONMENT==="production";return form?{title:`${getFormLabel(form)}: ${form.name}`,description:form.purpose,alternates:{canonical:`/forms/${slug}`},robots:{index,follow:index}}:{robots:{index:false,follow:false}}}
 
 export default async function FormPage({params}:{params:Promise<{slug:string}>}){
-  const [session,{slug}]=await Promise.all([auth(),params]);
-  if(!session?.user?.id)redirect(`/login?redirectTo=/forms/${encodeURIComponent(slug)}`);
+  const {slug}=await params;
   const f=getVAForm(slug);
   if(!f)notFound();
   const download=getVAFormDownload(slug); const provenance=formProvenance(slug)!; const agency=getFormAgency(f);
-  return <AppShell current="forms" user={{id:session.user.id,name:session.user.name,email:session.user.email,image:session.user.image}}><div className="form-detail">
+  return <AppShell current="forms" publicMode><div className="form-detail">
     <Link href="/forms" className="forms-back"><ArrowLeft size={15}/>All forms</Link>
     <header className="form-detail-hero"><div><span className="form-number large">{getFormLabel(f)}</span><span className="form-category">{f.category}</span></div><h1>{f.name}</h1><p>{f.purpose}</p><div className="form-current"><CheckCircle2 size={14}/>{f.status} · {f.revision} · {provenance.contentVersion} · <Link href="/sources">record {provenance.localRecordSha256.slice(0,12)}</Link></div></header>
     <div className="form-detail-layout"><main>

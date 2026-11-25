@@ -10,6 +10,15 @@ test("the document declares its language",async()=>{
   assert.match(await read("app/layout.tsx"),/<html lang="en">/);
 });
 
+test("the public resource search has a persistent label and announced results",async()=>{
+  const [landing,search]=await Promise.all([read("app/page.tsx"),read("components/resource-search.tsx")]);
+  assert.match(landing,/href="#resources"/);
+  assert.match(search,/htmlFor="resource-search"/);
+  assert.match(search,/aria-controls="resource-search-results"/);
+  assert.match(search,/aria-live="polite"/);
+  assert.match(search,/role="region"/);
+});
+
 test("mobile navigation traps background interaction and restores focus",async()=>{
   const shell=await read("components/app-shell.tsx");
   assert.match(shell,/aria-controls="app-sidebar"/);

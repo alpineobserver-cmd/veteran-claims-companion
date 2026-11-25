@@ -1,5 +1,4 @@
-import {auth} from "@/auth";
-import { notFound,redirect } from "next/navigation";
+import { notFound } from "next/navigation"
 import { AppShell } from "@/components/app-shell";
 import { RatingSchemeExplorer } from "@/components/rating-scheme-explorer";
 import { conditions, getCondition } from "@/lib/conditions";
@@ -11,11 +10,13 @@ import { conditionProvenance } from "@/lib/content-provenance";
 import "../conditions.css";
 import "../catalog.css";
 import "./ratings.css";
+import type {Metadata} from "next";
 
 export function generateStaticParams(){return conditions.map(c=>({slug:c.slug}))}
+export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const {slug}=await params;const condition=getCondition(slug);const index=process.env.DATA_ENVIRONMENT==="production";return condition?{title:`${condition.name} VA rating guide`,description:condition.short,alternates:{canonical:`/conditions/${slug}`},robots:{index,follow:index}}:{robots:{index:false,follow:false}}}
 export default async function ConditionPage({params}:{params:Promise<{slug:string}>}){
-  const [session,{slug}]=await Promise.all([auth(),params]);if(!session?.user?.id)redirect(`/login?redirectTo=/conditions/${encodeURIComponent(slug)}`);const c=getCondition(slug); if(!c)notFound(); const codes=codesForCondition(slug); const schemes=schemesForCondition(slug); const provenance=conditionProvenance(slug)!;
-  return <AppShell current="conditions" user={{id:session.user.id,name:session.user.name,email:session.user.email,image:session.user.image}}><div className="condition-detail">
+  const {slug}=await params;const c=getCondition(slug); if(!c)notFound(); const codes=codesForCondition(slug); const schemes=schemesForCondition(slug); const provenance=conditionProvenance(slug)!;
+  return <AppShell current="conditions" publicMode><div className="condition-detail">
     <Link href="/conditions" className="back-link"><ArrowLeft size={15}/>All conditions</Link>
     <header className="detail-hero"><span className="condition-category">{c.category}</span><h1>{c.name}</h1><p>{c.short}</p><div className="verified"><CalendarDays size={14}/>Regulatory summaries checked against eCFR current through {CATALOG_VERIFIED_THROUGH} · {provenance.contentVersion} · <Link href="/sources">record {provenance.localRecordSha256.slice(0,12)}</Link></div></header>
     <RatingSchemeExplorer conditionName={c.name} schemes={schemes}/>
