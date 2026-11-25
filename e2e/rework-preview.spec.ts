@@ -59,11 +59,12 @@ test.beforeEach(async({page})=>{
   await page.reload();
 });
 
-test("public landing requires an account and uses Debrief mission language",async({page})=>{
+test("public landing leads with open resources and keeps the workspace gated",async({page})=>{
   await page.goto("/");
-  await expect(page.getByRole("heading",{name:"Debrief your service. Organize the facts that matter."})).toBeVisible();
-  await expect(page.getByText("Veteran claim preparation",{exact:true})).toHaveCount(1);
-  await expect(page.getByRole("link",{name:/Continue without an account/i})).toHaveCount(0);
+  await expect(page.getByRole("heading",{name:"Find clear information. Start wherever you are."})).toBeVisible();
+  await expect(page.getByRole("link",{name:"Conditions & ratings",exact:true})).toBeVisible();
+  await expect(page.getByRole("link",{name:"VA forms",exact:true})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Claim Builder is in development"})).toBeVisible();
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login\?redirectTo=%2Fdashboard|\/login\?redirectTo=\/dashboard/);
 });
@@ -75,8 +76,12 @@ test("signed-out visitors are redirected to authentication",async({page})=>{
   await expect(page.getByText("Your account keeps your service history, records, and claim package connected to you.")).toBeVisible();
 });
 
-test("related claim tools also require authentication",async({page})=>{
-  for(const path of ["/conditions","/forms","/exposure-record-check","/claim-builder"]){
+test("public resources stay open while claim tools require authentication",async({page})=>{
+  for(const [path,heading] of [["/conditions","Start with the body system, then open the condition and code."],["/forms","Find the right official form"],["/exposure-record-check","Debrief where and when you served"]]){
+    await page.goto(path);
+    await expect(page.getByRole("heading",{name:heading})).toBeVisible();
+  }
+  for(const path of ["/claim-builder","/rework-preview"]){
     await page.goto(path);
     await expect(page).toHaveURL(/\/login\?redirectTo=/);
     await expect(page.getByRole("heading",{name:"Sign in to continue your debrief."})).toBeVisible();

@@ -1,5 +1,13 @@
 # Debrief product backlog
 
+## November 25 resource access refresh
+
+- [ ] **UX-021 · P1 · Resource-first public website** — Make the current VA resources usable without an account and make the site's present and future scope clear. Implementation is prepared for Staging; complete the post-deploy public-route smoke check and record human accessibility review findings before considering broader release.
+  - Lead the homepage with Conditions & Ratings, VA Forms, and Exposure Record Check.
+  - Make public resource search visible and usable without sign-in.
+  - Label Claim Builder as in development and preserve fictional-data warnings on the private workspace.
+  - Keep Staging out of search indexing; enable indexing only for Production resources.
+
 Last reviewed: August 5, 2026
 Current release: closed Alpha  
 Current data boundary: fictional information and fictional documents only

@@ -9,8 +9,7 @@ import "./rework-preview.css";
 
 export const metadata:Metadata={
   title:"Guided case journey preview",
-  description:"A fictional, interactive preview of the proposed Debrief case journey."
-};
+  description:"A fictional, interactive preview of the proposed Debrief case journey.",robots:{index:false,follow:false}};
 
 export default async function ReworkPreviewPage({searchParams}:{searchParams:Promise<{fictionalTester?:string}>}){
   const [session,params]=await Promise.all([auth(),searchParams]);

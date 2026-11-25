@@ -71,6 +71,13 @@ test("public and authenticated navigation expose support and status routes",asyn
   assert.match(shell,/href="\/status"/);
   assert.match(conditions,/href="\/support#content-correction"/);
   assert.match(forms,/href="\/support#content-correction"/);
+  assert.match(landing,/href="\/conditions"/);
+  assert.match(landing,/href="\/forms"/);
+  assert.match(landing,/Claim Builder is in development/);
+  assert.match(landing,/No account needed/);
+  assert.match(landing,/ResourceSearch/);
+  assert.doesNotMatch(conditions,/redirect\("\/login/);
+  assert.doesNotMatch(forms,/redirect\("\/login/);
 });
 
 test("environment example preserves local development and the canonical Production host",async()=>{
@@ -82,7 +89,7 @@ test("environment example preserves local development and the canonical Producti
 test("live canonical pages are public when PUBLIC_E2E_BASE_URL is supplied",{skip:!process.env.PUBLIC_E2E_BASE_URL},async()=>{
   const base=new URL(process.env.PUBLIC_E2E_BASE_URL);
   assert.equal(base.origin,canonicalOrigin,"Live release checks must target the canonical origin.");
-  for(const route of ["/","/login","/privacy","/terms","/support","/status","/sources","/licenses"]){
+  for(const route of ["/","/conditions","/forms","/exposure-record-check","/login","/privacy","/terms","/support","/status","/sources","/licenses"]){
     const response=await fetch(new URL(route,base),{redirect:"manual"});
     assert.equal(response.status,200,`${route} returned ${response.status}`);
     assert.doesNotMatch(response.headers.get("location")||"",/vercel\.com\/sso-api/);

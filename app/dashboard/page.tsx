@@ -7,7 +7,7 @@ import { ArrowRight, BookOpen, Check, Cloud, FileText, Files, Info, PackageCheck
 import type { Metadata } from "next";
 import {redirect} from "next/navigation";
 
-export const metadata:Metadata={title:"Dashboard",description:"Open, continue, and organize fictional Debrief claim workspaces."};
+export const metadata:Metadata={title:"Dashboard",description:"Open, continue, and organize fictional Debrief claim workspaces.",robots:{index:false,follow:false}};
 
 export default async function Dashboard() {
   const session=await auth();

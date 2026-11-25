@@ -21,6 +21,12 @@ const links = [
   ["forms", "Forms", "/forms", Files, true],
   ["changelog", "Change log", "/changelog", History, true]
 ] as const;
+const publicLinks = [
+  ["home","Resource home","/",BookOpen,true],
+  ["conditions","Conditions & ratings","/conditions",BookOpen,true],
+  ["forms","VA forms","/forms",Files,true],
+  ["exposures","Exposure records","/exposure-record-check",Radar,true]
+] as const;
 
 const searchItems = [
   ...conditions.map(item => ({ label:item.name, detail:item.category, href:`/conditions/${item.slug}`, type:"Condition" })),
@@ -31,7 +37,7 @@ const searchItems = [
 type ShellUser={id:string;name?:string|null;email?:string|null;image?:string|null};
 const sidebarPreferenceKey="debrief.workspaceSidebarCollapsed";
 
-export function AppShell({ children, current = "home", user }: { children: React.ReactNode; current?: string; user?:ShellUser }) {
+export function AppShell({ children, current = "home", user, publicMode=false }: { children: React.ReactNode; current?: string; user?:ShellUser; publicMode?:boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -104,11 +110,11 @@ export function AppShell({ children, current = "home", user }: { children: React
     {menuOpen && <button className="sidebar-scrim" aria-label="Close menu" onClick={()=>{setMenuOpen(false);window.requestAnimationFrame(()=>openMenuRef.current?.focus())}}/>}
     <aside id="app-sidebar" className="sidebar" aria-label="Companion navigation" aria-hidden={mobileLayout&&!menuOpen?true:undefined} inert={mobileLayout&&!menuOpen?true:undefined}>
       <div className="mobile-sidebar-head"><span>Menu</span><button ref={closeMenuRef} className="iconbtn" aria-label="Close menu" onClick={()=>{setMenuOpen(false);window.requestAnimationFrame(()=>openMenuRef.current?.focus())}}><X size={18}/></button></div>
-      <a className="brand" href="/dashboard" aria-label="Debrief dashboard" onClick={()=>setMenuOpen(false)}>
+      <a className="brand" href={publicMode?"/":"/dashboard"} aria-label={publicMode?"Debrief resources":"Debrief dashboard"} onClick={()=>setMenuOpen(false)}>
         <span className="brandmark"><ShieldCheck size={22}/></span>
-        <span className="brandcopy"><strong>Debrief</strong><small>Claim preparation</small></span>
+        <span className="brandcopy"><strong>Debrief</strong><small>{publicMode?"VA resources":"Claim preparation"}</small></span>
       </a>
-      <div className="nav-label-row">
+      {publicMode?<div className="nav-label-row"><p className="nav-label">Public resources</p></div>:<div className="nav-label-row">
         <p className="nav-label">Your workspace</p>
         <button
           type="button"
@@ -121,12 +127,13 @@ export function AppShell({ children, current = "home", user }: { children: React
         >
           {sidebarCollapsed?<PanelLeftOpen size={16}/>:<PanelLeftClose size={16}/>}
         </button>
-      </div>
+      </div>}
       <nav className="nav" aria-label="Primary navigation">
-        {links.map(([key, label, href, Icon, ready]) => ready
+        {(publicMode?publicLinks:links).map(([key, label, href, Icon, ready]) => ready
           ? <a className={current === key ? "active" : ""} href={href} key={key} title={label} onClick={()=>setMenuOpen(false)}><Icon size={18}/><span>{label}</span></a>
           : <span className="nav-disabled" aria-disabled="true" key={key}><Icon size={18}/><span>{label}</span><small>Soon</small></span>)}
       </nav>
+      {publicMode&&<div className="public-builder-status"><ClipboardList size={17}/><span><strong>Claim Builder</strong><small>In development</small></span></div>}
       <div className="sidebar-rule"/>
       <nav className="nav utility-nav" aria-label="Account navigation">
         {account?<><a className={current==="account"?"active":""} href="/account" aria-label="Account and data" title="Account and data"><User size={18}/><span>Account &amp; data</span></a><button type="button" className="nav-signout" aria-label={signingOut?"Signing out":"Sign out"} title={signingOut?"Signing out":"Sign out"} onClick={endSession} disabled={signingOut}><LogOut size={18}/><span>{signingOut?"Signing out…":"Sign out"}</span></button>{signOutError&&<p className="nav-signout-error" role="alert">{signOutError} <a href="/account#sign-out">Open Account &amp; data</a></p>}</>:<a href="/login?redirectTo=/dashboard" aria-label="Sign in" title="Sign in"><User size={18}/><span>Sign in</span></a>}

@@ -3,6 +3,26 @@ import { captureBrowserErrors, enableBrowserTestProfile } from "./fixtures";
 
 test.beforeEach(async({page})=>enableBrowserTestProfile(page));
 
+test("visitors can search and open public resources without signing in",async({page})=>{
+  const browserErrors=captureBrowserErrors(page);
+  await page.context().clearCookies();
+  await page.goto("/");
+  await expect(page.getByRole("heading",{name:"Find clear information. Start wherever you are."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Claim Builder is in development"})).toBeVisible();
+  const search=page.getByRole("searchbox",{name:"Search conditions, rating codes, and forms"});
+  await search.fill("tinnitus");
+  const results=page.getByRole("region",{name:"Resource search results"});
+  const tinnitusResult=results.getByRole("link",{name:"Tinnitus Hearing and sensory Condition"});
+  await expect(tinnitusResult).toBeVisible();
+  await tinnitusResult.click();
+  await expect(page.getByRole("heading",{name:"Tinnitus",exact:true})).toBeVisible();
+  await page.goto("/forms");
+  await expect(page.getByRole("heading",{name:"Find the right official form"})).toBeVisible();
+  await page.goto("/exposure-record-check");
+  await expect(page.getByRole("heading",{name:"Debrief where and when you served"})).toBeVisible();
+  expect(browserErrors).toEqual([]);
+});
+
 test("public navigation search, sidebar preference, and mobile menu remain usable", async ({ page }) => {
   const browserErrors = captureBrowserErrors(page);
   await page.goto("/dashboard");

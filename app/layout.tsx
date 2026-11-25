@@ -6,7 +6,8 @@ import "./theme.css";
 import "./accessibility.css";
 import "./deployment-banner.css";
 import { DeploymentBanner } from "@/components/deployment-banner";
-export const metadata: Metadata = { title: { default:"Debrief", template:"%s | Debrief" }, description: "A self-directed educational tool for organizing fictional alpha claim scenarios.", robots:{index:false,follow:false,nocache:true} };
+const searchIndexable=process.env.DATA_ENVIRONMENT==="production";
+export const metadata: Metadata = { metadataBase:new URL("https://debriefclaims.com"), title: { default:"Debrief VA claim resources", template:"%s | Debrief" }, description: "Browse VA disability rating resources, official forms, and exposure-record guidance.", robots:{index:searchIndexable,follow:searchIndexable} };
 export default async function RootLayout({children}:{children:React.ReactNode}) {
   // Reading the middleware-provided nonce makes App Router rendering request
   // specific. Next.js then applies that nonce to its bootstrap scripts instead

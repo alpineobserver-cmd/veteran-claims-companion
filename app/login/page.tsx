@@ -6,7 +6,7 @@ import { logAuthEvent } from "@/lib/auth-audit";
 import Link from "next/link";
 import type { Metadata } from "next";
 
-export const metadata:Metadata={title:"Sign in",description:"Sign in to open your private Debrief account and save your claim progress."};
+export const metadata:Metadata={title:"Sign in",description:"Sign in to open your private Debrief account and save your claim progress.",robots:{index:false,follow:false}};
 
 export default async function Login({searchParams}:{searchParams:Promise<{redirectTo?:string;retry?:string}>}){
   const params=await searchParams;

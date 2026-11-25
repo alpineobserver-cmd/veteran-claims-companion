@@ -50,6 +50,17 @@ test.beforeEach(async({page})=>{
   await page.reload();
 });
 
+test("resource-first homepage remains accessible at desktop and mobile sizes",async({page})=>{
+  await page.goto("/");
+  await expectNoSeriousAxeViolations(page,"public resource landing page");
+  await expectActionsInsideViewport(page,"public resource landing page");
+  await page.getByRole("searchbox",{name:"Search conditions, rating codes, and forms"}).fill("21-526EZ");
+  await expect(page.getByRole("region",{name:"Resource search results"}).getByRole("link",{name:/21-526EZ/})).toBeVisible();
+  await page.setViewportSize({width:390,height:844});
+  await expectNoSeriousAxeViolations(page,"mobile resource landing page");
+  await expectActionsInsideViewport(page,"mobile resource landing page");
+});
+
 test("core rework journey has no serious or critical axe violations",async({page})=>{
   await expectNoSeriousAxeViolations(page,"mission briefing");
   await expectActionsInsideViewport(page,"mission briefing");

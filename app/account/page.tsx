@@ -8,7 +8,7 @@ import { Cloud, FileText, Info, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import "./account.css";
 
-export const metadata:Metadata={title:"Account and data",description:"Review, export, or delete the fictional Alpha data connected to your Debrief account."};
+export const metadata:Metadata={title:"Account and data",description:"Review, export, or delete the fictional Alpha data connected to your Debrief account.",robots:{index:false,follow:false}};
 
 export default async function AccountPage(){
   const session=await auth();if(!session?.user?.id)redirect("/login?redirectTo=/account");
