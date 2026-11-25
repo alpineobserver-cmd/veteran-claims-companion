@@ -1,5 +1,9 @@
 # Debrief product backlog
 
+## November 25 release review
+
+- [x] **SEC-026 · P0 · Dependency advisory remediation** — Updated the vulnerable baseline dependencies and passed the full release suite, type check, lint, license check, and zero-finding dependency audit before deploying to Staging. Audit identified a critical Next.js advisory and high-severity transitive package advisories in the latest Staging base.
+
 ## November 25 resource access refresh
 
 - [ ] **UX-021 · P1 · Resource-first public website** — Make the current VA resources usable without an account and make the site's present and future scope clear. Implementation is prepared for Staging; complete the post-deploy public-route smoke check and record human accessibility review findings before considering broader release.

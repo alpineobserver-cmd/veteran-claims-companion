@@ -72,7 +72,7 @@
     "next-auth": "5.0.0-beta.32",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "zod": "^3.24.1"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
@@ -87,9 +87,13 @@
     "typescript": "^5.7.2"
   },
   "overrides": {
-    "brace-expansion": "5.0.9",
+    "brace-expansion": "5.0.12",
     "deepmerge-ts": "8.0.1",
-    "js-yaml": "4.3.1",
+    "js-yaml": "4.3.2",
+    "@vercel/cli-config": {
+      "zod": "^4.6.6"
+    },
+    "effect": "3.22.1",
     "nanoid": "3.3.18",
     "postcss": "^8.5.23",
     "sharp": "^0.35.3",
