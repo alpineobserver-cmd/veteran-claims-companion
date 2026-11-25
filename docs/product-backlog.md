@@ -2,7 +2,7 @@
 
 ## November 25 release review
 
-- [x] **SEC-026 · P0 · Dependency advisory remediation** — Updated the vulnerable baseline dependencies and passed the full release suite, type check, lint, license check, and zero-finding dependency audit before deploying to Staging. Audit identified a critical Next.js advisory and high-severity transitive package advisories in the latest Staging base.
+- [ ] **SEC-026 · P0 · Dependency advisory remediation** — Patched the vulnerable application and scanner dependency trees. The local application audit is clean; rerun the PR release gate after the scanner lockfile update, which removes its low-severity audit finding.
 
 ## November 25 resource access refresh
 
